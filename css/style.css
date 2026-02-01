@@ -486,6 +486,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .heatmap-cell.overdue .cell-cross { color: #fff; }
 .pay-modal-partial, .pay-modal-full { margin-top: 8px; padding: 8px; background: var(--bg2); border-radius: var(--r); font-size: .9rem; }
 .pay-modal-full { color: var(--green-600); }
+.pay-modal-existing { margin: 12px 0; padding: 10px; background: var(--bg2); border-radius: var(--r); }
+.pay-modal-existing-title { font-size: .85rem; font-weight: 600; margin-bottom: 8px; color: var(--txt2); }
+.pay-modal-existing-list { list-style: none; margin: 0; padding: 0; }
+.pay-modal-existing-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: .9rem; flex-wrap: wrap; }
+.pay-modal-existing-item span { flex: 1; min-width: 120px; }
+.pay-modal-add-link { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.pay-modal-add-link a { font-size: .9rem; color: var(--primary); }
 .heatmap-property { font-weight: 500; color: var(--txt); white-space: nowrap; padding-right: 12px; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .modal-close { background: none; border: none; font-size: 1.5rem; color: var(--txt3); cursor: pointer; line-height: 1; padding: 4px; }

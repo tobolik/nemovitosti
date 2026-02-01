@@ -150,7 +150,7 @@ async function loadDashboard(year) {
 App.registerView('dashboard', () => loadDashboard());
 
 // ── PaymentModal ─────────────────────────────────────────────────────────
-function openPaymentModal(el) {
+async function openPaymentModal(el) {
     const contractId = el.dataset.contractId;
     const contractsId = el.dataset.contractsId || contractId;
     const monthKey = el.dataset.monthKey;
@@ -161,26 +161,25 @@ function openPaymentModal(el) {
     const paymentAmount = el.dataset.paymentAmount ? parseFloat(el.dataset.paymentAmount) : 0;
     const remaining = el.dataset.remaining ? parseFloat(el.dataset.remaining) : amountVal;
 
+    const [year, month] = monthKey.split('-');
+    const monthName = MONTH_NAMES[parseInt(month, 10) - 1] || month;
+    const propName = el.closest('tr').querySelector('.heatmap-property').textContent;
+
     const info = document.getElementById('pay-modal-info');
     const amount = document.getElementById('pay-modal-amount');
     const paid = document.getElementById('pay-modal-paid');
     const dateWrap = document.getElementById('pay-modal-date-wrap');
     const dateInput = document.getElementById('pay-modal-date');
+    const existingWrap = document.getElementById('pay-modal-existing');
+    const editIdEl = document.getElementById('pay-modal-edit-id');
 
     document.getElementById('pay-modal-contract-id').value = contractId;
     document.getElementById('pay-modal-month-key').value = monthKey;
+    editIdEl.value = '';
 
-    paid.checked = isPaid;
-    amount.value = isPaid ? amountVal : remaining;
-    dateInput.value = paymentDate;
-    dateWrap.style.display = isPaid ? 'block' : 'none';
-
-    const [y, m] = monthKey.split('-');
-    const monthName = MONTH_NAMES[parseInt(m, 10) - 1] || m;
-    const propName = el.closest('tr').querySelector('.heatmap-property').textContent;
     let infoHtml = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
         '<div><strong>Nájemce:</strong> ' + UI.esc(tenantName) + '</div>' +
-        '<div><strong>Období:</strong> ' + monthName + ' ' + y + '</div>';
+        '<div><strong>Období:</strong> ' + monthName + ' ' + year + '</div>';
     if (!isPaid && paymentAmount > 0 && remaining > 0) {
         infoHtml += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(paymentAmount) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(remaining) + ' Kč</div>';
     } else if (isPaid) {
@@ -188,10 +187,64 @@ function openPaymentModal(el) {
     }
     info.innerHTML = infoHtml;
 
+    paid.checked = isPaid;
+    amount.value = isPaid ? amountVal : remaining;
+    dateInput.value = paymentDate;
+    dateWrap.style.display = isPaid ? 'block' : 'none';
+
+    let payments = await Api.crudList('payments', { contracts_id: contractsId });
+    let forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
+
+    function renderExisting() {
+        if (!forMonth.length) {
+            existingWrap.innerHTML = '';
+            return;
+        }
+        let html = '<div class="pay-modal-existing-title">Existující platby:</div><ul class="pay-modal-existing-list">';
+        forMonth.forEach(p => {
+            const amt = UI.fmt(p.amount ?? 0);
+            const dt = p.payment_date ? UI.fmtDate(p.payment_date) : '—';
+            html += '<li class="pay-modal-existing-item">' +
+                '<span>' + amt + ' Kč (' + dt + ')</span> ' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + p.id + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '">Upravit</button> ' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + p.id + '">Smazat</button>' +
+                '</li>';
+        });
+        html += '</ul><div class="pay-modal-add-link"><a href="#" data-action="add">+ Přidat novou platbu</a></div>';
+        existingWrap.innerHTML = html;
+    }
+    renderExisting();
+
+    existingWrap.onclick = async (e) => {
+        const editBtn = e.target.closest('[data-action="edit"]');
+        const delBtn = e.target.closest('[data-action="delete"]');
+        const addLink = e.target.closest('[data-action="add"]');
+        if (editBtn) {
+            editIdEl.value = editBtn.dataset.id;
+            amount.value = editBtn.dataset.amount || '';
+            dateInput.value = editBtn.dataset.date || new Date().toISOString().slice(0, 10);
+            paid.checked = true;
+            dateWrap.style.display = 'block';
+        } else if (delBtn) {
+            try {
+                await Api.crudDelete('payments', parseInt(delBtn.dataset.id, 10));
+                payments = await Api.crudList('payments', { contracts_id: contractsId });
+                forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
+                renderExisting();
+                await loadDashboard(parseInt(year, 10));
+            } catch (err) { alert(err.message); }
+        } else if (addLink) {
+            e.preventDefault();
+            editIdEl.value = '';
+            amount.value = remaining;
+            paid.checked = false;
+            dateWrap.style.display = 'none';
+        }
+    };
+
     paid.onchange = () => { dateWrap.style.display = paid.checked ? 'block' : 'none'; };
 
     document.getElementById('btn-pay-modal-save').onclick = async () => {
-        const [year, month] = monthKey.split('-');
         try {
             if (paid.checked) {
                 const dateVal = dateInput.value;
@@ -204,16 +257,25 @@ function openPaymentModal(el) {
                     alert('Zadejte kladnou částku platby.');
                     return;
                 }
-                await Api.crudAdd('payments', {
-                    contracts_id: parseInt(contractsId, 10),
-                    period_year: parseInt(year, 10),
-                    period_month: parseInt(month, 10),
-                    amount: amt,
-                    payment_date: dateInput.value,
-                });
+                const editId = editIdEl.value.trim();
+                if (editId) {
+                    await Api.crudEdit('payments', parseInt(editId, 10), {
+                        contracts_id: parseInt(contractsId, 10),
+                        period_year: parseInt(year, 10),
+                        period_month: parseInt(month, 10),
+                        amount: amt,
+                        payment_date: dateInput.value,
+                    });
+                } else {
+                    await Api.crudAdd('payments', {
+                        contracts_id: parseInt(contractsId, 10),
+                        period_year: parseInt(year, 10),
+                        period_month: parseInt(month, 10),
+                        amount: amt,
+                        payment_date: dateInput.value,
+                    });
+                }
             } else {
-                const payments = await Api.crudList('payments', { contracts_id: contractsId });
-                const forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
                 for (const p of forMonth) {
                     await Api.crudDelete('payments', p.id);
                 }

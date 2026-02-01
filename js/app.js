@@ -132,6 +132,14 @@ const App = (() => {
     // ── hashchange (zpět/dopředu v prohlížeči) ───────────────────────────
     window.addEventListener('hashchange', onHashChange);
 
+    // ── ESC zavře otevřený modal ────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            const open = document.querySelector('.modal.show');
+            if (open) UI.modalClose(open.id);
+        }
+    });
+
     // ── sidebar: hamburger & close ───────────────────────────────────────
     function sidebarOpen() {
         document.getElementById('sidebar').classList.add('open');
