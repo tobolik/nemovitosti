@@ -185,7 +185,7 @@ function openPaymentModal(el) {
                     return;
                 }
                 const payments = await Api.crudList('payments', { contracts_id: contractsId });
-                const existing = payments.find(x => String(x.period_year) === year && String(x.period_month) === month);
+                const existing = payments.find(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
                 const payload = {
                     contracts_id: parseInt(contractsId, 10),
                     period_year: parseInt(year, 10),
@@ -200,7 +200,7 @@ function openPaymentModal(el) {
                 }
             } else {
                 const payments = await Api.crudList('payments', { contracts_id: contractsId });
-                const p = payments.find(x => String(x.period_year) === year && String(x.period_month) === month);
+                const p = payments.find(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
                 if (p) await Api.crudDelete('payments', p.id);
             }
         } catch (e) {
