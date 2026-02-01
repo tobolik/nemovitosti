@@ -2,12 +2,12 @@
 
 const MONTH_NAMES = ['leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
 
-App.registerView('dashboard', async () => {
+async function loadDashboard(year) {
     const yearSelect = document.getElementById('dash-year');
-    const year = yearSelect ? parseInt(yearSelect.value, 10) || new Date().getFullYear() : new Date().getFullYear();
+    const y = year ?? (yearSelect ? parseInt(yearSelect.value, 10) : null) ?? new Date().getFullYear();
 
     let data;
-    try { data = await Api.dashboardLoad(year); }
+    try { data = await Api.dashboardLoad(y); }
     catch (e) { return; }
 
     const { contracts, properties, heatmap, stats, monthNames } = data;
@@ -40,13 +40,11 @@ App.registerView('dashboard', async () => {
     if (yearSelect) {
         const nowY = new Date().getFullYear();
         let opts = '';
-        for (let y = nowY - 2; y <= nowY + 1; y++) {
-            opts += '<option value="' + y + '"' + (y === year ? ' selected' : '') + '>' + y + '</option>';
+        for (let yr = nowY - 2; yr <= nowY + 1; yr++) {
+            opts += '<option value="' + yr + '"' + (yr === y ? ' selected' : '') + '>' + yr + '</option>';
         }
         yearSelect.innerHTML = opts;
-        yearSelect.onchange = () => {
-            setTimeout(() => App.navigate('dashboard', true), 0);
-        };
+        yearSelect.onchange = () => loadDashboard(parseInt(yearSelect.value, 10));
     }
 
     // ── Heatmap ─────────────────────────────────────────────────────────
@@ -62,7 +60,7 @@ App.registerView('dashboard', async () => {
         properties.forEach(prop => {
             rows += '<tr><td class="heatmap-property">' + UI.esc(prop.name) + '</td>';
             for (let m = 1; m <= 12; m++) {
-                const monthKey = year + '-' + String(m).padStart(2, '0');
+                const monthKey = y + '-' + String(m).padStart(2, '0');
                 const key = prop.id + '_' + monthKey;
                 const cell = heatmap[key] || { type: 'empty', monthKey };
 
@@ -137,7 +135,9 @@ App.registerView('dashboard', async () => {
         },
         { emptyMsg: 'Žádné aktivní smlouvy.' }
     );
-});
+}
+
+App.registerView('dashboard', () => loadDashboard());
 
 // ── PaymentModal ─────────────────────────────────────────────────────────
 function openPaymentModal(el) {
