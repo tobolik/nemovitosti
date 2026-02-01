@@ -617,6 +617,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
 
 /* EMPTY STATE */
 .empty { text-align: center; padding: 52px 20px; color: var(--txt3); font-size: .9rem; }
+.empty a { color: var(--primary); text-decoration: underline; }
+.empty a:hover { color: var(--primary-light, #c4b5fd); }
 
 /* FILTER BAR */
 .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }

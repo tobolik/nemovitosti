@@ -132,11 +132,18 @@ const App = (() => {
     // ── hashchange (zpět/dopředu v prohlížeči) ───────────────────────────
     window.addEventListener('hashchange', onHashChange);
 
-    // ── ESC zavře otevřený modal ────────────────────────────────────────
+    // ── ESC zavře modal, Ctrl+Enter uloží ───────────────────────────────
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             const open = document.querySelector('.modal.show');
             if (open) UI.modalClose(open.id);
+        } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            const openModal = document.querySelector('.modal.show');
+            const saveBtn = openModal
+                ? openModal.querySelector('[data-save-btn]')
+                : document.querySelector('.view.active [data-save-btn]');
+            if (saveBtn) saveBtn.click();
         }
     });
 

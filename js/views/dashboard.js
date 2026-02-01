@@ -99,7 +99,7 @@ async function loadDashboard(year) {
 
         heatmapEl.innerHTML = '<table class="heatmap-table"><thead><tr>' + ths + '</tr></thead><tbody>' + rows + '</tbody></table>';
     } else if (heatmapEl) {
-        heatmapEl.innerHTML = '<div class="empty">Žádné nemovitosti. Přidejte nemovitost v sekci Nemovitosti.</div>';
+        heatmapEl.innerHTML = '<div class="empty">Žádné nemovitosti. Přidejte nemovitost v sekci <a href="#properties">Nemovitosti</a>.</div>';
     }
 
     // ── Table (přehled smluv) ───────────────────────────────────────────

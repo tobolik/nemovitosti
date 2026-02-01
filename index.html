@@ -104,7 +104,7 @@
           </div>
           <div class="fg"><label>Poznámka</label><textarea id="prop-note" rows="2"></textarea></div>
           <div class="form-actions">
-            <button class="btn btn-pri" id="btn-prop-save">Přidat nemovitost</button>
+            <button class="btn btn-pri" id="btn-prop-save" data-save-btn>Přidat nemovitost</button>
             <button class="btn btn-ghost" id="btn-prop-cancel" style="display:none">Zrušit</button>
           </div>
         </div>
@@ -142,7 +142,7 @@
           </div>
           <div class="fg"><label>Poznámka</label><textarea id="ten-note" rows="2"></textarea></div>
           <div class="form-actions">
-            <button class="btn btn-pri" id="btn-ten-save">Přidat nájemníka</button>
+            <button class="btn btn-pri" id="btn-ten-save" data-save-btn>Přidat nájemníka</button>
             <button class="btn btn-ghost" id="btn-ten-cancel" style="display:none">Zrušit</button>
           </div>
         </div>
@@ -210,7 +210,7 @@
           </div>
           <div class="fg"><label>Poznámka</label><textarea id="pay-note" rows="2"></textarea></div>
           <div class="form-actions">
-            <button class="btn btn-pri" id="btn-pay-save">Zaznamenat platbu</button>
+            <button class="btn btn-pri" id="btn-pay-save" data-save-btn>Zaznamenat platbu</button>
             <button class="btn btn-ghost" id="btn-pay-cancel" style="display:none">Zrušit</button>
           </div>
         </div>
@@ -242,7 +242,7 @@
             </div>
           </div>
           <div class="form-actions">
-            <button class="btn btn-pri" id="btn-usr-add">Přidat uživatele</button>
+            <button class="btn btn-pri" id="btn-usr-add" data-save-btn>Přidat uživatele</button>
           </div>
         </div>
         <div id="usr-table"></div>
@@ -332,7 +332,7 @@
       <div class="fg"><label>Poznámka</label><textarea id="modal-tenant-note" rows="2"></textarea></div>
     </div>
     <div class="form-actions">
-      <button class="btn btn-pri" id="btn-modal-tenant-save">Přidat a vybrat</button>
+      <button class="btn btn-pri" id="btn-modal-tenant-save" data-save-btn>Přidat a vybrat</button>
       <button class="btn btn-ghost" onclick="UI.modalClose('modal-tenant')">Zrušit</button>
     </div>
   </div>
@@ -349,7 +349,7 @@
       <input type="password" id="modal-pass-input">
     </div>
     <div class="form-actions">
-      <button class="btn btn-pri" id="btn-modal-pass-save">Změnit heslo</button>
+      <button class="btn btn-pri" id="btn-modal-pass-save" data-save-btn>Změnit heslo</button>
       <button class="btn btn-ghost" onclick="UI.modalClose('modal-pass')">Zrušit</button>
     </div>
     <input type="hidden" id="modal-pass-uid">
