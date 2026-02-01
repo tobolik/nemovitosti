@@ -84,7 +84,8 @@ const UI = (() => {
     }
 
     // ── CRUD form factory ───────────────────────────────────────────────
-    // Vrátí objekt { startEdit(row), exitEdit() } pro standardní add/edit form.
+    // Vrátí objekt { startEdit(row), exitEdit(), startAdd() } pro standardní add/edit form.
+    // formCardId + addBtnId: seznam je první, formulář se zobrazí až po Přidat/Úprava.
     //
     // cfg: {
     //   table:        'properties',
@@ -93,6 +94,8 @@ const UI = (() => {
     //   saveId:       'btn-prop-save',
     //   cancelId:     'btn-prop-cancel',
     //   editIdField:  'prop-edit-id',
+    //   formCardId:   'prop-form-card',   – volitelné: skrýt formulář, zobrazit až po Přidat/Úprava
+    //   addBtnId:     'btn-prop-add',     – volitelné: tlačítko „+ Přidat“
     //   addLabel:     'Přidat nemovitost',
     //   editLabel:    'Uložit změny',
     //   getValues:    () => ({ name, address, ... }),   – reads from DOM
@@ -102,6 +105,17 @@ const UI = (() => {
     // }
     function createCrudForm(cfg) {
         let editMode = false;
+        const formCard = cfg.formCardId ? document.getElementById(cfg.formCardId) : null;
+        const addBtn   = cfg.addBtnId   ? document.getElementById(cfg.addBtnId)   : null;
+
+        function showForm() {
+            if (formCard) formCard.style.display = '';
+            if (addBtn)   addBtn.style.display = 'none';
+        }
+        function hideForm() {
+            if (formCard) formCard.style.display = 'none';
+            if (addBtn)   addBtn.style.display = '';
+        }
 
         document.getElementById(cfg.saveId).addEventListener('click', async () => {
             const id     = document.getElementById(cfg.editIdField).value;
@@ -128,6 +142,10 @@ const UI = (() => {
 
         document.getElementById(cfg.cancelId).addEventListener('click', exitEdit);
 
+        if (addBtn) {
+            addBtn.addEventListener('click', startAdd);
+        }
+
         function exitEdit() {
             editMode = false;
             document.getElementById(cfg.editIdField).value = '';
@@ -135,6 +153,17 @@ const UI = (() => {
             document.getElementById(cfg.saveId).textContent    = cfg.addLabel;
             document.getElementById(cfg.cancelId).style.display = 'none';
             cfg.resetForm();
+            hideForm();
+        }
+
+        function startAdd() {
+            editMode = false;
+            document.getElementById(cfg.editIdField).value = '';
+            document.getElementById(cfg.titleId).textContent  = cfg.addLabel;
+            document.getElementById(cfg.saveId).textContent    = cfg.addLabel;
+            document.getElementById(cfg.cancelId).style.display = 'none';
+            cfg.resetForm();
+            showForm();
         }
 
         return {
@@ -145,8 +174,10 @@ const UI = (() => {
                 document.getElementById(cfg.saveId).textContent    = cfg.editLabel;
                 document.getElementById(cfg.cancelId).style.display = '';
                 cfg.fillForm(row);
+                showForm();
             },
             exitEdit,
+            startAdd,
         };
     }
 

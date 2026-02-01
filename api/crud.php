@@ -11,7 +11,7 @@ requireLogin();
 $FIELDS = [
     'properties' => ['name','address','size_m2','purchase_price','purchase_date','purchase_contract_url','type','note'],
     'tenants'    => ['name','type','email','phone','address','ic','dic','note'],
-    'contracts'  => ['property_id','tenant_id','contract_start','contract_end','monthly_rent','note'],
+    'contracts'  => ['property_id','tenant_id','contract_start','contract_end','monthly_rent','contract_url','note'],
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note'],
 ];
 

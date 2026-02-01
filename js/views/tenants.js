@@ -51,6 +51,8 @@ const TenantsView = (() => {
             saveId:     'btn-ten-save',
             cancelId:   'btn-ten-cancel',
             editIdField:'ten-edit-id',
+            formCardId: 'ten-form-card',
+            addBtnId:   'btn-ten-add',
             addLabel:   'Přidat nájemníka',
             editLabel:  'Uložit změny',
             successAddMsg: 'Nájemník byl úspěšně přidán.',
@@ -137,6 +139,7 @@ const TenantsView = (() => {
 
     async function load() {
         initForm();
+        form.exitEdit();
         _cache = [];
         await loadList();
     }

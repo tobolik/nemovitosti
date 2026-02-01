@@ -124,6 +124,7 @@ const PropertiesView = (() => {
     // ── view loader (volání z routeru) ──────────────────────────────────
     async function load() {
         initForm();
+        form.exitEdit();
         _cache = [];
         await loadList();
     }

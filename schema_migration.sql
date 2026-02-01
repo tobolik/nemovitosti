@@ -1,6 +1,6 @@
 -- Migrace: rozšíření podle funcioncionality.md
--- Spustit na existující DB: mysql -u user -p tobolikcz01 < schema_migration.sql
--- Pokud sloupec již existuje, příkaz selže – lze přeskočit.
+-- RUČNÍ JEDNORÁZOVÝ UPGRADE existující DB: mysql -u user -p tobolikcz01 < schema_migration.sql
+-- Při automatickém deployi se používají inkrementální migrace ze složky migrations/ (api/migrate.php).
 
 USE tobolikcz01;
 
@@ -59,6 +59,9 @@ ALTER TABLE payments ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user
 
 -- Properties: odkaz na kupní smlouvu (např. Google Drive)
 ALTER TABLE properties ADD COLUMN purchase_contract_url VARCHAR(500) NULL AFTER purchase_date;
+
+-- Contracts: odkaz na nájemní smlouvu (PDF, např. Google Drive)
+ALTER TABLE contracts ADD COLUMN contract_url VARCHAR(500) NULL AFTER monthly_rent;
 
 -- Platby: přejmenovat contract_id na contracts_id (konvence: tabulka_id)
 -- 1) Převést contract_id (řádkové id) na logické

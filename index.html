@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=0.14.18">
+<link rel="stylesheet" href="css/style.css?v=0.14.20">
 </head>
 <body>
 
@@ -82,7 +82,8 @@
       <!-- ═══ PROPERTIES ═══ -->
       <div class="view" id="view-properties">
         <div class="page-title">Nemovitosti</div>
-        <div class="card">
+        <div class="list-actions" id="prop-list-actions"><button type="button" class="btn btn-pri" id="btn-prop-add">+ Přidat nemovitost</button></div>
+        <div class="card" id="prop-form-card" style="display:none">
           <div class="card-title" id="prop-form-title">Přidat nemovitost</div>
           <div class="alert" id="prop-alert"></div>
           <input type="hidden" id="prop-edit-id">
@@ -118,7 +119,8 @@
       <!-- ═══ TENANTS ═══ -->
       <div class="view" id="view-tenants">
         <div class="page-title">Nájemníci</div>
-        <div class="card">
+        <div class="list-actions" id="ten-list-actions"><button type="button" class="btn btn-pri" id="btn-ten-add">+ Přidat nájemníka</button></div>
+        <div class="card" id="ten-form-card" style="display:none">
           <div class="card-title" id="ten-form-title">Přidat nájemníka</div>
           <div class="alert" id="ten-alert"></div>
           <input type="hidden" id="ten-edit-id">
@@ -156,7 +158,8 @@
       <!-- ═══ CONTRACTS ═══ -->
       <div class="view" id="view-contracts">
         <div class="page-title">Nájemní smlouvy</div>
-        <div class="card">
+        <div class="list-actions" id="con-list-actions"><button type="button" class="btn btn-pri" id="btn-con-add">+ Přidat smlouvu</button></div>
+        <div class="card" id="con-form-card" style="display:none">
           <div class="card-title" id="con-form-title">Přidat smlouvu</div>
           <div class="alert" id="con-alert"></div>
           <input type="hidden" id="con-edit-id">
@@ -177,9 +180,10 @@
           <div class="form-row">
             <div class="fg"><label>Měsíční nájemné (Kč) *</label><input type="number" id="con-rent" step="0.01" min="0"></div>
           </div>
+          <div class="fg"><label>Nájemní smlouva (odkaz na PDF)</label><input type="url" id="con-contract-url" placeholder="https://drive.google.com/..."></div>
           <div class="fg"><label>Poznámka</label><textarea id="con-note" rows="2"></textarea></div>
           <div class="form-actions">
-            <button class="btn btn-pri" id="btn-con-save">Přidat smlouvu</button>
+            <button class="btn btn-pri" id="btn-con-save" data-save-btn>Přidat smlouvu</button>
             <button class="btn btn-ghost" id="btn-con-cancel" style="display:none">Zrušit</button>
           </div>
         </div>
@@ -189,7 +193,8 @@
       <!-- ═══ PAYMENTS ═══ -->
       <div class="view" id="view-payments">
         <div class="page-title">Platby</div>
-        <div class="card">
+        <div class="list-actions" id="pay-list-actions"><button type="button" class="btn btn-pri" id="btn-pay-add">+ Zaznamenat platbu</button></div>
+        <div class="card" id="pay-form-card" style="display:none">
           <div class="card-title" id="pay-form-title">Zaznamenat platbu</div>
           <div class="alert" id="pay-alert"></div>
           <input type="hidden" id="pay-edit-id">
@@ -256,7 +261,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v0.14.18</span>
+    <span class="footer-version">v0.14.20</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -363,15 +368,15 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=0.14.18"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=0.14.18"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=0.14.18"></script>
-<script src="js/app.js?v=0.14.18"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=0.14.18"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=0.14.18"></script>
-<script src="js/views/tenants.js?v=0.14.18"></script>
-<script src="js/views/contracts.js?v=0.14.18"></script>
-<script src="js/views/payments.js?v=0.14.18"></script>
-<script src="js/views/users.js?v=0.14.18"></script>
+<script src="js/api.js?v=0.14.20"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=0.14.20"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=0.14.20"></script>
+<script src="js/app.js?v=0.14.20"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=0.14.20"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=0.14.20"></script>
+<script src="js/views/tenants.js?v=0.14.20"></script>
+<script src="js/views/contracts.js?v=0.14.20"></script>
+<script src="js/views/payments.js?v=0.14.20"></script>
+<script src="js/views/users.js?v=0.14.20"></script>
 </body>
 </html>

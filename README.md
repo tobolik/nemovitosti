@@ -59,7 +59,7 @@ V repozitáři: **Settings → Secrets and variables → Actions** přidejte:
 1. Přihlášte se do phpMyAdmin (poskytneme hosting providером).
 2. Vytvořte novou databázi, např. `tobolikcz01` (charset: utf8mb4, collation: utf8mb4_czech_ci).
 3. Importujte soubor `schema.sql` (Import → Zvolte soubor → Execute).
-4. **Existující instalace:** Spusťte `schema_migration.sql` pro přidání sloupců (size_m2, purchase_price, purchase_date, type, ic, dic). Při použití automatického deploye s `SITE_URL` a `MIGRATE_KEY` se migrace spustí sama po každém pushu.
+4. **Existující instalace:** Při ručním upgrade spusťte `schema_migration.sql`. Při automatickém deployi s `SITE_URL` a `MIGRATE_KEY` se spouští **inkrementální migrace** ze složky `migrations/` – při každém deployi se provedou jen dosud neaplikované soubory (sledováno v tabulce `_migrations`). Při přidání nové změny schématu vytvořte soubor např. `010_nazev.sql` v `migrations/`, commitněte – deploy spustí jen tento nový soubor.
 
 ### 2. Konfigurace
 

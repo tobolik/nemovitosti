@@ -15,6 +15,8 @@ const PaymentsView = (() => {
             saveId:     'btn-pay-save',
             cancelId:   'btn-pay-cancel',
             editIdField:'pay-edit-id',
+            formCardId: 'pay-form-card',
+            addBtnId:   'btn-pay-add',
             addLabel:   'Zaznamenat platbu',
             editLabel:  'Uložit změny',
             successAddMsg: 'Platba byla úspěšně zaznamenána.',
@@ -177,6 +179,7 @@ const PaymentsView = (() => {
 
     // Prefill form (z dashboard quick-add tag)
     function prefill(contractId, year, month, rent) {
+        form.startAdd();
         document.getElementById('pay-contract').value = contractId;
         document.getElementById('pay-year').value     = year;
         document.getElementById('pay-month').value    = month;
@@ -187,6 +190,7 @@ const PaymentsView = (() => {
     // ── view loader ─────────────────────────────────────────────────────
     async function load() {
         initForm();
+        form.exitEdit();
         await fillDropdowns();
         await renderPayments();
     }

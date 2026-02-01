@@ -101,6 +101,8 @@ const ContractsView = (() => {
             saveId:     'btn-con-save',
             cancelId:   'btn-con-cancel',
             editIdField:'con-edit-id',
+            formCardId: 'con-form-card',
+            addBtnId:   'btn-con-add',
             addLabel:   'Přidat smlouvu',
             editLabel:  'Uložit změny',
             successAddMsg: 'Smlouva byla úspěšně přidána.',
@@ -120,6 +122,7 @@ const ContractsView = (() => {
                     contract_start: document.getElementById('con-start').value,
                     contract_end:   document.getElementById('con-end').value || '',
                     monthly_rent:   document.getElementById('con-rent').value,
+                    contract_url:   document.getElementById('con-contract-url').value.trim() || null,
                     note:           document.getElementById('con-note').value.trim(),
                 };
             },
@@ -129,11 +132,12 @@ const ContractsView = (() => {
                 document.getElementById('con-start').value    = row.contract_start || '';
                 document.getElementById('con-end').value      = row.contract_end   || '';
                 document.getElementById('con-rent').value     = row.monthly_rent   || '';
+                document.getElementById('con-contract-url').value = row.contract_url || '';
                 document.getElementById('con-note').value     = row.note           || '';
             },
             resetForm() {
-                ['con-property','con-tenant','con-start','con-end','con-rent','con-note']
-                    .forEach(id => document.getElementById(id).value = '');
+                ['con-property','con-tenant','con-start','con-end','con-rent','con-contract-url','con-note']
+                    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
             },
             onSaved: loadList,
         });
@@ -172,23 +176,30 @@ const ContractsView = (() => {
                 { label: 'Od' },
                 { label: 'Do' },
                 { label: 'Nájemné / měs.' },
+                { label: 'Smlouva' },
                 { label: 'Poznámka' },
                 { label: 'Akce', act: true },
             ],
             data,
-            (c) => (
-                '<td>' + UI.esc(c.property_name) + '</td>' +
-                '<td><strong>' + UI.esc(c.tenant_name) + '</strong></td>' +
-                '<td>' + UI.esc(c.contract_start) + '</td>' +
-                '<td>' + (c.contract_end ? UI.esc(c.contract_end) : '<span style="color:var(--txt3)">neurčitá</span>') + '</td>' +
-                '<td>' + UI.fmt(c.monthly_rent) + ' Kč</td>' +
-                '<td>' + (c.note ? UI.esc(c.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
-                '<td class="td-act">' +
-                    '<button class="btn btn-ghost btn-sm" onclick="ContractsView.edit(' + c.id + ')">Úprava</button>' +
-                    '<button class="btn btn-ghost btn-sm" onclick="PaymentsView.navigateWithFilter(' + (c.contracts_id ?? c.id) + ')">Platby</button>' +
-                    '<button class="btn btn-danger btn-sm" onclick="ContractsView.del(' + c.id + ')">Smazat</button>' +
-                '</td>'
-            ),
+            (c) => {
+                const contractLink = c.contract_url
+                    ? '<a href="' + UI.esc(c.contract_url) + '" target="_blank" rel="noopener" title="Otevřít nájemní smlouvu (PDF)">📄</a>'
+                    : '<span style="color:var(--txt3)">—</span>';
+                return (
+                    '<td>' + UI.esc(c.property_name) + '</td>' +
+                    '<td><strong>' + UI.esc(c.tenant_name) + '</strong></td>' +
+                    '<td>' + UI.esc(c.contract_start) + '</td>' +
+                    '<td>' + (c.contract_end ? UI.esc(c.contract_end) : '<span style="color:var(--txt3)">neurčitá</span>') + '</td>' +
+                    '<td>' + UI.fmt(c.monthly_rent) + ' Kč</td>' +
+                    '<td>' + contractLink + '</td>' +
+                    '<td>' + (c.note ? UI.esc(c.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
+                    '<td class="td-act">' +
+                        '<button class="btn btn-ghost btn-sm" onclick="ContractsView.edit(' + c.id + ')">Úprava</button>' +
+                        '<button class="btn btn-ghost btn-sm" onclick="PaymentsView.navigateWithFilter(' + (c.contracts_id ?? c.id) + ')">Platby</button>' +
+                        '<button class="btn btn-danger btn-sm" onclick="ContractsView.del(' + c.id + ')">Smazat</button>' +
+                    '</td>'
+                );
+            },
             { emptyMsg: 'Žádné smlouvy.' }
         );
     }
@@ -207,6 +218,7 @@ const ContractsView = (() => {
 
     async function load() {
         initForm();
+        form.exitEdit();
         initTenantModal();
         _cache = [];
         await fillDropdowns();
@@ -223,12 +235,9 @@ const ContractsView = (() => {
         const { propertyId, monthKey } = _pendingPrefill;
         _pendingPrefill = null;
         await fillDropdowns();
+        form.startAdd();
         document.getElementById('con-property').value = propertyId;
         document.getElementById('con-start').value = monthKey + '-01';
-        document.getElementById('con-edit-id').value = '';
-        document.getElementById('con-form-title').textContent = 'Přidat smlouvu';
-        document.getElementById('btn-con-save').textContent = 'Přidat smlouvu';
-        document.getElementById('btn-con-cancel').style.display = 'none';
     }
 
     function getCache() { return _cache; }

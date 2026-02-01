@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS contracts (
     contract_start DATE         NOT NULL,
     contract_end   DATE         NULL,         -- NULL = neurčitá doba
     monthly_rent   DECIMAL(12,2) NOT NULL,
+    contract_url   VARCHAR(500) NULL,
     note           TEXT NULL,
     valid_from      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     valid_to        DATETIME NULL DEFAULT NULL,
