@@ -170,6 +170,10 @@ async function openPaymentModal(el) {
     const paid = document.getElementById('pay-modal-paid');
     const dateWrap = document.getElementById('pay-modal-date-wrap');
     const dateInput = document.getElementById('pay-modal-date');
+    const methodWrap = document.getElementById('pay-modal-method-wrap');
+    const methodSelect = document.getElementById('pay-modal-method');
+    const accountWrap = document.getElementById('pay-modal-account-wrap');
+    const accountInput = document.getElementById('pay-modal-account');
     const existingWrap = document.getElementById('pay-modal-existing');
     const editIdEl = document.getElementById('pay-modal-edit-id');
 
@@ -206,9 +210,11 @@ async function openPaymentModal(el) {
         forMonth.forEach(p => {
             const amt = UI.fmt(p.amount ?? 0);
             const dt = p.payment_date ? UI.fmtDate(p.payment_date) : '—';
+            const method = p.payment_method || 'account';
+            const acc = (p.account_number || '').replace(/"/g, '&quot;');
             html += '<li class="pay-modal-existing-item">' +
                 '<span>' + amt + ' Kč (' + dt + ')</span> ' +
-                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + p.id + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '">Upravit</button> ' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + p.id + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + acc + '">Upravit</button> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + p.id + '">Smazat</button>' +
                 '</li>';
         });
