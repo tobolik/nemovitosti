@@ -57,6 +57,9 @@ ALTER TABLE contracts ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_use
 ALTER TABLE payments ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
 ALTER TABLE payments ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
 
+-- Properties: odkaz na kupní smlouvu (např. Google Drive)
+ALTER TABLE properties ADD COLUMN purchase_contract_url VARCHAR(500) NULL AFTER purchase_date;
+
 -- Platby: přejmenovat contract_id na contracts_id (konvence: tabulka_id)
 -- 1) Převést contract_id (řádkové id) na logické
 UPDATE payments p
