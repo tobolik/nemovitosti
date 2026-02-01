@@ -75,10 +75,12 @@ async function loadDashboard(year) {
                 const remaining = cell.remaining ?? (cell.amount ? Math.max(0, cell.amount - paidAmt) : 0);
                 const isPaid = cell.type === 'exact' || cell.type === 'overpaid';
                 const isFuture = cell.isPast === false;
+                const now = new Date();
+                const isCurrentMonth = y === now.getFullYear() && m === now.getMonth() + 1;
 
                 let cls = 'heatmap-cell ' + (cell.type || 'empty');
                 if (isFuture && (cell.type === 'unpaid' || cell.type === 'overdue')) {
-                    cls = 'heatmap-cell future-unpaid';
+                    cls = isCurrentMonth ? 'heatmap-cell current-month-unpaid' : 'heatmap-cell future-unpaid';
                 } else if (isFuture && isPaid) {
                     cls = 'heatmap-cell paid-advance';
                 }
