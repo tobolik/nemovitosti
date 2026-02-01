@@ -72,21 +72,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     if ($table === 'payments') {
         $cid = isset($_GET['contracts_id']) ? (int)$_GET['contracts_id'] : (isset($_GET['contract_id']) ? (int)$_GET['contract_id'] : 0);
+        $payContractCol = paymentsContractCol();
         $sql = "
             SELECT pay.*, c.monthly_rent, p.name AS property_name, t.name AS tenant_name
             FROM payments pay
-            JOIN contracts  c ON c.contracts_id = pay.contracts_id AND c.valid_to IS NULL
+            JOIN contracts  c ON (c.contracts_id = pay.$payContractCol OR (c.contracts_id IS NULL AND c.id = pay.$payContractCol)) AND c.valid_to IS NULL
             JOIN properties p ON p.id = c.property_id   AND p.valid_to IS NULL
             JOIN tenants    t ON t.id = c.tenant_id     AND t.valid_to IS NULL
             WHERE pay.valid_to IS NULL";
         $params = [];
         if ($cid > 0) {
-            $sql .= " AND pay.contracts_id=?";
+            $sql .= " AND pay.$payContractCol=?";
             $params[] = $cid;
         }
         $sql .= " ORDER BY pay.period_year DESC, pay.period_month DESC";
         $s = db()->prepare($sql); $s->execute($params);
-        jsonOk($s->fetchAll());
+        $rows = $s->fetchAll();
+        if ($payContractCol === 'contract_id') {
+            foreach ($rows as &$r) { $r['contracts_id'] = $r['contract_id'] ?? null; }
+            unset($r);
+        }
+        jsonOk($rows);
     }
 
     // Default plain list
@@ -140,6 +146,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 jsonErr("Vyplňte pole: $label");
             }
         }
+        if ($table === 'payments' && isset($data['contracts_id']) && paymentsContractCol() === 'contract_id') {
+            $data['contract_id'] = $data['contracts_id'];
+            unset($data['contracts_id']);
+        }
         $newId = softInsert($table, $data);
         jsonOk(findActive($table, $newId), 201);
     }
@@ -152,6 +162,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $label = $FIELD_LABELS[$table][$f] ?? $f;
                 jsonErr("Vyplňte pole: $label");
             }
+        }
+        if ($table === 'payments' && isset($data['contracts_id']) && paymentsContractCol() === 'contract_id') {
+            $data['contract_id'] = $data['contracts_id'];
+            unset($data['contracts_id']);
         }
         $newId = softUpdate($table, $id, $data);
         jsonOk(findActive($table, $newId));

@@ -94,6 +94,16 @@ function _logicalIdCol(string $tbl): string {
     return $tbl . '_id';
 }
 
+/** Sloupec platby pro odkaz na smlouvu (contracts_id po migraci, contract_id před ní). */
+function paymentsContractCol(): string {
+    static $col = null;
+    if ($col === null) {
+        $r = db()->query("SHOW COLUMNS FROM payments LIKE 'contracts_id'")->fetch();
+        $col = $r ? 'contracts_id' : 'contract_id';
+    }
+    return $col;
+}
+
 function softInsert(string $tbl, array $data): int {
     $uid = $_SESSION['uid'] ?? null;
     $data['valid_from']      = date('Y-m-d H:i:s');
