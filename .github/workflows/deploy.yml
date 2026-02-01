@@ -4,6 +4,8 @@
 #   FTP_USERNAME  - FTP uživatel
 #   FTP_PASSWORD  - FTP heslo
 #   FTP_SERVER_DIR - cílový adresář (např. public_html/) - nutné končit lomítkem
+#   SITE_URL      - URL aplikace (např. https://nemovitosti.tobolik.cz) – pro migraci
+#   MIGRATE_KEY   - tajný klíč pro api/migrate.php (stejný jako v config.php)
 
 name: Deploy na FTP
 
@@ -33,3 +35,16 @@ jobs:
             **/node_modules/**
             **/README.md
             **/.gitignore
+
+      - name: Spustit SQL migraci
+        if: success() && secrets.SITE_URL != '' && secrets.MIGRATE_KEY != ''
+        run: |
+          URL="${{ secrets.SITE_URL }}/api/migrate.php?key=${{ secrets.MIGRATE_KEY }}"
+          RESP=$(curl -s -w "\n%{http_code}" "$URL")
+          BODY=$(echo "$RESP" | head -n -1)
+          CODE=$(echo "$RESP" | tail -n 1)
+          echo "Response ($CODE): $BODY"
+          if [ "$CODE" != "200" ]; then
+            echo "::error::Migrace selhala (HTTP $CODE)"
+            exit 1
+          fi

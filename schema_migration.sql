@@ -7,6 +7,7 @@ USE tobolikcz01;
 -- Properties: výměra m², kupní cena
 ALTER TABLE properties ADD COLUMN size_m2 DECIMAL(10,2) NULL AFTER address;
 ALTER TABLE properties ADD COLUMN purchase_price DECIMAL(12,2) NULL AFTER size_m2;
+ALTER TABLE properties ADD COLUMN purchase_date DATE NULL AFTER purchase_price;
 
 -- Tenants: typ FO/PO, adresa, IČO, DIČ
 ALTER TABLE tenants ADD COLUMN type ENUM('person','company') NOT NULL DEFAULT 'person' AFTER name;

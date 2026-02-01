@@ -32,6 +32,7 @@ const PropertiesView = (() => {
                 document.getElementById('prop-address').value        = row.address        || '';
                 document.getElementById('prop-size-m2').value         = row.size_m2        || '';
                 document.getElementById('prop-purchase-price').value  = row.purchase_price || '';
+                document.getElementById('prop-purchase-date').value   = row.purchase_date  || '';
                 document.getElementById('prop-type').value            = row.type           || 'apartment';
                 document.getElementById('prop-note').value            = row.note           || '';
             },
@@ -56,6 +57,9 @@ const PropertiesView = (() => {
                 { label: 'Název' },
                 { label: 'Typ' },
                 { label: 'Adresa' },
+                { label: 'Výměra' },
+                { label: 'Kupní cena' },
+                { label: 'Datum koupě' },
                 { label: 'Poznámka' },
                 { label: 'Akce', act: true },
             ],
@@ -66,6 +70,7 @@ const PropertiesView = (() => {
                 '<td>' + UI.esc(p.address) + '</td>' +
                 '<td>' + (p.size_m2 ? UI.fmt(p.size_m2) + ' m²' : '—') + '</td>' +
                 '<td>' + (p.purchase_price ? UI.fmt(p.purchase_price) + ' Kč' : '—') + '</td>' +
+                '<td>' + (p.purchase_date ? UI.fmtDate(p.purchase_date) : '—') + '</td>' +
                 '<td>' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td class="td-act">' +
                     '<button class="btn btn-ghost btn-sm" onclick="PropertiesView.edit(' + p.id + ')">Úprava</button>' +

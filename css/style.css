@@ -469,37 +469,41 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .payment-checkbox-label input { width: 20px; height: 20px; accent-color: #16a34a; }
 
 /* ADDRESS AUTOCOMPLETE */
+.fg:has(.address-autocomplete) { position: relative; }
 .address-autocomplete {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 100;
-  background: var(--card);
-  border: 1px solid var(--glass-border);
+  z-index: 1000;
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: var(--r);
-  margin-top: 2px;
-  max-height: 220px;
+  margin-top: 4px;
+  max-height: 280px;
   overflow-y: auto;
-  box-shadow: 0 8px 24px rgba(0,0,0,.3);
+  box-shadow: 0 10px 40px rgba(0,0,0,.25);
 }
 .address-autocomplete-item {
-  padding: 10px 14px;
+  padding: 12px 14px;
   cursor: pointer;
-  font-size: .88rem;
-  color: var(--txt);
-  border-bottom: 1px solid rgba(255,255,255,.05);
+  font-size: .9rem;
+  line-height: 1.4;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
   transition: background .12s;
+  white-space: normal;
+  word-wrap: break-word;
 }
 .address-autocomplete-item:last-child { border-bottom: none; }
 .address-autocomplete-item:hover,
 .address-autocomplete-item.active {
-  background: var(--glass-hover);
+  background: #f8fafc;
 }
 .modal-box .address-autocomplete {
   background: #fff;
   border-color: #e2e8f0;
-  box-shadow: 0 8px 24px rgba(0,0,0,.15);
+  box-shadow: 0 10px 40px rgba(0,0,0,.2);
 }
 .modal-box .address-autocomplete-item {
   color: #1e293b;

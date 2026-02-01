@@ -33,6 +33,10 @@ V repozitáři: **Settings → Secrets and variables → Actions** přidejte:
 | `FTP_USERNAME` | FTP uživatel |
 | `FTP_PASSWORD` | FTP heslo |
 | `FTP_SERVER_DIR` | Cílový adresář na serveru (např. `public_html/` nebo `www/nemovitosti/`) – **musí končit lomítkem** |
+| `SITE_URL` | (volitelné) URL aplikace (např. `https://nemovitosti.tobolik.cz`) – pro automatickou SQL migraci po deployi |
+| `MIGRATE_KEY` | (volitelné) Tajný klíč pro `api/migrate.php` – stejná hodnota jako `MIGRATE_KEY` v `config.php` |
+
+Pokud jsou nastaveny `SITE_URL` i `MIGRATE_KEY`, po každém deployi se automaticky spustí SQL migrace (`schema_migration.sql`).
 
 ### První nasazení
 
@@ -51,13 +55,14 @@ V repozitáři: **Settings → Secrets and variables → Actions** přidejte:
 1. Přihlášte se do phpMyAdmin (poskytneme hosting providером).
 2. Vytvořte novou databázi, např. `tobolikcz01` (charset: utf8mb4, collation: utf8mb4_czech_ci).
 3. Importujte soubor `schema.sql` (Import → Zvolte soubor → Execute).
-4. **Existující instalace:** Spusťte `schema_migration.sql` pro přidání sloupců (size_m2, purchase_price, type, ic, dic).
+4. **Existující instalace:** Spusťte `schema_migration.sql` pro přidání sloupců (size_m2, purchase_price, purchase_date, type, ic, dic). Při použití automatického deploye s `SITE_URL` a `MIGRATE_KEY` se migrace spustí sama po každém pushu.
 
 ### 2. Konfigurace
 
 1. Zkopíujte `config.php.example` → `config.php`.
 2. Vyplňte `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS` podle údajů od hosting providera.
    - `DB_HOST` je typicky `localhost` nebo `127.0.0.1` (ověřte v phpMyAdmin → Home).
+3. Pro automatickou migraci při deployi: odkomentujte a nastavte `MIGRATE_KEY` (náhodný řetězec, např. z `openssl rand -hex 32`) – stejná hodnota musí být v GitHub Secrets.
 
 ### 3. Upload na hosting
 
@@ -89,6 +94,7 @@ hosting-root/          ←ваша public_html nebo subdomain folder
     ├── auth.php
     ├── crud.php
     ├── dashboard.php
+    ├── migrate.php    ← spouští se při deployi (pokud je nastaven MIGRATE_KEY)
     └── users.php
 ```
 

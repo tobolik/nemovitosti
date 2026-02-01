@@ -14,6 +14,13 @@ const UI = (() => {
         return Number(n).toLocaleString('cs-CZ');
     }
 
+    function fmtDate(s) {
+        if (!s) return '';
+        const d = new Date(s + 'T12:00:00');
+        if (isNaN(d.getTime())) return s;
+        return d.toLocaleDateString('cs-CZ');
+    }
+
     const MONTHS = ['','Leden','Únor','Březen','Duben','Květen','Červen',
                         'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
 
@@ -137,7 +144,7 @@ const UI = (() => {
 
     // ── public ──────────────────────────────────────────────────────────
     return {
-        esc, fmt, MONTHS,
+        esc, fmt, fmtDate, MONTHS,
         alertShow,
         modalOpen, modalClose,
         renderTable,
