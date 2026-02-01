@@ -62,6 +62,7 @@ const PropertiesView = (() => {
         let data;
         try { data = await Api.crudList('properties'); }
         catch (e) { return; }
+        _cache = data;
 
         UI.renderTable('prop-table',
             [
@@ -90,8 +91,8 @@ const PropertiesView = (() => {
                     '<td>' + contractLink + '</td>' +
                     '<td>' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +
-                        '<button class="btn btn-ghost btn-sm" onclick="PropertiesView.edit(' + p.id + ')">Úprava</button>' +
-                        '<button class="btn btn-danger btn-sm" onclick="PropertiesView.del(' + p.id + ')">Smazat</button>' +
+                        '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + p.id + '">Úprava</button>' +
+                        '<button type="button" class="btn btn-danger btn-sm" data-action="del" data-id="' + p.id + '">Smazat</button>' +
                     '</td>'
                 );
             },
@@ -121,9 +122,26 @@ const PropertiesView = (() => {
         });
     }
 
+    // ── event delegation pro tlačítka v tabulce (bez inline onclick) ──────
+    let _delegationInited = false;
+    function initDelegation() {
+        if (_delegationInited) return;
+        _delegationInited = true;
+        document.getElementById('view-properties').addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-action]');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            if (action === 'add') { initForm(); form.startAdd(); return; }
+            const id = Number(btn.dataset.id);
+            if (action === 'edit') edit(id);
+            else if (action === 'del') del(id);
+        });
+    }
+
     // ── view loader (volání z routeru) ──────────────────────────────────
     async function load() {
         initForm();
+        initDelegation();
         form.exitEdit();
         _cache = [];
         await loadList();
@@ -133,4 +151,3 @@ const PropertiesView = (() => {
 })();
 
 App.registerView('properties', PropertiesView.load);
-window.PropertiesView = PropertiesView;
