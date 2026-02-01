@@ -455,14 +455,19 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .heatmap-section { margin-bottom: 24px; }
 .heatmap-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .heatmap-header h3 { font-size: 1rem; font-weight: 600; color: var(--txt); }
-.heatmap-year-select {
+.heatmap-year-btns { display: flex; gap: 4px; }
+.heatmap-year-btn {
   padding: 6px 12px;
   background: rgba(0,0,0,.2);
   border: 1px solid var(--glass-border);
   border-radius: var(--r);
-  color: var(--txt);
+  color: var(--txt2);
   font-size: .9rem;
+  cursor: pointer;
+  transition: background .15s, color .15s;
 }
+.heatmap-year-btn:hover { background: rgba(0,0,0,.3); color: var(--txt); }
+.heatmap-year-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .heatmap-wrap { overflow-x: auto; }
 .heatmap-table { width: 100%; border-collapse: collapse; font-size: .8rem; min-width: 600px; }
 .heatmap-table th { padding: 8px; text-align: center; color: var(--txt2); font-weight: 600; border-bottom: 1px solid var(--glass-border); }

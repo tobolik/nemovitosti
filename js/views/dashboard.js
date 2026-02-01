@@ -5,7 +5,8 @@ const MONTH_NAMES = ['leden','únor','březen','duben','květen','červen','čer
 async function loadDashboard(year) {
     const yearSelect = document.getElementById('dash-year');
     const currentYear = new Date().getFullYear();
-    const fromSelect = yearSelect && yearSelect.value ? parseInt(yearSelect.value, 10) : NaN;
+    const activeBtn = yearSelect && yearSelect.querySelector('.heatmap-year-btn.active');
+    const fromSelect = activeBtn ? parseInt(activeBtn.dataset.year, 10) : NaN;
     const y = (year != null && !isNaN(year)) ? year : (!isNaN(fromSelect) ? fromSelect : currentYear);
 
     let data;
@@ -38,15 +39,18 @@ async function loadDashboard(year) {
             '<div class="stat-label">Míra inkasa</div>' +
         '</div>';
 
-    // ── Year selector ───────────────────────────────────────────────────
+    // ── Year selector (tlačítka) ─────────────────────────────────────────
     if (yearSelect) {
         const nowY = new Date().getFullYear();
-        let opts = '';
+        let btns = '';
         for (let yr = nowY - 2; yr <= nowY + 1; yr++) {
-            opts += '<option value="' + yr + '"' + (yr === y ? ' selected' : '') + '>' + yr + '</option>';
+            const active = yr === y ? ' active' : '';
+            btns += '<button type="button" class="heatmap-year-btn' + active + '" data-year="' + yr + '">' + yr + '</button>';
         }
-        yearSelect.innerHTML = opts;
-        yearSelect.onchange = () => loadDashboard(parseInt(yearSelect.value, 10));
+        yearSelect.innerHTML = btns;
+        yearSelect.querySelectorAll('.heatmap-year-btn').forEach(btn => {
+            btn.onclick = () => loadDashboard(parseInt(btn.dataset.year, 10));
+        });
     }
 
     // ── Heatmap ─────────────────────────────────────────────────────────
