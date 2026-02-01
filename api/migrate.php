@@ -23,9 +23,14 @@ try {
     );
 
     $migrationsDir = __DIR__ . '/../migrations';
-    if (!is_dir($migrationsDir)) {
+    $migrationsDirReal = realpath($migrationsDir);
+    if (!is_dir($migrationsDir) || $migrationsDirReal === false) {
         http_response_code(500);
-        echo json_encode(['ok' => false, 'error' => 'Složka migrations nenalezena.'], JSON_UNESCAPED_UNICODE);
+        echo json_encode([
+            'ok' => false,
+            'error' => 'Složka migrations nenalezena.',
+            'path_checked' => $migrationsDir,
+        ], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -36,10 +41,15 @@ try {
     )");
 
     $files = glob($migrationsDir . '/*.sql');
+    if ($files === false) {
+        throw new RuntimeException("Nelze načíst složku migrations: $migrationsDir");
+    }
     sort($files);
 
     $applied = 0;
     $skipped = 0;
+    $appliedList = [];
+    $skippedList = [];
     $errors = [];
 
     foreach ($files as $path) {
@@ -48,15 +58,20 @@ try {
         $stmt->execute([$name]);
         if ($stmt->fetch()) {
             $skipped++;
+            $skippedList[] = $name;
             continue;
         }
 
         $sql = file_get_contents($path);
         $sql = preg_replace('/^\s*USE\s+\w+\s*;/mi', '', $sql);
-        $statements = array_filter(
-            array_map('trim', preg_split('/;\s*(\n|$)/m', $sql)),
-            fn($s) => $s !== '' && !preg_match('/^--/', $s) && !preg_match('/^USE\s+/i', $s)
-        );
+        $rawStatements = array_map('trim', preg_split('/;\s*(\n|$)/m', $sql));
+        $statements = [];
+        foreach ($rawStatements as $s) {
+            if ($s === '' || preg_match('/^USE\s+/i', $s)) continue;
+            $s = preg_replace('/^(\s*--[^\n]*\n)+/', '', $s);
+            $s = trim($s);
+            if ($s !== '') $statements[] = $s;
+        }
 
         $fileOk = true;
         foreach ($statements as $stmtSql) {
@@ -82,6 +97,7 @@ try {
         if ($fileOk) {
             $pdo->prepare("INSERT INTO _migrations (name) VALUES (?)")->execute([$name]);
             $applied++;
+            $appliedList[] = $name;
         }
     }
 
@@ -91,7 +107,9 @@ try {
             'ok' => false,
             'error' => implode('; ', $errors),
             'applied' => $applied,
+            'applied_files' => $appliedList,
             'skipped' => $skipped,
+            'skipped_files' => $skippedList,
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -99,7 +117,10 @@ try {
     echo json_encode([
         'ok' => true,
         'applied' => $applied,
+        'applied_files' => $appliedList,
         'skipped' => $skipped,
+        'skipped_files' => $skippedList,
+        'migrations_path' => $migrationsDirReal,
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Throwable $e) {
