@@ -31,28 +31,34 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
-     APP SHELL
+     APP SHELL – Sidebar + Main
      ═══════════════════════════════════════════════════════════ -->
 <div id="app">
+  <button class="hamburger" id="btn-hamburger" type="button" aria-label="Menu">☰</button>
 
-  <!-- NAV -->
-  <nav class="nav">
-    <div class="nav-brand">Nemovitosti</div>
-    <div class="nav-links">
-      <button class="nav-link active" data-view="dashboard">Přehled</button>
-      <button class="nav-link" data-view="properties">Nemovitosti</button>
-      <button class="nav-link" data-view="tenants">Nájemníci</button>
-      <button class="nav-link" data-view="contracts">Smlouvy</button>
-      <button class="nav-link" data-view="payments">Platby</button>
-      <button class="nav-link" data-view="users" id="nav-users" style="display:none">Uživatelé</button>
-    </div>
-    <div class="nav-right">
-      <span class="nav-name" id="nav-username"></span>
-      <button class="btn-logout" id="btn-logout">Logout</button>
-    </div>
-  </nav>
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-brand">Nemovitosti</span>
+        <button class="sidebar-close" id="btn-sidebar-close" type="button" aria-label="Zavřít">×</button>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-link active" data-view="dashboard"><span class="icon">📊</span> Přehled</button>
+        <button class="nav-link" data-view="properties"><span class="icon">🏠</span> Nemovitosti</button>
+        <button class="nav-link" data-view="tenants"><span class="icon">👤</span> Nájemníci</button>
+        <button class="nav-link" data-view="contracts"><span class="icon">📄</span> Smlouvy</button>
+        <button class="nav-link" data-view="payments"><span class="icon">💰</span> Platby</button>
+        <button class="nav-link" data-view="users" id="nav-users" style="display:none"><span class="icon">⚙</span> Uživatelé</button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-user" id="nav-username"></div>
+        <button class="btn-logout" id="btn-logout">Odhlásit se</button>
+      </div>
+    </aside>
 
-  <!-- MAIN -->
+    <!-- MAIN -->
+    <div class="main-wrap">
   <main class="main">
     <div class="container">
 
@@ -211,12 +217,14 @@
     </div><!-- /container -->
   </main>
 
-  <footer>
+  <footer class="app-footer">
     <span class="footer-version">v1.2.3</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
-</div>
+  </div><!-- /main-wrap -->
+  </div><!-- /app-layout -->
+</div><!-- /app -->
 
 <!-- ═══ MODAL: Změna hesla ═══ -->
 <div class="modal" id="modal-pass">

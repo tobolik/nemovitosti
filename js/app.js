@@ -49,6 +49,10 @@ const App = (() => {
         document.getElementById('nav-users').style.display = user.role === 'admin' ? '' : 'none';
 
         hideLogin();
+        // Sidebar: collapsed on mobile
+        const sb = document.getElementById('sidebar');
+        if (window.innerWidth <= 768) sb.classList.add('collapsed');
+        else sb.classList.remove('collapsed');
         navigate('dashboard');
     }
 
@@ -89,8 +93,24 @@ const App = (() => {
 
     // ── nav link clicks ─────────────────────────────────────────────────
     document.querySelectorAll('.nav-link').forEach(btn => {
-        btn.addEventListener('click', () => navigate(btn.dataset.view));
+        btn.addEventListener('click', () => {
+            navigate(btn.dataset.view);
+            sidebarClose();
+        });
     });
+
+    // ── sidebar: hamburger & close ───────────────────────────────────────
+    function sidebarOpen() {
+        document.getElementById('sidebar').classList.add('open');
+        document.getElementById('sidebar').classList.remove('collapsed');
+    }
+    function sidebarClose() {
+        const sb = document.getElementById('sidebar');
+        sb.classList.remove('open');
+        if (window.innerWidth <= 768) sb.classList.add('collapsed');
+    }
+    document.getElementById('btn-hamburger').addEventListener('click', sidebarOpen);
+    document.getElementById('btn-sidebar-close').addEventListener('click', sidebarClose);
 
     // ── boot: check existing session ────────────────────────────────────
     (async () => {

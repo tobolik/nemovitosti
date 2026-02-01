@@ -12,20 +12,24 @@ App.registerView('dashboard', async () => {
 
     document.getElementById('dash-stats').innerHTML =
         '<div class="stat">' +
-            '<div class="stat-label">Aktivní smlouvy</div>' +
+            '<div class="stat-icon purple">📋</div>' +
             '<div class="stat-val">' + data.length + '</div>' +
+            '<div class="stat-label">Aktivní smlouvy</div>' +
         '</div>' +
         '<div class="stat">' +
-            '<div class="stat-label">Celkem očekáváno</div>' +
+            '<div class="stat-icon purple">%</div>' +
             '<div class="stat-val">' + UI.fmt(totExp) + ' Kč</div>' +
+            '<div class="stat-label">Celkem očekáváno</div>' +
         '</div>' +
         '<div class="stat stat-ok">' +
-            '<div class="stat-label">Celkem uhrazeno</div>' +
+            '<div class="stat-icon green">✓</div>' +
             '<div class="stat-val green">' + UI.fmt(totPaid) + ' Kč</div>' +
+            '<div class="stat-label">Celkem uhrazeno</div>' +
         '</div>' +
         '<div class="stat ' + (totBal > 0 ? 'stat-danger' : 'stat-ok') + '">' +
-            '<div class="stat-label">Nesplacené</div>' +
+            '<div class="stat-icon ' + (totBal > 0 ? 'red' : 'green') + '">' + (totBal > 0 ? '!' : '✓') + '</div>' +
             '<div class="stat-val ' + (totBal > 0 ? 'red' : '') + '">' + UI.fmt(totBal) + ' Kč</div>' +
+            '<div class="stat-label">Nesplacené</div>' +
         '</div>';
 
     // ── main table ──────────────────────────────────────────────────────
