@@ -34,7 +34,9 @@ if ($method === 'POST') {
         if (!$u || !password_verify($pass, $u['password_hash']))
             jsonErr('Nesprávný e-mail nebo heslo.');
 
-        session_regenerate(true);
+        if (function_exists('session_regenerate_id')) {
+            session_regenerate_id(true);
+        }
         $_SESSION['uid']   = $u['id'];
         $_SESSION['name']  = $u['name'];
         $_SESSION['email'] = $u['email'];
