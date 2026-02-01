@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 
+try {
 // Bez session – jen DB
 require __DIR__ . '/../config.php';
 
@@ -42,18 +43,20 @@ $applied = 0;
 $skipped = 0;
 $errors = [];
 
-foreach ($statements as $stmt) {
+foreach ($statements as $i => $stmt) {
     try {
         $pdo->exec($stmt);
         $applied++;
     } catch (PDOException $e) {
-        // Duplicate column/key – již existuje, lze přeskočit
         $msg = $e->getMessage();
-        if (str_contains($msg, 'Duplicate column') || str_contains($msg, 'Duplicate key') ||
-            in_array($e->getCode(), [1060, 1061, '42S21'], true)) {
+        $isDuplicate = str_contains($msg, 'Duplicate column') || str_contains($msg, 'Duplicate key')
+            || str_contains($msg, 'Duplicate key name') || str_contains($msg, 'already exists')
+            || in_array($e->getCode(), [1060, 1061, '42S21'], true);
+        if ($isDuplicate) {
             $skipped++;
         } else {
-            $errors[] = $msg;
+            $preview = strlen($stmt) > 80 ? substr($stmt, 0, 80) . '...' : $stmt;
+            $errors[] = "Stmt #" . ($i + 1) . ": $msg | SQL: $preview";
         }
     }
 }
@@ -74,3 +77,13 @@ echo json_encode([
     'applied' => $applied,
     'skipped' => $skipped,
 ], JSON_UNESCAPED_UNICODE);
+
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo json_encode([
+        'ok' => false,
+        'error' => $e->getMessage(),
+        'file' => basename($e->getFile()),
+        'line' => $e->getLine(),
+    ], JSON_UNESCAPED_UNICODE);
+}
