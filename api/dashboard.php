@@ -23,17 +23,16 @@ $contracts = db()->query("
 ")->fetchAll();
 
 // Payments per contract – platby odkazují na contracts_id (logické ID)
-$payContractCol = paymentsContractCol();
 $paymentsByContract = [];
 $s = db()->prepare("
     SELECT p.period_year, p.period_month, p.amount, p.payment_date
     FROM payments p
-    JOIN contracts c ON (c.contracts_id = p.$payContractCol OR (c.contracts_id IS NULL AND c.id = p.$payContractCol)) AND c.valid_to IS NULL
-    WHERE p.valid_to IS NULL AND (p.$payContractCol = ? OR c.contracts_id = ?)
+    JOIN contracts c ON c.contracts_id = p.contracts_id AND c.valid_to IS NULL
+    WHERE p.valid_to IS NULL AND p.contracts_id = ?
 ");
 foreach ($contracts as $c) {
     $logicalId = $c['contracts_id'] ?? $c['id'];
-    $s->execute([$logicalId, $logicalId]);  // dva parametry pro WHERE (OR)
+    $s->execute([$logicalId]);
     $paymentsByContract[$logicalId] = [];
     foreach ($s->fetchAll() as $row) {
         $key = $row['period_year'] . '-' . str_pad((string)$row['period_month'], 2, '0', STR_PAD_LEFT);
@@ -83,7 +82,7 @@ foreach ($contracts as $c) {
     }
 
     $out[] = [
-        'contract_id'    => $logicalId,
+        'contracts_id'   => $logicalId,
         'property_id'    => $c['property_id'],
         'tenant_id'      => $c['tenant_id'],
         'property_name'  => $c['property_name'],

@@ -121,7 +121,7 @@ async function loadDashboard(year) {
             let tags = '';
             (d.unpaid_months || []).forEach(u => {
                 tags += '<span class="tag">' + u.month + '/' + u.year +
-                    ' <span class="tag-plus" onclick="DashboardView.quickPay(' + d.contract_id + ',' + u.year + ',' + u.month + ',' + d.monthly_rent + ')" title="Přidat platbu">+</span></span>';
+                    ' <span class="tag-plus" onclick="DashboardView.quickPay(' + d.contracts_id + ',' + u.year + ',' + u.month + ',' + d.monthly_rent + ')" title="Přidat platbu">+</span></span>';
             });
 
             return (
@@ -132,7 +132,7 @@ async function loadDashboard(year) {
                 '<span class="prog-lbl">' + UI.fmt(d.total_paid) + ' / ' + UI.fmt(d.expected_total) + ' Kč</span></div></td>' +
                 '<td><span class="badge ' + (hasDbt ? 'badge-danger' : 'badge-ok') + '">' + (hasDbt ? 'Má dluh' : 'V pořádku') + '</span></td>' +
                 '<td>' + (tags || '<span style="color:var(--txt3)">—</span>') + '</td>' +
-                '<td class="td-act"><button class="btn btn-ghost btn-sm" onclick="PaymentsView.navigateWithFilter(' + d.contract_id + ')">Platby</button></td>'
+                '<td class="td-act"><button class="btn btn-ghost btn-sm" onclick="PaymentsView.navigateWithFilter(' + d.contracts_id + ')">Platby</button></td>'
             );
         },
         { emptyMsg: 'Žádné aktivní smlouvy.' }
