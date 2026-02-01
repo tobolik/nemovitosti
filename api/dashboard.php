@@ -148,6 +148,7 @@ foreach ($properties as $p) {
 
             $heatmap[$propId . '_' . $monthKey] = [
                 'type'          => $type,
+                'isPast'        => $isPast,
                 'contract'      => ['id'=>$logicalId, 'contracts_id'=>$logicalId, 'monthly_rent'=>(float)$contract['monthly_rent'], 'tenant_name'=>$contract['tenant_name']],
                 'monthKey'       => $monthKey,
                 'amount'         => (float)$contract['monthly_rent'],

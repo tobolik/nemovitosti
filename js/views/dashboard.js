@@ -74,11 +74,25 @@ async function loadDashboard(year) {
                 const paymentCount = cell.payment_count ?? (cell.payment && cell.payment.count ? cell.payment.count : 0);
                 const remaining = cell.remaining ?? (cell.amount ? Math.max(0, cell.amount - paidAmt) : 0);
                 const isPaid = cell.type === 'exact' || cell.type === 'overpaid';
+                const isFuture = cell.isPast === false;
 
                 let cls = 'heatmap-cell ' + (cell.type || 'empty');
+                if (isFuture && (cell.type === 'unpaid' || cell.type === 'overdue')) {
+                    cls = 'heatmap-cell future-unpaid';
+                } else if (isFuture && isPaid) {
+                    cls = 'heatmap-cell paid-advance';
+                }
+
                 let content = '';
                 if (cell.type === 'empty') {
                     content = 'Volno';
+                } else if (isFuture && (cell.type === 'unpaid' || cell.type === 'overdue')) {
+                    if (paidAmt > 0 && remaining > 0) {
+                        const partialLabel = paymentCount > 1 ? UI.fmt(paidAmt) + ' (' + paymentCount + ' platby) / ' : UI.fmt(paidAmt) + ' / ';
+                        content = '<span class="cell-partial">' + partialLabel + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-remaining">zbývá ' + UI.fmt(remaining) + '</span>';
+                    } else {
+                        content = '<span class="cell-amount">' + UI.fmt(cell.amount || 0) + '</span>';
+                    }
                 } else if (cell.type === 'exact' || cell.type === 'overpaid') {
                     const sumLabel = paymentCount > 1 ? UI.fmt(paidAmt) + ' (' + paymentCount + ' platby)' : UI.fmt(paidAmt);
                     content = '<span class="cell-amount">' + sumLabel + '</span><br><span class="cell-icon cell-check">✓</span>';
@@ -204,6 +218,19 @@ async function openPaymentModal(el) {
     document.getElementById('pay-modal-month-key').value = monthKey;
     editIdEl.value = '';
     batchHintEl.style.display = 'none';
+    bulkCheckbox.checked = false;
+    rangeRow.style.display = 'none';
+    const nowY = new Date().getFullYear();
+    const yearOpts = [];
+    for (let y = nowY - 2; y <= nowY + 2; y++) {
+        yearOpts.push('<option value="' + y + '"' + (y === parseInt(year, 10) ? ' selected' : '') + '>' + y + '</option>');
+    }
+    yearFromEl.innerHTML = yearOpts.join('');
+    yearToEl.innerHTML = yearOpts.join('');
+    monthFromEl.value = month;
+    monthToEl.value = month;
+    yearFromEl.value = year;
+    yearToEl.value = year;
 
     let infoHtml = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
         '<div><strong>Nájemce:</strong> ' + UI.esc(tenantName) + '</div>' +
