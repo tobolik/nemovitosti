@@ -37,14 +37,15 @@ if ($method === 'POST') {
         if (function_exists('session_regenerate_id')) {
             session_regenerate_id(true);
         }
-        $_SESSION['uid']   = $u['id'];
+        // uid = users_id (logické ID), aby session přežila soft-update
+        $_SESSION['uid']   = $u['users_id'] ?? $u['id'];
         $_SESSION['name']  = $u['name'];
         $_SESSION['email'] = $u['email'];
         $_SESSION['role']  = $u['role'];
         $_SESSION['csrf']  = bin2hex(random_bytes(32));
 
         jsonOk([
-            'id'    => $u['id'],
+            'id'    => $_SESSION['uid'],
             'name'  => $u['name'],
             'email' => $u['email'],
             'role'  => $u['role'],

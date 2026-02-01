@@ -16,8 +16,10 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     name          VARCHAR(150) NOT NULL,
     role          ENUM('admin','user') NOT NULL DEFAULT 'user',
-    valid_from    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    valid_to      DATETIME NULL DEFAULT NULL,
+    valid_from      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    valid_to        DATETIME NULL DEFAULT NULL,
+    valid_user_from INT UNSIGNED NULL,
+    valid_user_to   INT UNSIGNED NULL,
     INDEX idx_email (email, valid_to),
     INDEX idx_users_id (users_id, valid_to)
 ) ENGINE=InnoDB;
@@ -33,8 +35,10 @@ CREATE TABLE IF NOT EXISTS properties (
     purchase_date  DATE NULL,
     type           ENUM('apartment','house','commercial','land','garage') NOT NULL DEFAULT 'apartment',
     note           TEXT NULL,
-    valid_from     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    valid_to       DATETIME NULL DEFAULT NULL,
+    valid_from      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    valid_to        DATETIME NULL DEFAULT NULL,
+    valid_user_from INT UNSIGNED NULL,
+    valid_user_to   INT UNSIGNED NULL,
     INDEX idx_v (valid_to),
     INDEX idx_properties_id (properties_id, valid_to)
 ) ENGINE=InnoDB;
@@ -51,8 +55,10 @@ CREATE TABLE IF NOT EXISTS tenants (
     ic        VARCHAR(20)  NULL,
     dic       VARCHAR(20)  NULL,
     note      TEXT NULL,
-    valid_from DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    valid_to   DATETIME NULL DEFAULT NULL,
+    valid_from      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    valid_to        DATETIME NULL DEFAULT NULL,
+    valid_user_from INT UNSIGNED NULL,
+    valid_user_to   INT UNSIGNED NULL,
     INDEX idx_v (valid_to),
     INDEX idx_tenants_id (tenants_id, valid_to)
 ) ENGINE=InnoDB;
@@ -67,8 +73,10 @@ CREATE TABLE IF NOT EXISTS contracts (
     contract_end   DATE         NULL,         -- NULL = neurčitá doba
     monthly_rent   DECIMAL(12,2) NOT NULL,
     note           TEXT NULL,
-    valid_from     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    valid_to       DATETIME NULL DEFAULT NULL,
+    valid_from      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    valid_to        DATETIME NULL DEFAULT NULL,
+    valid_user_from INT UNSIGNED NULL,
+    valid_user_to   INT UNSIGNED NULL,
     INDEX idx_p (property_id, valid_to),
     INDEX idx_t (tenant_id, valid_to),
     INDEX idx_v (valid_to),
@@ -85,8 +93,10 @@ CREATE TABLE IF NOT EXISTS payments (
     amount        DECIMAL(12,2) NOT NULL,
     payment_date  DATE NOT NULL,
     note          TEXT NULL,
-    valid_from    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    valid_to      DATETIME NULL DEFAULT NULL,
+    valid_from      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    valid_to        DATETIME NULL DEFAULT NULL,
+    valid_user_from INT UNSIGNED NULL,
+    valid_user_to   INT UNSIGNED NULL,
     INDEX idx_c (contract_id, valid_to),
     INDEX idx_v (valid_to),
     INDEX idx_payments_id (payments_id, valid_to)

@@ -95,8 +95,11 @@ function _logicalIdCol(string $tbl): string {
 }
 
 function softInsert(string $tbl, array $data): int {
-    $data['valid_from'] = date('Y-m-d H:i:s');
-    $data['valid_to']   = null;
+    $uid = $_SESSION['uid'] ?? null;
+    $data['valid_from']      = date('Y-m-d H:i:s');
+    $data['valid_to']        = null;
+    $data['valid_user_from'] = $uid;
+    $data['valid_user_to']   = null;
     $cols = implode(', ', array_keys($data));
     $ph   = implode(', ', array_fill(0, count($data), '?'));
     db()->prepare("INSERT INTO `$tbl` ($cols) VALUES ($ph)")->execute(array_values($data));
@@ -119,16 +122,20 @@ function softUpdate(string $tbl, int $id, array $new): int {
     $logicalId = $cur[$lidCol] ?? $cur['id'];
     if ($logicalId === null) $logicalId = $cur['id'];
 
+    $uid = $_SESSION['uid'] ?? null;
+
     // zavři všechny aktivní verze tohoto logického záznamu
-    db()->prepare("UPDATE `$tbl` SET valid_to=? WHERE `$lidCol`=? AND valid_to IS NULL")
-        ->execute([$now, $logicalId]);
+    db()->prepare("UPDATE `$tbl` SET valid_to=?, valid_user_to=? WHERE `$lidCol`=? AND valid_to IS NULL")
+        ->execute([$now, $uid, $logicalId]);
 
     // vloží nový řádek se stejným logickým ID
-    unset($cur['id'], $cur['valid_from'], $cur['valid_to']);
+    unset($cur['id'], $cur['valid_from'], $cur['valid_to'], $cur['valid_user_from'], $cur['valid_user_to']);
     $merged = array_merge($cur, $new);
-    $merged[$lidCol]   = $logicalId;
-    $merged['valid_from'] = $now;
-    $merged['valid_to']   = null;
+    $merged[$lidCol]         = $logicalId;
+    $merged['valid_from']   = $now;
+    $merged['valid_to']      = null;
+    $merged['valid_user_from'] = $uid;
+    $merged['valid_user_to']   = null;
 
     $cols = implode(', ', array_keys($merged));
     $ph   = implode(', ', array_fill(0, count($merged), '?'));
@@ -137,8 +144,9 @@ function softUpdate(string $tbl, int $id, array $new): int {
 }
 
 function softDelete(string $tbl, int $id): void {
-    db()->prepare("UPDATE `$tbl` SET valid_to=? WHERE id=? AND valid_to IS NULL")
-        ->execute([date('Y-m-d H:i:s'), $id]);
+    $uid = $_SESSION['uid'] ?? null;
+    db()->prepare("UPDATE `$tbl` SET valid_to=?, valid_user_to=? WHERE id=? AND valid_to IS NULL")
+        ->execute([date('Y-m-d H:i:s'), $uid, $id]);
 }
 
 function findActive(string $tbl, int $id): ?array {
@@ -152,4 +160,12 @@ function findAllActive(string $tbl, string $order = 'id ASC'): array {
     $s = db()->prepare("SELECT * FROM `$tbl` WHERE valid_to IS NULL ORDER BY $order");
     $s->execute();
     return $s->fetchAll();
+}
+
+/** Vyhledá aktivní řádek podle logického ID (users_id, properties_id, …). */
+function findActiveByLogicalId(string $tbl, int $logicalId): ?array {
+    $lidCol = _logicalIdCol($tbl);
+    $s = db()->prepare("SELECT * FROM `$tbl` WHERE `$lidCol`=? AND valid_to IS NULL");
+    $s->execute([$logicalId]);
+    return $s->fetch() ?: null;
 }

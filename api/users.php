@@ -65,7 +65,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         requireAdmin();
         $id = (int)($b['id']??0);
         if (!$id) jsonErr('Chybí ID.');
-        if ($id === $_SESSION['uid']) jsonErr('Nelze smazat sebe.');
+        $row = findActive('users', $id);
+        if (!$row) jsonErr('Uživatel neexistuje.', 404);
+        if (($row['users_id'] ?? $row['id']) == $_SESSION['uid']) jsonErr('Nelze smazat sebe.');
         softDelete('users', $id);
         jsonOk(['deleted'=>$id]);
     }
@@ -76,10 +78,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pass = $b['password']??'';
         if (!$id) jsonErr('Chybí ID.');
         if (strlen($pass)<8) jsonErr('Heslo musí být alespoň 8 znaků.');
-        if ($id !== $_SESSION['uid']) requireAdmin();
+        $row = findActive('users', $id);
+        if (!$row) jsonErr('Uživatel neexistuje.', 404);
+        if (($row['users_id'] ?? $row['id']) !== $_SESSION['uid']) requireAdmin();
 
-        $newId = softUpdate('users', $id, ['password_hash'=>password_hash($pass, PASSWORD_BCRYPT)]);
-        if ($id === $_SESSION['uid']) $_SESSION['uid'] = $newId;
+        softUpdate('users', $id, ['password_hash'=>password_hash($pass, PASSWORD_BCRYPT)]);
         jsonOk(['changed'=>true]);
     }
 

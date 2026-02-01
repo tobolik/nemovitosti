@@ -36,3 +36,15 @@ CREATE INDEX idx_properties_id ON properties (properties_id, valid_to);
 CREATE INDEX idx_tenants_id ON tenants (tenants_id, valid_to);
 CREATE INDEX idx_contracts_id ON contracts (contracts_id, valid_to);
 CREATE INDEX idx_payments_id ON payments (payments_id, valid_to);
+
+-- Audit: kdo změnu provedl (valid_user_from = kdo vytvořil verzi, valid_user_to = kdo ji uzavřel)
+ALTER TABLE users ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE users ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
+ALTER TABLE properties ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE properties ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
+ALTER TABLE tenants ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE tenants ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
+ALTER TABLE contracts ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE contracts ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
+ALTER TABLE payments ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE payments ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
