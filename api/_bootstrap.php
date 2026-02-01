@@ -44,7 +44,7 @@ function db(): PDO {
 })();
 
 // ── JSON response helpers ───────────────────────────────────────────────────
-function jsonOk(mixed $data = null, int $code = 200): never {
+function jsonOk($data = null, int $code = 200): never {
     if (ob_get_level()) ob_end_clean();
     http_response_code($code);
     header('Content-Type: application/json');
