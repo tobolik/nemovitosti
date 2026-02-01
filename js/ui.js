@@ -105,6 +105,7 @@ const UI = (() => {
     // }
     function createCrudForm(cfg) {
         let editMode = false;
+        let _editingRow = null;
         const formCard = cfg.formCardId ? document.getElementById(cfg.formCardId) : null;
         const addBtn   = cfg.addBtnId   ? document.getElementById(cfg.addBtnId)   : null;
 
@@ -151,6 +152,7 @@ const UI = (() => {
 
         function exitEdit() {
             editMode = false;
+            _editingRow = null;
             document.getElementById(cfg.editIdField).value = '';
             document.getElementById(cfg.titleId).textContent  = cfg.addLabel;
             document.getElementById(cfg.saveId).textContent    = cfg.addLabel;
@@ -172,6 +174,7 @@ const UI = (() => {
         return {
             startEdit(row) {
                 editMode = true;
+                _editingRow = row;
                 document.getElementById(cfg.editIdField).value = row.id;
                 document.getElementById(cfg.titleId).textContent  = 'Úprava';
                 document.getElementById(cfg.saveId).textContent    = cfg.editLabel;

@@ -247,9 +247,9 @@ async function openPaymentModal(el) {
         const delBtn = e.target.closest('[data-action="delete"]');
         const addLink = e.target.closest('[data-action="add"]');
         if (editBtn) {
-            editIdEl.value = editBtn.dataset.id;
-            editIdEl.dataset.batchId = editBtn.dataset.batchId || '';
-            editIdEl.dataset.originalAmount = editBtn.dataset.amount || '';
+            editIdEl.value = String(editBtn.dataset.id || '');
+            editIdEl.dataset.batchId = String(editBtn.dataset.batchId || '');
+            editIdEl.dataset.originalAmount = String(editBtn.dataset.amount || '');
             amount.value = editBtn.dataset.amount || '';
             dateInput.value = editBtn.dataset.date || new Date().toISOString().slice(0, 10);
             methodSelect.value = editBtn.dataset.method === 'cash' ? 'cash' : 'account';
@@ -258,6 +258,7 @@ async function openPaymentModal(el) {
             paid.checked = true;
             dateWrap.style.display = 'block';
             methodWrap.style.display = 'flex';
+            batchHintEl.style.display = editBtn.dataset.batchId ? 'block' : 'none';
         } else if (delBtn) {
             if (!confirm('Opravdu smazat tuto platbu?')) return;
             try {
@@ -289,6 +290,8 @@ async function openPaymentModal(el) {
     };
 
     document.getElementById('btn-pay-modal-save').onclick = async () => {
+        const editId = (editIdEl.value || '').trim();
+        const batchId = (editIdEl.dataset.batchId || '').trim();
         try {
             if (paid.checked) {
                 const dateVal = dateInput.value;
@@ -301,35 +304,41 @@ async function openPaymentModal(el) {
                     alert('Zadejte kladnou částku platby.');
                     return;
                 }
-                const editId = editIdEl.value.trim();
-                const batchId = (editIdEl.dataset.batchId || '').trim();
                 const method = methodSelect.value === 'account' || methodSelect.value === 'cash' ? methodSelect.value : 'account';
                 const accountNum = method === 'account' ? (accountSelect.value || '').trim() : null;
-                const payData = {
-                    contracts_id: parseInt(contractsId, 10),
-                    period_year: parseInt(year, 10),
-                    period_month: parseInt(month, 10),
-                    amount: amt,
-                    payment_date: dateInput.value,
-                    payment_method: method,
-                    account_number: accountNum || null,
-                };
-                if (editId) {
-                    if (batchId) {
-                        const batchData = {
-                            payment_date: dateInput.value,
-                            payment_method: method,
-                            account_number: accountNum || null,
-                        };
-                        if (amt !== parseFloat(editIdEl.dataset.originalAmount || 0)) {
-                            batchData.amount_override_id = parseInt(editId, 10);
-                            batchData.amount_override_value = amt;
-                        }
-                        await Api.paymentsEditBatch(batchId, batchData);
-                    } else {
-                        await Api.crudEdit('payments', parseInt(editId, 10), payData);
+                if (editId && batchId) {
+                    const batchData = {
+                        payment_date: dateInput.value,
+                        payment_method: method,
+                        account_number: accountNum || null,
+                    };
+                    const origAmt = parseFloat(editIdEl.dataset.originalAmount || 0);
+                    if (amt !== origAmt) {
+                        batchData.amount_override_id = parseInt(editId, 10);
+                        batchData.amount_override_value = amt;
                     }
+                    await Api.paymentsEditBatch(batchId, batchData);
+                } else if (editId) {
+                    const payData = {
+                        contracts_id: parseInt(contractsId, 10),
+                        period_year: parseInt(year, 10),
+                        period_month: parseInt(month, 10),
+                        amount: amt,
+                        payment_date: dateInput.value,
+                        payment_method: method,
+                        account_number: accountNum || null,
+                    };
+                    await Api.crudEdit('payments', parseInt(editId, 10), payData);
                 } else {
+                    const payData = {
+                        contracts_id: parseInt(contractsId, 10),
+                        period_year: parseInt(year, 10),
+                        period_month: parseInt(month, 10),
+                        amount: amt,
+                        payment_date: dateInput.value,
+                        payment_method: method,
+                        account_number: accountNum || null,
+                    };
                     await Api.crudAdd('payments', payData);
                 }
             } else {

@@ -75,8 +75,31 @@ const PaymentsView = (() => {
                 document.getElementById('pay-note').value     = row.note         || '';
                 const accWrap = document.getElementById('pay-account-wrap');
                 accWrap.style.display = row.payment_method === 'cash' ? 'none' : 'block';
+                const batchHint = document.getElementById('pay-batch-hint');
+                if (batchHint) batchHint.style.display = row.payment_batch_id ? 'block' : 'none';
+            },
+            async editSave(id, values, row) {
+                const batchId = (row && row.payment_batch_id) ? String(row.payment_batch_id).trim() : '';
+                if (batchId) {
+                    const batchData = {
+                        payment_date: values.payment_date,
+                        payment_method: values.payment_method || 'account',
+                        account_number: values.account_number || null,
+                    };
+                    const origAmt = row ? parseFloat(row.amount) : 0;
+                    const newAmt = parseFloat(values.amount) || 0;
+                    if (newAmt !== origAmt) {
+                        batchData.amount_override_id = id;
+                        batchData.amount_override_value = newAmt;
+                    }
+                    await Api.paymentsEditBatch(batchId, batchData);
+                } else {
+                    await Api.crudEdit('payments', id, values);
+                }
             },
             resetForm() {
+                const batchHint = document.getElementById('pay-batch-hint');
+                if (batchHint) batchHint.style.display = 'none';
                 document.getElementById('pay-contract').value = '';
                 document.getElementById('pay-amount').value   = '';
                 document.getElementById('pay-note').value     = '';

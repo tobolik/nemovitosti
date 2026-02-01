@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=0.14.31">
+<link rel="stylesheet" href="css/style.css?v=0.14.33">
 </head>
 <body>
 
@@ -198,6 +198,7 @@
         <div class="card" id="pay-form-card" style="display:none">
           <div class="card-title" id="pay-form-title">Zaznamenat platbu</div>
           <div class="alert" id="pay-alert"></div>
+          <div id="pay-batch-hint" class="pay-modal-batch-hint" style="display:none">Součást dávky: změna data platby a čísla účtu se projeví u všech plateb v této dávce.</div>
           <input type="hidden" id="pay-edit-id">
           <div class="fg"><label>Smlouva *</label><select id="pay-contract"></select></div>
           <div class="fg">
@@ -323,7 +324,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v0.14.31</span>
+    <span class="footer-version">v0.14.33</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -372,7 +373,7 @@
       </div>
     </div>
     <div class="form-actions">
-      <button class="btn btn-success" id="btn-pay-modal-save">Uložit</button>
+      <button type="button" class="btn btn-success" id="btn-pay-modal-save">Uložit</button>
       <button class="btn btn-ghost" onclick="UI.modalClose('modal-payment')">Zrušit</button>
     </div>
     <input type="hidden" id="pay-modal-contract-id">
@@ -444,16 +445,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=0.14.31"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=0.14.31"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=0.14.31"></script>
-<script src="js/app.js?v=0.14.31"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=0.14.31"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=0.14.31"></script>
-<script src="js/views/tenants.js?v=0.14.31"></script>
-<script src="js/views/contracts.js?v=0.14.31"></script>
-<script src="js/views/payments.js?v=0.14.31"></script>
-<script src="js/views/bank_accounts.js?v=0.14.31"></script>
-<script src="js/views/users.js?v=0.14.31"></script>
+<script src="js/api.js?v=0.14.33"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=0.14.33"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=0.14.33"></script>
+<script src="js/app.js?v=0.14.33"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=0.14.33"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=0.14.33"></script>
+<script src="js/views/tenants.js?v=0.14.33"></script>
+<script src="js/views/contracts.js?v=0.14.33"></script>
+<script src="js/views/payments.js?v=0.14.33"></script>
+<script src="js/views/bank_accounts.js?v=0.14.33"></script>
+<script src="js/views/users.js?v=0.14.33"></script>
 </body>
 </html>
