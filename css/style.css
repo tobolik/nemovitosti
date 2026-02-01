@@ -483,6 +483,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .heatmap-cell.exact { background: var(--green-600); color: #fff; font-weight: 600; }
 .heatmap-cell.overpaid { background: var(--orange-600); color: #fff; font-weight: 600; }
 .heatmap-cell.unpaid, .heatmap-cell.overdue { background: var(--red-600); color: #fff; font-weight: 600; }
+/* Budoucí neuhrazené měsíce – červený okraj (ještě je čas na uhrazení) */
+.heatmap-cell.future-unpaid {
+  background: rgba(0,0,0,.2);
+  border: 2px solid var(--red-600);
+  color: var(--txt);
+  font-weight: 600;
+}
 .heatmap-cell .cell-amount { font-size: .75rem; }
 .heatmap-cell .cell-partial { font-size: .75rem; }
 .heatmap-cell .cell-remaining { font-size: .7rem; opacity: .9; }

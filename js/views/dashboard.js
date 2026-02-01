@@ -147,8 +147,10 @@ async function loadDashboard(year) {
 
             let tags = '';
             (d.unpaid_months || []).forEach(u => {
+                const tenant = (d.tenant_name || '').replace(/"/g, '&quot;');
+                const prop = (d.property_name || '').replace(/"/g, '&quot;');
                 tags += '<span class="tag">' + u.month + '/' + u.year +
-                    ' <span class="tag-plus" onclick="DashboardView.quickPay(' + d.contracts_id + ',' + u.year + ',' + u.month + ',' + d.monthly_rent + ')" title="Přidat platbu">+</span></span>';
+                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-year="' + u.year + '" data-month="' + u.month + '" data-rent="' + d.monthly_rent + '" data-tenant="' + tenant + '" data-property="' + prop + '" title="Přidat platbu">+</span></span>';
             });
 
             return (
@@ -166,7 +168,7 @@ async function loadDashboard(year) {
     );
 }
 
-App.registerView('dashboard', () => loadDashboard());
+App.registerView('dashboard', () => { loadDashboard(); initQuickPayDelegation(); });
 
 // ── PaymentModal ─────────────────────────────────────────────────────────
 async function openPaymentModal(el) {
@@ -182,7 +184,7 @@ async function openPaymentModal(el) {
 
     const [year, month] = monthKey.split('-');
     const monthName = MONTH_NAMES[parseInt(month, 10) - 1] || month;
-    const propName = el.closest('tr').querySelector('.heatmap-property').textContent;
+    const propName = el.dataset.propertyName || (el.closest('tr') && el.closest('tr').querySelector('.heatmap-property') ? el.closest('tr').querySelector('.heatmap-property').textContent : '') || '';
 
     const info = document.getElementById('pay-modal-info');
     const amount = document.getElementById('pay-modal-amount');
@@ -467,12 +469,42 @@ function openNewContract(el) {
     ContractsView.prefillFromCalendar(parseInt(propertyId, 10), monthKey, propertyName);
 }
 
+// Event delegation pro tlačítko + u neuhrazených měsíců
+function initQuickPayDelegation() {
+    const el = document.getElementById('dash-table');
+    if (!el || el.dataset.quickPayBound) return;
+    el.dataset.quickPayBound = '1';
+    el.addEventListener('click', (e) => {
+        const plus = e.target.closest('.tag-plus');
+        if (!plus) return;
+        e.preventDefault();
+        const contractsId = parseInt(plus.dataset.contractsId, 10);
+        const year = parseInt(plus.dataset.year, 10);
+        const month = parseInt(plus.dataset.month, 10);
+        const rent = parseFloat(plus.dataset.rent) || 0;
+        const tenant = plus.dataset.tenant || '';
+        const property = plus.dataset.property || '';
+        DashboardView.quickPay(contractsId, year, month, rent, tenant, property);
+    });
+}
+
 const DashboardView = {
     openPaymentModal,
     openNewContract,
-    async quickPay(contractId, year, month, rent) {
-        await App.navigateWithHistory('payments');
-        PaymentsView.prefill(contractId, year, month, rent);
+    async quickPay(contractsId, year, month, rent, tenantName, propertyName) {
+        const monthKey = year + '-' + String(month).padStart(2, '0');
+        const fakeEl = document.createElement('div');
+        fakeEl.dataset.contractId = String(contractsId);
+        fakeEl.dataset.contractsId = String(contractsId);
+        fakeEl.dataset.monthKey = monthKey;
+        fakeEl.dataset.amount = String(rent);
+        fakeEl.dataset.tenant = tenantName || '';
+        fakeEl.dataset.paid = '0';
+        fakeEl.dataset.paymentDate = new Date().toISOString().slice(0, 10);
+        fakeEl.dataset.paymentAmount = '0';
+        fakeEl.dataset.remaining = String(rent);
+        fakeEl.dataset.propertyName = propertyName || '';
+        await openPaymentModal(fakeEl);
     }
 };
 window.DashboardView = DashboardView;
