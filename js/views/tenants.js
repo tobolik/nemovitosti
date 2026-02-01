@@ -6,12 +6,13 @@ const TenantsView = (() => {
 
     function initAresButton() {
         const typeEl = document.getElementById('ten-type');
+        const wrapAres = document.getElementById('ten-ares-wrap');
         const btnAres = document.getElementById('ten-ares-btn');
         const alertEl = document.getElementById('ten-alert');
-        if (!btnAres) return;
+        if (!btnAres || !wrapAres) return;
 
         function toggleAresButton() {
-            btnAres.style.display = typeEl.value === 'company' ? '' : 'none';
+            wrapAres.style.display = typeEl.value === 'company' ? 'block' : 'none';
         }
         typeEl.addEventListener('change', toggleAresButton);
         toggleAresButton();
@@ -52,6 +53,8 @@ const TenantsView = (() => {
             editIdField:'ten-edit-id',
             addLabel:   'Přidat nájemníka',
             editLabel:  'Uložit změny',
+            successAddMsg: 'Nájemník byl úspěšně přidán.',
+            successEditMsg: 'Nájemník byl úspěšně aktualizován.',
             getValues() {
                 return {
                     name:    document.getElementById('ten-name').value.trim(),
@@ -73,16 +76,16 @@ const TenantsView = (() => {
                 document.getElementById('ten-ic').value      = row.ic      || '';
                 document.getElementById('ten-dic').value     = row.dic     || '';
                 document.getElementById('ten-note').value    = row.note    || '';
-                const btn = document.getElementById('ten-ares-btn');
-                if (btn) btn.style.display = (row.type === 'company') ? '' : 'none';
+                const wrap = document.getElementById('ten-ares-wrap');
+                if (wrap) wrap.style.display = (row.type === 'company') ? 'block' : 'none';
             },
             resetForm() {
                 ['ten-name','ten-email','ten-phone','ten-address','ten-ic','ten-dic','ten-note'].forEach(id =>
                     document.getElementById(id).value = ''
                 );
                 document.getElementById('ten-type').value = 'person';
-                const btn = document.getElementById('ten-ares-btn');
-                if (btn) btn.style.display = 'none';
+                const wrap = document.getElementById('ten-ares-wrap');
+                if (wrap) wrap.style.display = 'none';
             },
             onSaved: loadList,
         });

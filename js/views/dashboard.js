@@ -68,8 +68,10 @@ App.registerView('dashboard', async () => {
                 let content = '';
                 if (cell.type === 'empty') {
                     content = 'Volno';
+                } else if (cell.type === 'paid') {
+                    content = '<span class="cell-amount">' + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-icon cell-check">✓</span>';
                 } else {
-                    content = '<span class="cell-amount">' + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-check">✓</span>';
+                    content = '<span class="cell-amount">' + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-icon cell-cross">✗</span>';
                 }
 
                 const dataAttrs = cell.type !== 'empty'
@@ -192,7 +194,7 @@ function openPaymentModal(el) {
                 if (p) await Api.crudDelete('payments', p.id);
             }
             UI.modalClose('modal-payment');
-            App.navigate('dashboard');
+            App.navigateWithHistory('dashboard');
         } catch (e) {
             alert(e.message);
         }
@@ -214,7 +216,7 @@ const DashboardView = {
     openPaymentModal,
     openNewContract,
     async quickPay(contractId, year, month, rent) {
-        await App.navigate('payments');
+        await App.navigateWithHistory('payments');
         PaymentsView.prefill(contractId, year, month, rent);
     }
 };

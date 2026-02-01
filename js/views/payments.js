@@ -17,6 +17,12 @@ const PaymentsView = (() => {
             editIdField:'pay-edit-id',
             addLabel:   'Zaznamenat platbu',
             editLabel:  'Uložit změny',
+            successAddMsg: 'Platba byla úspěšně zaznamenána.',
+            successEditMsg: 'Platba byla úspěšně aktualizována.',
+            validate(values) {
+                if (!values.contract_id || values.contract_id <= 0) return 'Vyberte smlouvu.';
+                return null;
+            },
             getValues() {
                 return {
                     contract_id:  Number(document.getElementById('pay-contract').value),
@@ -163,7 +169,7 @@ const PaymentsView = (() => {
     // Volané z ContractsView / DashboardView
     function navigateWithFilter(contractId) {
         filterContractId = contractId;
-        App.navigate('payments');
+        App.navigateWithHistory('payments');
     }
 
     // Prefill form (z dashboard quick-add tag)

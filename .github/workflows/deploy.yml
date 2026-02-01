@@ -38,7 +38,7 @@ jobs:
             **/.gitignore
 
       - name: Spustit SQL migraci
-        if: success() && vars.RUN_MIGRATION == 'true'
+        if: success()
         run: |
           URL="${{ secrets.SITE_URL }}/api/migrate.php?key=${{ secrets.MIGRATE_KEY }}"
           RESP=$(curl -s -w "\n%{http_code}" "$URL")

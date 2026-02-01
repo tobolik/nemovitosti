@@ -93,13 +93,19 @@ const UI = (() => {
         document.getElementById(cfg.saveId).addEventListener('click', async () => {
             const id     = document.getElementById(cfg.editIdField).value;
             const values = cfg.getValues();
+            if (cfg.validate) {
+                const err = cfg.validate(values, editMode);
+                if (err) { alertShow(cfg.alertId, err, 'err'); return; }
+            }
             try {
                 if (editMode) {
                     await Api.crudEdit(cfg.table, Number(id), values);
                 } else {
                     await Api.crudAdd(cfg.table, values);
                 }
-                alertShow(cfg.alertId, editMode ? 'Aktualizován.' : 'Přidán.', 'ok');
+                const addMsg = cfg.successAddMsg ?? 'Záznam byl přidán.';
+                const editMsg = cfg.successEditMsg ?? 'Záznam byl aktualizován.';
+                alertShow(cfg.alertId, editMode ? editMsg : addMsg, 'ok');
                 exitEdit();
                 cfg.onSaved && cfg.onSaved();
             } catch (e) {

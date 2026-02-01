@@ -15,6 +15,7 @@ const App = (() => {
     // ── navigation ──────────────────────────────────────────────────────
     function navigate(viewName) {
         if (!views[viewName]) return;
+        if (currentView === viewName) return;
         currentView = viewName;
 
         // nav links highlighting
@@ -27,6 +28,21 @@ const App = (() => {
         );
         // call loader and return its promise
         return views[viewName]();
+    }
+
+    // History API – zpět/dopředu v prohlížeči
+    function navigateWithHistory(viewName) {
+        if (!views[viewName]) return;
+        const hash = viewName || 'dashboard';
+        if (location.hash.slice(1) !== hash) {
+            location.hash = hash;
+        }
+        return navigate(viewName || 'dashboard');
+    }
+
+    function onHashChange() {
+        const viewName = (location.hash.slice(1) || 'dashboard').toLowerCase();
+        if (views[viewName]) navigate(viewName);
     }
 
     // ── login screen ────────────────────────────────────────────────────
@@ -59,7 +75,15 @@ const App = (() => {
         const sb = document.getElementById('sidebar');
         if (window.innerWidth <= 768) sb.classList.add('collapsed');
         else sb.classList.remove('collapsed');
-        navigate('dashboard');
+        // History: inicializace z hashe, nebo dashboard
+        const initialView = (location.hash.slice(1) || 'dashboard').toLowerCase();
+        if (views[initialView]) {
+            navigate(initialView);
+            if (!location.hash) location.hash = initialView;
+        } else {
+            navigate('dashboard');
+            location.hash = 'dashboard';
+        }
     }
 
     // ── login button ────────────────────────────────────────────────────
@@ -100,10 +124,13 @@ const App = (() => {
     // ── nav link clicks ─────────────────────────────────────────────────
     document.querySelectorAll('.nav-link').forEach(btn => {
         btn.addEventListener('click', () => {
-            navigate(btn.dataset.view);
+            navigateWithHistory(btn.dataset.view);
             sidebarClose();
         });
     });
+
+    // ── hashchange (zpět/dopředu v prohlížeči) ───────────────────────────
+    window.addEventListener('hashchange', onHashChange);
 
     // ── sidebar: hamburger & close ───────────────────────────────────────
     function sidebarOpen() {
@@ -132,6 +159,7 @@ const App = (() => {
     return {
         registerView,
         navigate,
+        navigateWithHistory,
         getUser: () => currentUser,
     };
 })();

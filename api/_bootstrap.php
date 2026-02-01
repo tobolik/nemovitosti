@@ -89,29 +89,44 @@ function body(): array {
 }
 
 // ── Soft-record helpers ─────────────────────────────────────────────────────
+// Logická ID sloupce: users_id, properties_id, tenants_id, contracts_id, payments_id
+function _logicalIdCol(string $tbl): string {
+    return $tbl . '_id';
+}
+
 function softInsert(string $tbl, array $data): int {
     $data['valid_from'] = date('Y-m-d H:i:s');
     $data['valid_to']   = null;
     $cols = implode(', ', array_keys($data));
     $ph   = implode(', ', array_fill(0, count($data), '?'));
     db()->prepare("INSERT INTO `$tbl` ($cols) VALUES ($ph)")->execute(array_values($data));
-    return (int) db()->lastInsertId();
+    $newId = (int) db()->lastInsertId();
+    $lidCol = _logicalIdCol($tbl);
+    db()->prepare("UPDATE `$tbl` SET `$lidCol`=? WHERE id=? AND `$lidCol` IS NULL")
+        ->execute([$newId, $newId]);
+    return $newId;
 }
 
 function softUpdate(string $tbl, int $id, array $new): int {
     $now = date('Y-m-d H:i:s');
+    $lidCol = _logicalIdCol($tbl);
 
     $s = db()->prepare("SELECT * FROM `$tbl` WHERE id=? AND valid_to IS NULL");
     $s->execute([$id]);
     $cur = $s->fetch();
     if (!$cur) jsonErr("Záznam #$id neexistuje.", 404);
 
-    // zavři starý
-    db()->prepare("UPDATE `$tbl` SET valid_to=? WHERE id=?")->execute([$now, $id]);
+    $logicalId = $cur[$lidCol] ?? $cur['id'];
+    if ($logicalId === null) $logicalId = $cur['id'];
 
-    // vloží nový
+    // zavři všechny aktivní verze tohoto logického záznamu
+    db()->prepare("UPDATE `$tbl` SET valid_to=? WHERE `$lidCol`=? AND valid_to IS NULL")
+        ->execute([$now, $logicalId]);
+
+    // vloží nový řádek se stejným logickým ID
     unset($cur['id'], $cur['valid_from'], $cur['valid_to']);
     $merged = array_merge($cur, $new);
+    $merged[$lidCol]   = $logicalId;
     $merged['valid_from'] = $now;
     $merged['valid_to']   = null;
 

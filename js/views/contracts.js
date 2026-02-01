@@ -11,6 +11,7 @@ const ContractsView = (() => {
         _tenantModalInited = true;
         const btnAdd = document.getElementById('btn-con-add-tenant');
         const btnSave = document.getElementById('btn-modal-tenant-save');
+        const wrapAres = document.getElementById('modal-tenant-ares-wrap');
         const btnAres = document.getElementById('modal-tenant-ares-btn');
         const typeEl = document.getElementById('modal-tenant-type');
         const alertEl = document.getElementById('modal-tenant-alert');
@@ -29,7 +30,7 @@ const ContractsView = (() => {
         });
 
         function toggleAresButton() {
-            if (btnAres) btnAres.style.display = (typeEl && typeEl.value === 'company') ? '' : 'none';
+            if (wrapAres) wrapAres.style.display = (typeEl && typeEl.value === 'company') ? 'block' : 'none';
         }
         if (typeEl) typeEl.addEventListener('change', toggleAresButton);
         toggleAresButton();
@@ -102,6 +103,13 @@ const ContractsView = (() => {
             editIdField:'con-edit-id',
             addLabel:   'Přidat smlouvu',
             editLabel:  'Uložit změny',
+            successAddMsg: 'Smlouva byla úspěšně přidána.',
+            successEditMsg: 'Smlouva byla úspěšně aktualizována.',
+            validate(values) {
+                if (!values.property_id || values.property_id <= 0) return 'Vyberte nemovitost.';
+                if (!values.tenant_id || values.tenant_id <= 0) return 'Vyberte nájemníka.';
+                return null;
+            },
             getValues() {
                 return {
                     property_id:    Number(document.getElementById('con-property').value),

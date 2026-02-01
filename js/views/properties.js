@@ -17,6 +17,8 @@ const PropertiesView = (() => {
             editIdField:'prop-edit-id',
             addLabel:   'Přidat nemovitost',
             editLabel:  'Uložit změny',
+            successAddMsg: 'Nemovitost byla úspěšně přidána.',
+            successEditMsg: 'Nemovitost byla úspěšně aktualizována.',
             getValues() {
                 return {
                     name:           document.getElementById('prop-name').value.trim(),

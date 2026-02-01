@@ -23,6 +23,14 @@ $REQUIRED = [
     'payments'   => ['contract_id','period_year','period_month','amount','payment_date'],
 ];
 
+// Lidsky čitelné názvy polí pro chybové hlášky
+$FIELD_LABELS = [
+    'properties' => ['name'=>'Název','address'=>'Adresa'],
+    'tenants'    => ['name'=>'Jméno / Název'],
+    'contracts'  => ['property_id'=>'Nemovitost','tenant_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','note'=>'Poznámka'],
+    'payments'   => ['contract_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka'],
+];
+
 $table = $_GET['table'] ?? body()['table'] ?? '';
 if (!isset($FIELDS[$table])) jsonErr('Neznámá tabulka.');
 
@@ -84,10 +92,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // contract_end & note mohou být prázdné → null
     if ($table === 'contracts' && ($data['contract_end']??'') === '') $data['contract_end'] = null;
 
+    // Pole, která musí být kladné ID (> 0) – 0 znamená „nevybráno“
+    $POSITIVE_ID_FIELDS = [
+        'contracts' => ['property_id', 'tenant_id'],
+        'payments'  => ['contract_id'],
+    ];
+
     if ($action === 'add') {
         foreach ($REQUIRED[$table] as $r) {
-            if (empty($data[$r]) && $data[$r] !== '0' && $data[$r] !== 0)
-                jsonErr("Pole '$r' je povinné.");
+            $val = $data[$r] ?? null;
+            $isEmpty = ($val === '' || $val === null);
+            $isZeroId = in_array($r, $POSITIVE_ID_FIELDS[$table] ?? []) && (int)$val <= 0;
+            if ($isEmpty || $isZeroId) {
+                $label = $FIELD_LABELS[$table][$r] ?? $r;
+                jsonErr("Vyplňte pole: $label");
+            }
         }
         $newId = softInsert($table, $data);
         jsonOk(findActive($table, $newId), 201);
@@ -96,6 +115,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'edit') {
         $id = (int)($b['id'] ?? 0);
         if (!$id) jsonErr('Chybí ID.');
+        foreach ($POSITIVE_ID_FIELDS[$table] ?? [] as $f) {
+            if (array_key_exists($f, $data) && (int)($data[$f] ?? 0) <= 0) {
+                $label = $FIELD_LABELS[$table][$f] ?? $f;
+                jsonErr("Vyplňte pole: $label");
+            }
+        }
         $newId = softUpdate($table, $id, $data);
         jsonOk(findActive($table, $newId));
     }

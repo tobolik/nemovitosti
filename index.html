@@ -126,22 +126,19 @@
                 <option value="company">Právnická osoba</option>
               </select>
             </div>
-            <div class="fg"><label>Jméno / Název *</label><input type="text" id="ten-name"></div>
           </div>
+          <div class="form-row">
+            <div class="fg"><label>IČO</label><input type="text" id="ten-ic" placeholder="12345678"></div>
+            <div class="fg"><label>DIČ</label><input type="text" id="ten-dic" placeholder="CZ12345678"></div>
+          </div>
+          <div class="fg fg-ares-btn" id="ten-ares-wrap" style="display:none">
+            <button type="button" class="btn btn-ares btn-sm" id="ten-ares-btn" title="Vyplní název, adresu a DIČ podle IČ">Načíst z ARES</button>
+          </div>
+          <div class="fg"><label>Jméno / Název *</label><input type="text" id="ten-name"></div>
+          <div class="fg"><label>Adresa</label><input type="text" id="ten-address" placeholder="Začněte psát ulici, PSČ nebo město..." autocomplete="off"></div>
           <div class="form-row">
             <div class="fg"><label>E-mail</label><input type="email" id="ten-email"></div>
             <div class="fg"><label>Telefon</label><input type="tel" id="ten-phone"></div>
-          </div>
-          <div class="fg"><label>Adresa</label><input type="text" id="ten-address" placeholder="Začněte psát ulici, PSČ nebo město..." autocomplete="off"></div>
-          <div class="form-row">
-            <div class="fg">
-              <label>IČO</label>
-              <div class="input-with-btn">
-                <input type="text" id="ten-ic" placeholder="12345678">
-                <button type="button" class="btn btn-ghost btn-sm" id="ten-ares-btn" title="Načíst z ARES" style="display:none">Načíst z ARES</button>
-              </div>
-            </div>
-            <div class="fg"><label>DIČ</label><input type="text" id="ten-dic" placeholder="CZ12345678"></div>
           </div>
           <div class="fg"><label>Poznámka</label><textarea id="ten-note" rows="2"></textarea></div>
           <div class="form-actions">
@@ -255,7 +252,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v0.12.1</span>
+    <span class="footer-version">v0.13.0</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -316,22 +313,19 @@
             <option value="company">Právnická osoba</option>
           </select>
         </div>
-        <div class="fg"><label>Jméno / Název *</label><input type="text" id="modal-tenant-name"></div>
       </div>
+      <div class="form-row fg-ic-row">
+        <div class="fg"><label>IČO</label><input type="text" id="modal-tenant-ic" placeholder="12345678"></div>
+        <div class="fg"><label>DIČ</label><input type="text" id="modal-tenant-dic" placeholder="CZ12345678"></div>
+      </div>
+      <div class="fg fg-ares-btn" id="modal-tenant-ares-wrap" style="display:none">
+        <button type="button" class="btn btn-ares btn-sm" id="modal-tenant-ares-btn" title="Vyplní název, adresu a DIČ podle IČ">Načíst z ARES</button>
+      </div>
+      <div class="fg"><label>Jméno / Název *</label><input type="text" id="modal-tenant-name"></div>
+      <div class="fg"><label>Adresa</label><input type="text" id="modal-tenant-address" placeholder="Začněte psát ulici..." autocomplete="off"></div>
       <div class="form-row">
         <div class="fg"><label>E-mail</label><input type="email" id="modal-tenant-email"></div>
         <div class="fg"><label>Telefon</label><input type="tel" id="modal-tenant-phone"></div>
-      </div>
-      <div class="fg"><label>Adresa</label><input type="text" id="modal-tenant-address" placeholder="Začněte psát ulici..." autocomplete="off"></div>
-      <div class="form-row fg-ic-row">
-        <div class="fg">
-          <label>IČO</label>
-          <div class="input-with-btn">
-            <input type="text" id="modal-tenant-ic" placeholder="12345678">
-            <button type="button" class="btn btn-ghost btn-sm" id="modal-tenant-ares-btn" title="Načíst z ARES" style="display:none">Načíst z ARES</button>
-          </div>
-        </div>
-        <div class="fg"><label>DIČ</label><input type="text" id="modal-tenant-dic" placeholder="CZ12345678"></div>
       </div>
       <div class="fg"><label>Poznámka</label><textarea id="modal-tenant-note" rows="2"></textarea></div>
     </div>

@@ -363,7 +363,12 @@ footer .footer-version { opacity: .8; }
 .btn-danger { background: transparent; color: #fca5a5; border: 1px solid rgba(220,38,38,.3); }
 .btn-danger:hover { background: rgba(220,38,38,.15); }
 
+.btn-ares { background: var(--purple-600); color: #fff; }
+.btn-ares:hover { background: var(--purple-700); color: #fff; }
+
 .btn-sm { padding: 5px 11px; font-size: .78rem; }
+
+.fg-ares-btn { margin-top: -4px; margin-bottom: 8px; }
 
 /* ============================================================
    TABLES
@@ -468,17 +473,20 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .heatmap-cell.paid { background: var(--green-600); color: #fff; font-weight: 600; }
 .heatmap-cell.unpaid, .heatmap-cell.overdue { background: var(--red-600); color: #fff; font-weight: 600; }
 .heatmap-cell .cell-amount { font-size: .75rem; }
-.heatmap-cell .cell-check { font-size: .7rem; opacity: .9; }
+.heatmap-cell .cell-icon { font-size: .85rem; font-weight: 700; display: inline-block; }
+.heatmap-cell.paid .cell-check { color: #fff; }
+.heatmap-cell.unpaid .cell-cross,
+.heatmap-cell.overdue .cell-cross { color: #fff; }
 .heatmap-property { font-weight: 500; color: var(--txt); white-space: nowrap; padding-right: 12px; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.modal-close { background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer; line-height: 1; padding: 4px; }
-.modal-close:hover { color: #1e293b; }
-.payment-info { background: #f1f5f9; padding: 12px; border-radius: var(--r); margin-bottom: 16px; font-size: .9rem; color: #475569; }
+.modal-close { background: none; border: none; font-size: 1.5rem; color: var(--txt3); cursor: pointer; line-height: 1; padding: 4px; }
+.modal-close:hover { color: var(--txt); }
+.payment-info { background: rgba(0,0,0,.2); padding: 12px; border-radius: var(--r); margin-bottom: 16px; font-size: .9rem; color: var(--txt2); border: 1px solid var(--glass-border); }
 .payment-info div { margin: 4px 0; }
-.payment-info strong { color: #1e293b; }
+.payment-info strong { color: var(--txt); }
 .payment-checkbox-wrap { margin: 12px 0; }
-.payment-checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; background: #dcfce7; padding: 12px; border-radius: var(--r); font-weight: 600; color: #166534; }
-.payment-checkbox-label input { width: 20px; height: 20px; accent-color: #16a34a; }
+.payment-checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(22,163,74,.15); padding: 12px; border-radius: var(--r); font-weight: 600; color: #86efac; border: 1px solid rgba(22,163,74,.3); }
+.payment-checkbox-label input { width: 20px; height: 20px; accent-color: var(--green-600); }
 
 /* ADDRESS AUTOCOMPLETE */
 .fg:has(.address-autocomplete) { position: relative; }
@@ -513,17 +521,17 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
   background: #f8fafc;
 }
 .modal-box .address-autocomplete {
-  background: #fff;
-  border-color: #e2e8f0;
-  box-shadow: 0 10px 40px rgba(0,0,0,.2);
+  background: var(--slate-900);
+  border-color: var(--glass-border);
+  box-shadow: 0 10px 40px rgba(0,0,0,.4);
 }
 .modal-box .address-autocomplete-item {
-  color: #1e293b;
-  border-color: #f1f5f9;
+  color: var(--txt);
+  border-color: rgba(255,255,255,.08);
 }
 .modal-box .address-autocomplete-item:hover,
 .modal-box .address-autocomplete-item.active {
-  background: #f8fafc;
+  background: var(--slate-800);
 }
 
 /* PROGRESS BAR */
@@ -632,7 +640,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
 }
 .modal-box {
   position: relative;
-  background: #fff;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
   border-radius: var(--r-xl);
   padding: 28px;
   width: 90%;
@@ -640,19 +651,19 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
   max-height: 90vh;
   overflow-y: auto;
   z-index: 1;
-  color: #1e293b;
+  color: var(--txt);
   box-shadow: 0 25px 50px -12px rgba(0,0,0,.4);
 }
-.modal-box .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; color: #1e293b; }
-.modal-box .fg label { color: #475569; }
+.modal-box .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; color: var(--txt); }
+.modal-box .fg label { color: var(--txt2); }
 .modal-box .fg input, .modal-box .fg select, .modal-box .fg textarea {
-  background: #f8fafc;
-  border-color: #e2e8f0;
-  color: #1e293b;
+  background: rgba(0,0,0,.2);
+  border-color: var(--glass-border);
+  color: var(--txt);
 }
 .modal-box .fg input:focus, .modal-box .fg select:focus, .modal-box .fg textarea:focus {
   border-color: var(--purple-600);
-  box-shadow: 0 0 0 3px rgba(147,51,234,.15);
+  box-shadow: 0 0 0 3px rgba(147,51,234,.2);
 }
 
 /* ============================================================
