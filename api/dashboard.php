@@ -65,7 +65,8 @@ foreach ($contracts as $c) {
     $unpaid = [];
     for ($y=$sY, $m=$sM; $y<$nowY || ($y===$nowY && $m<=$nowM); ) {
         $key = $y . '-' . str_pad((string)$m, 2, '0', STR_PAD_LEFT);
-        if (!isset($paid[$key])) $unpaid[] = ['year'=>$y,'month'=>$m];
+        $paidAmt = isset($paid[$key]) ? (float)($paid[$key]['amount'] ?? 0) : 0;
+        if ($paidAmt < $rent) $unpaid[] = ['year'=>$y,'month'=>$m];
         if (++$m > 12) { $m=1; $y++; }
     }
 
@@ -123,7 +124,9 @@ foreach ($properties as $p) {
         } else {
             $logicalId = $contract['contracts_id'] ?? $contract['id'];
             $paid = $paymentsByContract[$logicalId][$monthKey] ?? null;
-            $isPaid = $paid && !empty($paid['payment_date']);
+            $monthRent = (float)$contract['monthly_rent'];
+            $paidAmt = $paid ? (float)($paid['amount'] ?? 0) : 0;
+            $isPaid = $paid && !empty($paid['payment_date']) && $paidAmt >= $monthRent;
             $isPast = ($year < $nowY) || ($year == $nowY && $m < $nowM);
 
             $heatmap[$propId . '_' . $monthKey] = [
