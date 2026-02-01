@@ -80,7 +80,7 @@ const PaymentsView = (() => {
     async function fillDropdowns() {
         contractsCache = await Api.crudList('contracts');
 
-        const opts = '<option value="">— Wyberte smlouvu —</option>' +
+        const opts = '<option value="">— Vyberte smlouvu —</option>' +
             contractsCache.map(c =>
                 '<option value="' + c.id + '">' +
                     UI.esc(c.tenant_name) + ' – ' + UI.esc(c.property_name) +

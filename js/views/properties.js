@@ -23,6 +23,7 @@ const PropertiesView = (() => {
                     address:        document.getElementById('prop-address').value.trim(),
                     size_m2:        document.getElementById('prop-size-m2').value || null,
                     purchase_price: document.getElementById('prop-purchase-price').value || null,
+                    purchase_date:  document.getElementById('prop-purchase-date').value || null,
                     type:           document.getElementById('prop-type').value,
                     note:           document.getElementById('prop-note').value.trim(),
                 };
@@ -37,7 +38,7 @@ const PropertiesView = (() => {
                 document.getElementById('prop-note').value            = row.note           || '';
             },
             resetForm() {
-                ['prop-name','prop-address','prop-size-m2','prop-purchase-price','prop-note'].forEach(id =>
+                ['prop-name','prop-address','prop-size-m2','prop-purchase-price','prop-purchase-date','prop-note'].forEach(id =>
                     document.getElementById(id).value = ''
                 );
                 document.getElementById('prop-type').value = 'apartment';

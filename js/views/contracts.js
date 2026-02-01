@@ -4,6 +4,93 @@ const ContractsView = (() => {
     let form   = null;
     let _cache = [];  // contracts with joined names
 
+    // ── modal: nový nájemník ────────────────────────────────────────────
+    let _tenantModalInited = false;
+    function initTenantModal() {
+        if (_tenantModalInited) return;
+        _tenantModalInited = true;
+        const btnAdd = document.getElementById('btn-con-add-tenant');
+        const btnSave = document.getElementById('btn-modal-tenant-save');
+        const btnAres = document.getElementById('modal-tenant-ares-btn');
+        const typeEl = document.getElementById('modal-tenant-type');
+        const alertEl = document.getElementById('modal-tenant-alert');
+
+        if (!btnAdd) return;
+
+        btnAdd.addEventListener('click', () => {
+            ['modal-tenant-name','modal-tenant-email','modal-tenant-phone','modal-tenant-address','modal-tenant-ic','modal-tenant-dic','modal-tenant-note'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            if (typeEl) typeEl.value = 'person';
+            if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
+            toggleAresButton();
+            UI.modalOpen('modal-tenant');
+        });
+
+        function toggleAresButton() {
+            if (btnAres) btnAres.style.display = (typeEl && typeEl.value === 'company') ? '' : 'none';
+        }
+        if (typeEl) typeEl.addEventListener('change', toggleAresButton);
+        toggleAresButton();
+
+        if (btnAres) btnAres.addEventListener('click', async () => {
+            const ic = (document.getElementById('modal-tenant-ic')?.value || '').replace(/\D/g, '');
+            if (ic.length !== 8) {
+                UI.alertShow('modal-tenant-alert', 'Zadejte platné IČ (8 číslic).', 'err');
+                return;
+            }
+            btnAres.disabled = true;
+            btnAres.textContent = '…';
+            try {
+                const data = await Api.aresLookup(ic);
+                const nameEl = document.getElementById('modal-tenant-name');
+                const addrEl = document.getElementById('modal-tenant-address');
+                const icEl = document.getElementById('modal-tenant-ic');
+                const dicEl = document.getElementById('modal-tenant-dic');
+                if (nameEl) nameEl.value = data.name || '';
+                if (addrEl) addrEl.value = data.address || '';
+                if (icEl) icEl.value = data.ic || ic;
+                if (dicEl) dicEl.value = data.dic || '';
+                UI.alertShow('modal-tenant-alert', 'Data načtena z ARES.', 'ok');
+            } catch (e) {
+                UI.alertShow('modal-tenant-alert', e.message || 'ARES nedostupný.', 'err');
+            } finally {
+                btnAres.disabled = false;
+                btnAres.textContent = 'Načíst z ARES';
+            }
+        });
+
+        if (btnSave) btnSave.addEventListener('click', async () => {
+            const name = (document.getElementById('modal-tenant-name')?.value || '').trim();
+            if (!name) {
+                UI.alertShow('modal-tenant-alert', 'Jméno / Název je povinné.', 'err');
+                return;
+            }
+            btnSave.disabled = true;
+            try {
+                const data = await Api.crudAdd('tenants', {
+                    name:    name,
+                    type:   (typeEl?.value) || 'person',
+                    email:  (document.getElementById('modal-tenant-email')?.value || '').trim(),
+                    phone:  (document.getElementById('modal-tenant-phone')?.value || '').trim(),
+                    address: (document.getElementById('modal-tenant-address')?.value || '').trim(),
+                    ic:     (document.getElementById('modal-tenant-ic')?.value || '').trim() || null,
+                    dic:    (document.getElementById('modal-tenant-dic')?.value || '').trim() || null,
+                    note:   (document.getElementById('modal-tenant-note')?.value || '').trim(),
+                });
+                await fillDropdowns();
+                const tenantSel = document.getElementById('con-tenant');
+                if (tenantSel) tenantSel.value = data.id;
+                UI.modalClose('modal-tenant');
+            } catch (e) {
+                UI.alertShow('modal-tenant-alert', e.message || 'Chyba při ukládání.', 'err');
+            } finally {
+                btnSave.disabled = false;
+            }
+        });
+    }
+
     function initForm() {
         if (form) return;
         form = UI.createCrudForm({
