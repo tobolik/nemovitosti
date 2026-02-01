@@ -101,6 +101,15 @@ const Api = (() => {
         return post('/api/users.php', { action: 'change_password', id, password });
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    // ARES – načtení firmy podle IČ
+    // ════════════════════════════════════════════════════════════════════
+    async function aresLookup(ico) {
+        const icoClean = String(ico).replace(/\D/g, '');
+        if (icoClean.length !== 8) throw new Error('IČ musí mít 8 číslic.');
+        return get('/api/ares-lookup.php?ico=' + encodeURIComponent(icoClean));
+    }
+
     // ── public interface ────────────────────────────────────────────────
     return {
         setCsrf, getCsrf,
