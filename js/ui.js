@@ -21,6 +21,19 @@ const UI = (() => {
         return d.toLocaleDateString('cs-CZ');
     }
 
+    /** Ověří, zda řetězec YYYY-MM-DD představuje platné datum (např. 31.2. odmítne). */
+    function isDateValid(str) {
+        if (!str || typeof str !== 'string') return false;
+        const m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return false;
+        const y = parseInt(m[1], 10);
+        const mo = parseInt(m[2], 10);
+        const d = parseInt(m[3], 10);
+        if (mo < 1 || mo > 12) return false;
+        const lastDay = new Date(y, mo, 0).getDate();
+        return d >= 1 && d <= lastDay;
+    }
+
     const MONTHS = ['','Leden','Únor','Březen','Duben','Květen','Červen',
                         'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
 
