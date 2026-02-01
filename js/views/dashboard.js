@@ -407,10 +407,17 @@ async function openPaymentModal(el) {
                     await Api.crudAdd('payments', payData);
                 }
             } else {
-                const platLabel = forMonth.length === 1 ? '1 platba' : (forMonth.length >= 2 && forMonth.length <= 4 ? forMonth.length + ' platby' : forMonth.length + ' plateb');
-                if (!confirm('Opravdu smazat všechny platby za tento měsíc? (' + platLabel + ')')) return;
-                for (const p of forMonth) {
-                    await Api.crudDelete('payments', p.id);
+                if (batchId) {
+                    const batchCount = payments.filter(x => x.payment_batch_id === batchId).length;
+                    const msg = batchCount === 1 ? 'Opravdu smazat tuto platbu?' : 'Opravdu smazat celou dávku? (' + batchCount + ' plateb)';
+                    if (!confirm(msg)) return;
+                    await Api.paymentsDeleteBatch(batchId);
+                } else {
+                    const platLabel = forMonth.length === 1 ? '1 platba' : (forMonth.length >= 2 && forMonth.length <= 4 ? forMonth.length + ' platby' : forMonth.length + ' plateb');
+                    if (!confirm('Opravdu smazat všechny platby za tento měsíc? (' + platLabel + ')')) return;
+                    for (const p of forMonth) {
+                        await Api.crudDelete('payments', p.id);
+                    }
                 }
             }
         } catch (e) {
