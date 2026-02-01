@@ -15,6 +15,8 @@ const PropertiesView = (() => {
             saveId:     'btn-prop-save',
             cancelId:   'btn-prop-cancel',
             editIdField:'prop-edit-id',
+            formCardId: 'prop-form-card',
+            addBtnId:   'btn-prop-add',
             addLabel:   'Přidat nemovitost',
             editLabel:  'Uložit změny',
             successAddMsg: 'Nemovitost byla úspěšně přidána.',
