@@ -6,7 +6,17 @@ alwaysApply: false
 
 # Nové tabulky – soft-update logika
 
-Při vytváření nových tabulek v tomto projektu **vždy** použij standardní soft-update logiku:
+Při vytváření nových tabulek v tomto projektu **vždy** použij standardní soft-update logiku.
+
+## POVINNÉ: soft* metody v crud.php
+
+**Nikdy nepoužívat přímý INSERT/UPDATE/DELETE** pro tabulky s soft-update logikou. Vždy:
+- **Přidání:** `softInsert($table, $data)` – automaticky doplní valid_from, valid_to, valid_user_from, valid_user_to, {tabulka}_id
+- **Úprava:** `softUpdate($table, $id, $data)` – invaliduje starý řádek, vytvoří nový
+- **Smazání:** `softDelete($table, $id)` – nastaví valid_to
+- **Čtení:** `findActive()`, `findAllActive()` – filtruje WHERE valid_to IS NULL
+
+Přímý INSERT bez softInsert = chybí bank_accounts_id, valid_user_from, valid_from atd.
 
 ## Sloupce v každé nové tabulce
 
@@ -23,7 +33,7 @@ Při vytváření nových tabulek v tomto projektu **vždy** použij standardní
 
 ## API (crud.php)
 
-- Používat `softInsert`, `softUpdate`, `softDelete` místo přímého INSERT/UPDATE/DELETE
+- **Vždy** používat `softInsert`, `softUpdate`, `softDelete` – nikdy přímý INSERT/UPDATE/DELETE
 - Používat `findActive`, `findAllActive` pro čtení (WHERE valid_to IS NULL)
 - Přidat tabulku do `$FIELDS`, `$REQUIRED`, `$FIELD_LABELS`
 

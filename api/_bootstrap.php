@@ -124,9 +124,9 @@ function softUpdate(string $tbl, int $id, array $new): int {
 
     $uid = $_SESSION['uid'] ?? null;
 
-    // zavři všechny aktivní verze tohoto logického záznamu
-    db()->prepare("UPDATE `$tbl` SET valid_to=?, valid_user_to=? WHERE `$lidCol`=? AND valid_to IS NULL")
-        ->execute([$now, $uid, $logicalId]);
+    // zavři všechny aktivní verze tohoto logického záznamu (včetně řádku s bank_accounts_id=NULL)
+    db()->prepare("UPDATE `$tbl` SET valid_to=?, valid_user_to=? WHERE (`$lidCol`=? OR (id=? AND `$lidCol` IS NULL)) AND valid_to IS NULL")
+        ->execute([$now, $uid, $logicalId, $id]);
 
     // vloží nový řádek se stejným logickým ID
     unset($cur['id'], $cur['valid_from'], $cur['valid_to'], $cur['valid_user_from'], $cur['valid_user_to']);

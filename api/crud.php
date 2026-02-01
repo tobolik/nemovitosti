@@ -189,16 +189,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             jsonOk(['ids' => $ids, 'count' => count($ids)], 201);
         } elseif ($table === 'bank_accounts') {
             if (isset($data['is_primary']) && (int)$data['is_primary'] === 1) {
-                db()->exec("UPDATE bank_accounts SET is_primary=0");
+                db()->prepare("UPDATE bank_accounts SET is_primary=0 WHERE valid_to IS NULL")->execute();
             }
             $data['is_primary'] = isset($data['is_primary']) ? (int)$data['is_primary'] : 0;
             $data['sort_order'] = isset($data['sort_order']) ? (int)$data['sort_order'] : 0;
-            $cols = implode(', ', array_keys($data));
-            $ph = implode(', ', array_fill(0, count($data), '?'));
-            db()->prepare("INSERT INTO bank_accounts ($cols) VALUES ($ph)")->execute(array_values($data));
-            $newId = (int) db()->lastInsertId();
-            $row = db()->query("SELECT * FROM bank_accounts WHERE id=$newId")->fetch();
-            jsonOk($row, 201);
+            $newId = softInsert($table, $data);
+            jsonOk(findActive($table, $newId), 201);
         } else {
             $newId = softInsert($table, $data);
             jsonOk(findActive($table, $newId), 201);
