@@ -33,10 +33,14 @@ V repozitáři: **Settings → Secrets and variables → Actions** přidejte:
 | `FTP_USERNAME` | FTP uživatel |
 | `FTP_PASSWORD` | FTP heslo |
 | `FTP_SERVER_DIR` | Cílový adresář na serveru (např. `public_html/` nebo `www/nemovitosti/`) – **musí končit lomítkem** |
-| `SITE_URL` | (volitelné) URL aplikace (např. `https://nemovitosti.tobolik.cz`) – pro automatickou SQL migraci po deployi |
-| `MIGRATE_KEY` | (volitelné) Tajný klíč pro `api/migrate.php` – stejná hodnota jako `MIGRATE_KEY` v `config.php` |
+| `SITE_URL` | (volitelné) URL aplikace (např. `https://nemovitosti.tobolik.cz`) – pro automatickou SQL migraci |
+| `MIGRATE_KEY` | (volitelné) Tajný klíč pro `api/migrate.php` – stejná hodnota jako v `config.php` |
 
-Pokud jsou nastaveny `SITE_URL` i `MIGRATE_KEY`, po každém deployi se automaticky spustí SQL migrace (`schema_migration.sql`).
+**Variables** (Settings → Secrets and variables → Actions → Variables):
+
+| Variable | Popis |
+|----------|-------|
+| `RUN_MIGRATION` | Nastavte na `true`, pokud chcete po deployi spouštět SQL migraci. Vyžaduje také Secrets `SITE_URL` a `MIGRATE_KEY`. |
 
 ### První nasazení
 

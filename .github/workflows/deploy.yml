@@ -6,6 +6,7 @@
 #   FTP_SERVER_DIR - cílový adresář (např. public_html/) - nutné končit lomítkem
 #   SITE_URL      - URL aplikace (např. https://nemovitosti.tobolik.cz) – pro migraci
 #   MIGRATE_KEY   - tajný klíč pro api/migrate.php (stejný jako v config.php)
+# Variables: RUN_MIGRATION = 'true' – zapne spuštění migrace po deployi
 
 name: Deploy na FTP
 
@@ -37,7 +38,7 @@ jobs:
             **/.gitignore
 
       - name: Spustit SQL migraci
-        if: success() && secrets.SITE_URL != '' && secrets.MIGRATE_KEY != ''
+        if: success() && vars.RUN_MIGRATION == 'true'
         run: |
           URL="${{ secrets.SITE_URL }}/api/migrate.php?key=${{ secrets.MIGRATE_KEY }}"
           RESP=$(curl -s -w "\n%{http_code}" "$URL")
