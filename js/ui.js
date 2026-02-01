@@ -109,8 +109,11 @@ const UI = (() => {
         const addBtn   = cfg.addBtnId   ? document.getElementById(cfg.addBtnId)   : null;
 
         function showForm() {
-            if (formCard) formCard.style.display = '';
-            if (addBtn)   addBtn.style.display = 'none';
+            if (formCard) {
+                formCard.style.display = '';
+                formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            if (addBtn) addBtn.style.display = 'none';
         }
         function hideForm() {
             if (formCard) formCard.style.display = 'none';

@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS properties (
     purchase_price DECIMAL(12,2) NULL,
     purchase_date  DATE NULL,
     purchase_contract_url VARCHAR(500) NULL,
-    type           ENUM('apartment','house','commercial','land','garage') NOT NULL DEFAULT 'apartment',
+    type           ENUM('apartment','garage','house','commercial','land') NOT NULL DEFAULT 'apartment',
     note           TEXT NULL,
     valid_from      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     valid_to        DATETIME NULL DEFAULT NULL,
