@@ -13,9 +13,9 @@ const App = (() => {
     }
 
     // ── navigation ──────────────────────────────────────────────────────
-    function navigate(viewName) {
+    function navigate(viewName, forceReload = false) {
         if (!views[viewName]) return;
-        if (currentView === viewName) return;
+        if (!forceReload && currentView === viewName) return;
         currentView = viewName;
 
         // nav links highlighting

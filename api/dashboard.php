@@ -22,11 +22,17 @@ $contracts = db()->query("
     ORDER BY t.name ASC
 ")->fetchAll();
 
-// Payments per contract
+// Payments per contract – platby mohou mít contract_id na starší verzi smlouvy (soft-update)
 $paymentsByContract = [];
-$s = db()->prepare("SELECT period_year, period_month, amount, payment_date FROM payments WHERE contract_id=? AND valid_to IS NULL");
+$s = db()->prepare("
+    SELECT p.period_year, p.period_month, p.amount, p.payment_date
+    FROM payments p
+    JOIN contracts c ON c.id = p.contract_id AND c.contracts_id = ?
+    WHERE p.valid_to IS NULL
+");
 foreach ($contracts as $c) {
-    $s->execute([$c['id']]);
+    $logicalId = $c['contracts_id'] ?? $c['id'];
+    $s->execute([$logicalId]);
     $paymentsByContract[$c['id']] = [];
     foreach ($s->fetchAll() as $row) {
         $key = $row['period_year'] . '-' . str_pad((string)$row['period_month'], 2, '0', STR_PAD_LEFT);

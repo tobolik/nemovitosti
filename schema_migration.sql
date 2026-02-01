@@ -45,16 +45,14 @@ CREATE INDEX idx_contracts_id ON contracts (contracts_id, valid_to);
 CREATE INDEX idx_payments_id ON payments (payments_id, valid_to);
 
 -- Audit: kdo změnu provedl (valid_user_from = kdo vytvořil verzi, valid_user_to = kdo ji uzavřel)
--- Oba sloupce v jednom ALTER – valid_user_from se vytvoří před valid_user_to
-ALTER TABLE users ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to, ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
-ALTER TABLE properties ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to, ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
-ALTER TABLE tenants ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to, ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
-ALTER TABLE contracts ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to, ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
-ALTER TABLE payments ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to, ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
-
--- Fallback: valid_user_from chybí (částečná migrace) – doplnit mezi valid_to a valid_user_to
+-- Samostatné ALTER – pokud jeden sloupec existuje, druhý se přidá (migrace skočí Duplicate column)
 ALTER TABLE users ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE users ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
 ALTER TABLE properties ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE properties ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
 ALTER TABLE tenants ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE tenants ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
 ALTER TABLE contracts ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE contracts ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
 ALTER TABLE payments ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE payments ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
