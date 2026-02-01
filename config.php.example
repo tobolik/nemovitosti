@@ -12,3 +12,6 @@ define('DB_PASS', 'YOUR_PASS');   // ← změňte
 
 define('SESSION_NAME', 'nemov');
 define('SESSION_LIFE',  3600);
+
+// Pro ladění 500 chyb: nastavte true, uvidíte skutečnou chybu v API odpovědi
+define('DEBUG', false);

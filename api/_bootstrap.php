@@ -7,7 +7,8 @@ set_exception_handler(function(Throwable $e) {
     if (ob_get_level()) ob_end_clean();
     http_response_code(500);
     header('Content-Type: application/json');
-    echo json_encode(['ok'=>false,'error'=>'Chyba serveru.'], JSON_UNESCAPED_UNICODE);
+    $msg = (defined('DEBUG') && DEBUG) ? $e->getMessage() : 'Chyba serveru.';
+    echo json_encode(['ok'=>false,'error'=>$msg], JSON_UNESCAPED_UNICODE);
     exit;
 });
 
