@@ -175,8 +175,8 @@ function openPaymentModal(el) {
     paid.onchange = () => { dateWrap.style.display = paid.checked ? 'block' : 'none'; };
 
     document.getElementById('btn-pay-modal-save').onclick = async () => {
+        const [year, month] = monthKey.split('-');
         try {
-            const [year, month] = monthKey.split('-');
             if (paid.checked) {
                 const dateVal = dateInput.value;
                 if (!dateVal || !UI.isDateValid(dateVal)) {
@@ -202,10 +202,11 @@ function openPaymentModal(el) {
                 const p = payments.find(x => String(x.period_year) === year && String(x.period_month) === month);
                 if (p) await Api.crudDelete('payments', p.id);
             }
-            UI.modalClose('modal-payment');
-            await loadDashboard(parseInt(year, 10));
         } catch (e) {
             alert(e.message);
+        } finally {
+            UI.modalClose('modal-payment');
+            await loadDashboard(parseInt(year, 10));
         }
     };
 
