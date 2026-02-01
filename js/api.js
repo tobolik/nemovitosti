@@ -11,7 +11,16 @@ const Api = (() => {
             headers['X-Csrf-Token'] = _csrf;
         }
         const res = await fetch(url, { ...opts, headers });
-        const json = await res.json();
+        const text = await res.text();
+        let json;
+        try {
+            json = text ? JSON.parse(text) : {};
+        } catch (e) {
+            const hint = text.includes('config.php') || text.includes('Fatal error')
+                ? ' Zkontrolujte, zda existuje config.php a databáze je dostupná.'
+                : '';
+            throw new Error('Server vrátil neplatnou odpověď.' + hint);
+        }
         if (!json.ok) throw new Error(json.error || 'Chyba serveru');
         return json.data;
     }

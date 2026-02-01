@@ -10,8 +10,8 @@ $pdo = new PDO(
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
 
-$email = 'admin@example.com';
-$pass  = 'Admin123!';
+$email = 'honza@tobolik.cz';
+$pass  = 'honzaq4e';
 
 $s = $pdo->prepare("SELECT 1 FROM users WHERE email=? AND valid_to IS NULL");
 $s->execute([$email]);
