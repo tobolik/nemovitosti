@@ -49,6 +49,11 @@ const App = (() => {
         document.getElementById('nav-users').style.display = user.role === 'admin' ? '' : 'none';
 
         hideLogin();
+        // Našeptávač adres
+        if (typeof AddressAutocomplete !== 'undefined') {
+            AddressAutocomplete.create('prop-address');
+            AddressAutocomplete.create('ten-address');
+        }
         // Sidebar: collapsed on mobile
         const sb = document.getElementById('sidebar');
         if (window.innerWidth <= 768) sb.classList.add('collapsed');

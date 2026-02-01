@@ -468,6 +468,48 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .payment-checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; background: #dcfce7; padding: 12px; border-radius: var(--r); font-weight: 600; color: #166534; }
 .payment-checkbox-label input { width: 20px; height: 20px; accent-color: #16a34a; }
 
+/* ADDRESS AUTOCOMPLETE */
+.address-autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r);
+  margin-top: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,.3);
+}
+.address-autocomplete-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: .88rem;
+  color: var(--txt);
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  transition: background .12s;
+}
+.address-autocomplete-item:last-child { border-bottom: none; }
+.address-autocomplete-item:hover,
+.address-autocomplete-item.active {
+  background: var(--glass-hover);
+}
+.modal-box .address-autocomplete {
+  background: #fff;
+  border-color: #e2e8f0;
+  box-shadow: 0 8px 24px rgba(0,0,0,.15);
+}
+.modal-box .address-autocomplete-item {
+  color: #1e293b;
+  border-color: #f1f5f9;
+}
+.modal-box .address-autocomplete-item:hover,
+.modal-box .address-autocomplete-item.active {
+  background: #f8fafc;
+}
+
 /* PROGRESS BAR */
 .prog-wrap { display: flex; flex-direction: column; gap: 5px; }
 .prog-bar { height: 5px; background: rgba(0,0,0,.2); border-radius: 3px; overflow: hidden; }

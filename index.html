@@ -96,7 +96,7 @@
               </select>
             </div>
           </div>
-          <div class="fg"><label>Adresa *</label><input type="text" id="prop-address"></div>
+          <div class="fg"><label>Adresa *</label><input type="text" id="prop-address" placeholder="Začněte psát ulici, PSČ nebo město..." autocomplete="off"></div>
           <div class="form-row">
             <div class="fg"><label>Výměra (m²)</label><input type="number" id="prop-size-m2" step="0.01" min="0" placeholder="55"></div>
             <div class="fg"><label>Kupní cena (Kč)</label><input type="number" id="prop-purchase-price" step="0.01" min="0" placeholder="2500000"></div>
@@ -131,7 +131,7 @@
             <div class="fg"><label>E-mail</label><input type="email" id="ten-email"></div>
             <div class="fg"><label>Telefon</label><input type="tel" id="ten-phone"></div>
           </div>
-          <div class="fg"><label>Adresa</label><input type="text" id="ten-address"></div>
+          <div class="fg"><label>Adresa</label><input type="text" id="ten-address" placeholder="Začněte psát ulici, PSČ nebo město..." autocomplete="off"></div>
           <div class="form-row">
             <div class="fg"><label>IČO</label><input type="text" id="ten-ic" placeholder="12345678"></div>
             <div class="fg"><label>DIČ</label><input type="text" id="ten-dic" placeholder="CZ12345678"></div>
@@ -242,7 +242,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v0.10.0</span>
+    <span class="footer-version">v0.11.0</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -308,6 +308,7 @@
      ═══════════════════════════════════════════════════════════ -->
 <script src="js/api.js"></script>       <!-- 1) API wrapper (no deps) -->
 <script src="js/ui.js"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js"></script>
 <script src="js/app.js"></script>       <!-- 3) Router + boot (uses Api, UI) -->
 <script src="js/views/dashboard.js"></script>   <!-- 4) Views (use App, Api, UI) -->
 <script src="js/views/properties.js"></script>

@@ -15,3 +15,7 @@ define('SESSION_LIFE',  3600);
 
 // Pro ladění 500 chyb: nastavte true, uvidíte skutečnou chybu v API odpovědi
 define('DEBUG', false);
+
+// Našeptávač adres: nominatim (default, free) | mapy (vyžaduje ADDRESS_API_KEY)
+// define('ADDRESS_API_PROVIDER', 'nominatim');
+// define('ADDRESS_API_KEY', '');  // pro Mapy.cz: https://developer.mapy.com/
