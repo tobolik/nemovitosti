@@ -201,6 +201,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Platby: hromadná úprava dat/method/account pro celou dávku (+ volitelně částka pro jeden záznam)
+    if ($table === 'payments' && $action === 'editBatch') {
+        $batchId = trim($b['payment_batch_id'] ?? '');
+        if ($batchId === '') jsonErr('Chybí payment_batch_id.');
+        $paymentDate = $b['payment_date'] ?? '';
+        $e = validateDateField($paymentDate, 'Datum platby');
+        if ($e) jsonErr($e);
+        $paymentMethod = in_array($b['payment_method'] ?? '', ['account','cash']) ? $b['payment_method'] : null;
+        $accountNumber = isset($b['account_number']) ? (trim($b['account_number']) ?: null) : null;
+        $amountOverrideId = isset($b['amount_override_id']) ? (int)$b['amount_override_id'] : 0;
+        $amountOverrideValue = isset($b['amount_override_value']) ? (float)$b['amount_override_value'] : null;
+
+        $s = db()->prepare("SELECT id FROM payments WHERE payment_batch_id=? AND valid_to IS NULL");
+        $s->execute([$batchId]);
+        $ids = array_column($s->fetchAll(), 'id');
+        $baseData = ['payment_date' => $paymentDate, 'payment_method' => $paymentMethod, 'account_number' => $accountNumber];
+        foreach ($ids as $pid) {
+            $updateData = $baseData;
+            if ($amountOverrideId > 0 && (int)$pid === $amountOverrideId && $amountOverrideValue !== null) {
+                $updateData['amount'] = $amountOverrideValue;
+            }
+            softUpdate($table, (int)$pid, $updateData);
+        }
+        jsonOk(['updated' => count($ids)]);
+    }
+
     if ($action === 'edit') {
         $id = (int)($b['id'] ?? 0);
         if (!$id) jsonErr('Chybí ID.');

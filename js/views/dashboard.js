@@ -180,6 +180,7 @@ async function openPaymentModal(el) {
     const accountWrap = document.getElementById('pay-modal-account-wrap');
     const accountSelect = document.getElementById('pay-modal-account');
     const existingWrap = document.getElementById('pay-modal-existing');
+    const batchHintEl = document.getElementById('pay-modal-batch-hint');
     const editIdEl = document.getElementById('pay-modal-edit-id');
 
     const bankAccounts = await Api.crudList('bank_accounts');
@@ -195,6 +196,7 @@ async function openPaymentModal(el) {
     document.getElementById('pay-modal-contract-id').value = contractId;
     document.getElementById('pay-modal-month-key').value = monthKey;
     editIdEl.value = '';
+    batchHintEl.style.display = 'none';
 
     let infoHtml = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
         '<div><strong>Nájemce:</strong> ' + UI.esc(tenantName) + '</div>' +
@@ -228,9 +230,10 @@ async function openPaymentModal(el) {
             const dt = p.payment_date ? UI.fmtDate(p.payment_date) : '—';
             const method = p.payment_method || 'account';
             const acc = (p.account_number || '').replace(/"/g, '&quot;');
+            const batchTag = p.payment_batch_id ? ' <span class="tag tag-batch" title="Součást jedné platby za více měsíců">dávka</span>' : '';
             html += '<li class="pay-modal-existing-item">' +
-                '<span>' + amt + ' Kč (' + dt + ')</span> ' +
-                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + p.id + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + acc + '">Upravit</button> ' +
+                '<span>' + amt + ' Kč (' + dt + ')' + batchTag + '</span> ' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + p.id + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + acc + '" data-batch-id="' + (p.payment_batch_id || '') + '">Upravit</button> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + p.id + '">Smazat</button>' +
                 '</li>';
         });
@@ -245,6 +248,8 @@ async function openPaymentModal(el) {
         const addLink = e.target.closest('[data-action="add"]');
         if (editBtn) {
             editIdEl.value = editBtn.dataset.id;
+            editIdEl.dataset.batchId = editBtn.dataset.batchId || '';
+            editIdEl.dataset.originalAmount = editBtn.dataset.amount || '';
             amount.value = editBtn.dataset.amount || '';
             dateInput.value = editBtn.dataset.date || new Date().toISOString().slice(0, 10);
             methodSelect.value = editBtn.dataset.method === 'cash' ? 'cash' : 'account';
@@ -254,6 +259,7 @@ async function openPaymentModal(el) {
             dateWrap.style.display = 'block';
             methodWrap.style.display = 'flex';
         } else if (delBtn) {
+            if (!confirm('Opravdu smazat tuto platbu?')) return;
             try {
                 await Api.crudDelete('payments', parseInt(delBtn.dataset.id, 10));
                 payments = await Api.crudList('payments', { contracts_id: contractsId });
@@ -264,10 +270,13 @@ async function openPaymentModal(el) {
         } else if (addLink) {
             e.preventDefault();
             editIdEl.value = '';
+            delete editIdEl.dataset.batchId;
+            delete editIdEl.dataset.originalAmount;
             amount.value = remaining;
             paid.checked = false;
             dateWrap.style.display = 'none';
             methodWrap.style.display = 'none';
+            batchHintEl.style.display = 'none';
         }
     };
 
@@ -293,6 +302,7 @@ async function openPaymentModal(el) {
                     return;
                 }
                 const editId = editIdEl.value.trim();
+                const batchId = (editIdEl.dataset.batchId || '').trim();
                 const method = methodSelect.value === 'account' || methodSelect.value === 'cash' ? methodSelect.value : 'account';
                 const accountNum = method === 'account' ? (accountSelect.value || '').trim() : null;
                 const payData = {
@@ -305,11 +315,26 @@ async function openPaymentModal(el) {
                     account_number: accountNum || null,
                 };
                 if (editId) {
-                    await Api.crudEdit('payments', parseInt(editId, 10), payData);
+                    if (batchId) {
+                        const batchData = {
+                            payment_date: dateInput.value,
+                            payment_method: method,
+                            account_number: accountNum || null,
+                        };
+                        if (amt !== parseFloat(editIdEl.dataset.originalAmount || 0)) {
+                            batchData.amount_override_id = parseInt(editId, 10);
+                            batchData.amount_override_value = amt;
+                        }
+                        await Api.paymentsEditBatch(batchId, batchData);
+                    } else {
+                        await Api.crudEdit('payments', parseInt(editId, 10), payData);
+                    }
                 } else {
                     await Api.crudAdd('payments', payData);
                 }
             } else {
+                const platLabel = forMonth.length === 1 ? '1 platba' : (forMonth.length >= 2 && forMonth.length <= 4 ? forMonth.length + ' platby' : forMonth.length + ' plateb');
+                if (!confirm('Opravdu smazat všechny platby za tento měsíc? (' + platLabel + ')')) return;
                 for (const p of forMonth) {
                     await Api.crudDelete('payments', p.id);
                 }

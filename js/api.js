@@ -74,6 +74,10 @@ const Api = (() => {
         return post('/api/crud.php?table=' + table, { action: 'delete', table, id });
     }
 
+    function paymentsEditBatch(batchId, data) {
+        return post('/api/crud.php?table=payments', { action: 'editBatch', table: 'payments', payment_batch_id: batchId, ...data });
+    }
+
     // ════════════════════════════════════════════════════════════════════
     // DASHBOARD
     // ════════════════════════════════════════════════════════════════════
@@ -114,7 +118,7 @@ const Api = (() => {
     return {
         setCsrf, getCsrf,
         authCheck, authLogin, authLogout,
-        crudList, crudAdd, crudEdit, crudDelete,
+        crudList, crudAdd, crudEdit, crudDelete, paymentsEditBatch,
         dashboardLoad,
         usersList, usersAdd, usersDelete, usersChangePassword,
         aresLookup,
