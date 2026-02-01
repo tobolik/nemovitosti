@@ -72,16 +72,20 @@ async function loadDashboard(year) {
 
                 let cls = 'heatmap-cell ' + (cell.type || 'empty');
                 let content = '';
+                const paidAmt = cell.paid_amount ?? (cell.payment && cell.payment.amount ? cell.payment.amount : 0);
+                const remaining = cell.remaining ?? (cell.amount ? Math.max(0, cell.amount - paidAmt) : 0);
                 if (cell.type === 'empty') {
                     content = 'Volno';
                 } else if (cell.type === 'paid') {
                     content = '<span class="cell-amount">' + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-icon cell-check">✓</span>';
+                } else if (paidAmt > 0 && remaining > 0) {
+                    content = '<span class="cell-partial">' + UI.fmt(paidAmt) + ' / ' + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-remaining">zbývá ' + UI.fmt(remaining) + '</span>';
                 } else {
                     content = '<span class="cell-amount">' + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-icon cell-cross">✗</span>';
                 }
 
                 const dataAttrs = cell.type !== 'empty'
-                    ? ' data-contract-id="' + cell.contract.id + '" data-contracts-id="' + (cell.contract.contracts_id ?? cell.contract.id) + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (cell.contract.tenant_name || '').replace(/"/g, '&quot;') + '" data-paid="' + (cell.type === 'paid' ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + (cell.payment && cell.payment.amount ? cell.payment.amount : '') + '"'
+                    ? ' data-contract-id="' + cell.contract.id + '" data-contracts-id="' + (cell.contract.contracts_id ?? cell.contract.id) + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (cell.contract.tenant_name || '').replace(/"/g, '&quot;') + '" data-paid="' + (cell.type === 'paid' ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"'
                     : ' data-property-id="' + prop.id + '" data-month-key="' + monthKey + '"';
 
                 const onClick = cell.type === 'empty'
@@ -154,7 +158,8 @@ function openPaymentModal(el) {
     const tenantName = el.dataset.tenant || '';
     const isPaid = el.dataset.paid === '1';
     const paymentDate = el.dataset.paymentDate || new Date().toISOString().slice(0, 10);
-    const paymentAmount = el.dataset.paymentAmount ? parseFloat(el.dataset.paymentAmount) : amountVal;
+    const paymentAmount = el.dataset.paymentAmount ? parseFloat(el.dataset.paymentAmount) : 0;
+    const remaining = el.dataset.remaining ? parseFloat(el.dataset.remaining) : amountVal;
 
     const info = document.getElementById('pay-modal-info');
     const amount = document.getElementById('pay-modal-amount');
@@ -166,16 +171,22 @@ function openPaymentModal(el) {
     document.getElementById('pay-modal-month-key').value = monthKey;
 
     paid.checked = isPaid;
-    amount.value = isPaid ? paymentAmount : amountVal;
+    amount.value = isPaid ? amountVal : remaining;
     dateInput.value = paymentDate;
     dateWrap.style.display = isPaid ? 'block' : 'none';
 
     const [y, m] = monthKey.split('-');
     const monthName = MONTH_NAMES[parseInt(m, 10) - 1] || m;
     const propName = el.closest('tr').querySelector('.heatmap-property').textContent;
-    info.innerHTML = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
+    let infoHtml = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
         '<div><strong>Nájemce:</strong> ' + UI.esc(tenantName) + '</div>' +
         '<div><strong>Období:</strong> ' + monthName + ' ' + y + '</div>';
+    if (!isPaid && paymentAmount > 0 && remaining > 0) {
+        infoHtml += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(paymentAmount) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(remaining) + ' Kč</div>';
+    } else if (isPaid) {
+        infoHtml += '<div class="pay-modal-full"><strong>Měsíc je plně uhrazen.</strong> Zrušte zaškrtnutí pro smazání všech plateb.</div>';
+    }
+    info.innerHTML = infoHtml;
 
     paid.onchange = () => { dateWrap.style.display = paid.checked ? 'block' : 'none'; };
 
@@ -188,24 +199,24 @@ function openPaymentModal(el) {
                     alert('Zadejte platné datum platby (např. únor má max. 29 dní).');
                     return;
                 }
-                const payments = await Api.crudList('payments', { contracts_id: contractsId });
-                const existing = payments.find(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
-                const payload = {
+                const amt = parseFloat(amount.value) || 0;
+                if (amt <= 0) {
+                    alert('Zadejte kladnou částku platby.');
+                    return;
+                }
+                await Api.crudAdd('payments', {
                     contracts_id: parseInt(contractsId, 10),
                     period_year: parseInt(year, 10),
                     period_month: parseInt(month, 10),
-                    amount: parseFloat(amount.value) || amountVal,
+                    amount: amt,
                     payment_date: dateInput.value,
-                };
-                if (existing) {
-                    await Api.crudEdit('payments', existing.id, payload);
-                } else {
-                    await Api.crudAdd('payments', payload);
-                }
+                });
             } else {
                 const payments = await Api.crudList('payments', { contracts_id: contractsId });
-                const p = payments.find(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
-                if (p) await Api.crudDelete('payments', p.id);
+                const forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
+                for (const p of forMonth) {
+                    await Api.crudDelete('payments', p.id);
+                }
             }
         } catch (e) {
             alert(e.message);

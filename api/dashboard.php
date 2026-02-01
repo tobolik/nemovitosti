@@ -36,7 +36,13 @@ foreach ($contracts as $c) {
     $paymentsByContract[$logicalId] = [];
     foreach ($s->fetchAll() as $row) {
         $key = $row['period_year'] . '-' . str_pad((string)$row['period_month'], 2, '0', STR_PAD_LEFT);
-        $paymentsByContract[$logicalId][$key] = $row;
+        if (!isset($paymentsByContract[$logicalId][$key])) {
+            $paymentsByContract[$logicalId][$key] = ['amount' => 0, 'payment_date' => null];
+        }
+        $paymentsByContract[$logicalId][$key]['amount'] += (float)($row['amount'] ?? 0);
+        if (empty($paymentsByContract[$logicalId][$key]['payment_date']) && !empty($row['payment_date'])) {
+            $paymentsByContract[$logicalId][$key]['payment_date'] = $row['payment_date'];
+        }
     }
 }
 
@@ -130,11 +136,13 @@ foreach ($properties as $p) {
             $isPast = ($year < $nowY) || ($year == $nowY && $m < $nowM);
 
             $heatmap[$propId . '_' . $monthKey] = [
-                'type'     => $isPaid ? 'paid' : ($isPast ? 'overdue' : 'unpaid'),
-                'contract' => ['id'=>$logicalId, 'contracts_id'=>$logicalId, 'monthly_rent'=>(float)$contract['monthly_rent'], 'tenant_name'=>$contract['tenant_name']],
-                'monthKey' => $monthKey,
-                'amount'   => (float)$contract['monthly_rent'],
-                'payment'  => $paid ? ['amount'=>(float)$paid['amount'], 'date'=>$paid['payment_date']] : null,
+                'type'       => $isPaid ? 'paid' : ($isPast ? 'overdue' : 'unpaid'),
+                'contract'   => ['id'=>$logicalId, 'contracts_id'=>$logicalId, 'monthly_rent'=>(float)$contract['monthly_rent'], 'tenant_name'=>$contract['tenant_name']],
+                'monthKey'   => $monthKey,
+                'amount'     => (float)$contract['monthly_rent'],
+                'payment'    => $paid ? ['amount'=>(float)$paid['amount'], 'date'=>$paid['payment_date']] : null,
+                'paid_amount'=> $paidAmt,
+                'remaining'  => max(0, $monthRent - $paidAmt),
             ];
         }
     }
