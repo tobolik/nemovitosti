@@ -348,8 +348,8 @@ footer .footer-version { opacity: .8; }
 .btn-success:hover { background: var(--green-700); }
 
 .btn-ghost {
-  background: rgba(255,255,255,.08);
-  color: var(--txt2);
+  background: rgba(255,255,255,.12);
+  color: var(--txt);
   border: 1px solid var(--glass-border);
 }
 .btn-ghost:hover { background: var(--glass-hover); color: var(--txt); }
@@ -536,11 +536,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
 
 /* PROGRESS BAR */
 .prog-wrap { display: flex; flex-direction: column; gap: 5px; }
-.prog-bar { height: 5px; background: rgba(0,0,0,.2); border-radius: 3px; overflow: hidden; }
+.prog-bar { height: 6px; background: rgba(0,0,0,.3); border-radius: 3px; overflow: hidden; }
 .prog-fill { height: 100%; border-radius: 3px; transition: width .35s ease; }
 .prog-fill.ok { background: var(--green-600); }
 .prog-fill.bad { background: var(--red-600); }
-.prog-lbl { font-size: .73rem; color: var(--txt3); }
+.prog-lbl { font-size: .73rem; color: var(--txt2); }
 
 /* ============================================================
    BADGES & TAGS
@@ -554,8 +554,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
   text-transform: uppercase;
   letter-spacing: .05em;
 }
-.badge-ok { background: rgba(22,163,74,.2); color: #86efac; }
-.badge-danger { background: rgba(220,38,38,.2); color: #fca5a5; }
+.badge-ok { background: rgba(22,163,74,.35); color: #86efac; font-weight: 600; }
+.badge-danger { background: rgba(220,38,38,.4); color: #fecaca; font-weight: 600; }
 .badge-info { background: rgba(147,51,234,.2); color: var(--purple-300); }
 .badge-admin { background: rgba(253,224,71,.2); color: #fde047; }
 .badge-user { background: var(--glass-hover); color: var(--txt2); }

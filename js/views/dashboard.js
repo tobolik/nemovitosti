@@ -44,7 +44,9 @@ App.registerView('dashboard', async () => {
             opts += '<option value="' + y + '"' + (y === year ? ' selected' : '') + '>' + y + '</option>';
         }
         yearSelect.innerHTML = opts;
-        yearSelect.onchange = () => App.navigate('dashboard', true);
+        yearSelect.onchange = () => {
+            setTimeout(() => App.navigate('dashboard', true), 0);
+        };
     }
 
     // ── Heatmap ─────────────────────────────────────────────────────────
