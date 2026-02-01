@@ -3,6 +3,7 @@
 const PaymentsView = (() => {
     let form = null;
     let contractsCache = [];   // all active contracts (with names)
+    let bankAccountsCache = []; // bank accounts for select
     let filterContractId = 0;  // current filter
 
     // ── init form (once) ────────────────────────────────────────────────
@@ -38,13 +39,14 @@ const PaymentsView = (() => {
                 const methodEl = document.getElementById('pay-method');
                 const accountEl = document.getElementById('pay-account');
                 const method = methodEl.value === 'account' || methodEl.value === 'cash' ? methodEl.value : 'account';
+                const accVal = method === 'account' ? (accountEl.value || '').trim() : null;
                 const base = {
                     contracts_id: Number(document.getElementById('pay-contract').value),
                     amount:       document.getElementById('pay-amount').value,
                     payment_date: document.getElementById('pay-date').value,
                     note:         document.getElementById('pay-note').value.trim(),
                     payment_method: method,
-                    account_number: method === 'account' ? (accountEl.value || '').trim() : null,
+                    account_number: accVal || null,
                 };
                 if (bulk) {
                     base.period_year  = Number(document.getElementById('pay-year-from').value);
@@ -64,7 +66,12 @@ const PaymentsView = (() => {
                 document.getElementById('pay-amount').value   = row.amount       || '';
                 document.getElementById('pay-date').value     = row.payment_date || '';
                 document.getElementById('pay-method').value  = row.payment_method === 'cash' ? 'cash' : 'account';
-                document.getElementById('pay-account').value  = row.account_number || '';
+                const accSel = document.getElementById('pay-account');
+                const accNum = row.account_number || '';
+                if (accNum && !bankAccountsCache.some(b => b.account_number === accNum)) {
+                    accSel.appendChild(new Option(accNum, accNum));
+                }
+                accSel.value = accNum;
                 document.getElementById('pay-note').value     = row.note         || '';
                 const accWrap = document.getElementById('pay-account-wrap');
                 accWrap.style.display = row.payment_method === 'cash' ? 'none' : 'block';
@@ -75,7 +82,8 @@ const PaymentsView = (() => {
                 document.getElementById('pay-note').value     = '';
                 document.getElementById('pay-date').value     = todayISO();
                 document.getElementById('pay-method').value   = 'account';
-                document.getElementById('pay-account').value  = '';
+                const primary = bankAccountsCache.find(b => b.is_primary);
+                document.getElementById('pay-account').value = primary ? primary.account_number : '';
                 document.getElementById('pay-bulk').checked   = false;
                 document.getElementById('pay-single-row').style.display = '';
                 document.getElementById('pay-range-row').style.display = 'none';
@@ -150,9 +158,28 @@ const PaymentsView = (() => {
         return new Date().toISOString().slice(0, 10);
     }
 
+    // ── fill bank account select ───────────────────────────────────────
+    function fillBankAccountSelect(selId) {
+        const sel = document.getElementById(selId);
+        if (!sel) return;
+        const primary = bankAccountsCache.find(b => b.is_primary);
+        const defaultVal = primary ? primary.account_number : '';
+        sel.innerHTML = '<option value="">— Vyberte účet —</option>' +
+            bankAccountsCache.map(b =>
+                '<option value="' + UI.esc(b.account_number) + '"' + (b.account_number === defaultVal ? ' selected' : '') + '>' +
+                    UI.esc(b.name) + (b.account_number ? ' – ' + UI.esc(b.account_number) : '') +
+                '</option>'
+            ).join('');
+    }
+
     // ── fill contract dropdowns (form + filter) ────────────────────────
     async function fillDropdowns() {
-        contractsCache = await Api.crudList('contracts');
+        [contractsCache, bankAccountsCache] = await Promise.all([
+            Api.crudList('contracts'),
+            Api.crudList('bank_accounts'),
+        ]);
+
+        fillBankAccountSelect('pay-account');
 
         const cid = (c) => c.contracts_id ?? c.id;
         const opts = '<option value="">— Vyberte smlouvu —</option>' +

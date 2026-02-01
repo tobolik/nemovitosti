@@ -41,6 +41,7 @@ jobs:
         if: success()
         run: |
           URL="${{ secrets.SITE_URL }}/api/migrate.php?key=${{ secrets.MIGRATE_KEY }}"
+          echo "Spouštím migraci: $URL"
           RESP=$(curl -s -w "\n%{http_code}" "$URL")
           BODY=$(echo "$RESP" | head -n -1)
           CODE=$(echo "$RESP" | tail -n 1)
@@ -49,3 +50,4 @@ jobs:
             echo "::error::Migrace selhala (HTTP $CODE)"
             exit 1
           fi
+          echo "Migrace OK – nové SQL soubory z migrations/ byly aplikovány."

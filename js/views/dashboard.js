@@ -173,9 +173,19 @@ async function openPaymentModal(el) {
     const methodWrap = document.getElementById('pay-modal-method-wrap');
     const methodSelect = document.getElementById('pay-modal-method');
     const accountWrap = document.getElementById('pay-modal-account-wrap');
-    const accountInput = document.getElementById('pay-modal-account');
+    const accountSelect = document.getElementById('pay-modal-account');
     const existingWrap = document.getElementById('pay-modal-existing');
     const editIdEl = document.getElementById('pay-modal-edit-id');
+
+    const bankAccounts = await Api.crudList('bank_accounts');
+    const primaryAccount = bankAccounts.find(b => b.is_primary);
+    const defaultAccNum = primaryAccount ? primaryAccount.account_number : '';
+    accountSelect.innerHTML = '<option value="">— Vyberte účet —</option>' +
+        bankAccounts.map(b =>
+            '<option value="' + UI.esc(b.account_number || '') + '"' + (b.account_number === defaultAccNum ? ' selected' : '') + '>' +
+                UI.esc(b.name) + (b.account_number ? ' – ' + UI.esc(b.account_number) : '') +
+            '</option>'
+        ).join('');
 
     document.getElementById('pay-modal-contract-id').value = contractId;
     document.getElementById('pay-modal-month-key').value = monthKey;
@@ -278,7 +288,7 @@ async function openPaymentModal(el) {
                 }
                 const editId = editIdEl.value.trim();
                 const method = methodSelect.value === 'account' || methodSelect.value === 'cash' ? methodSelect.value : 'account';
-                const accountNum = method === 'account' ? (accountInput.value || '').trim() : null;
+                const accountNum = method === 'account' ? (accountSelect.value || '').trim() : null;
                 const payData = {
                     contracts_id: parseInt(contractsId, 10),
                     period_year: parseInt(year, 10),

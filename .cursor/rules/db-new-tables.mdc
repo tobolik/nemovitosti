@@ -1,0 +1,44 @@
+---
+description: Standardní logika pro nové DB tabulky – soft-update, valid_*, logické ID
+globs: migrations/*.sql, schema*.sql, api/crud.php
+alwaysApply: false
+---
+
+# Nové tabulky – soft-update logika
+
+Při vytváření nových tabulek v tomto projektu **vždy** použij standardní soft-update logiku:
+
+## Sloupce v každé nové tabulce
+
+1. **`{tabulka}_id`** (např. `bank_accounts_id`) – logické ID pro provázání verzí, INT UNSIGNED NULL, hned za `id`
+2. **`valid_from`** – DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+3. **`valid_to`** – DATETIME NULL DEFAULT NULL
+4. **`valid_user_from`** – INT UNSIGNED NULL
+5. **`valid_user_to`** – INT UNSIGNED NULL
+
+## Indexy
+
+- `INDEX idx_{tabulka}_id ({tabulka}_id, valid_to)`
+- `INDEX idx_v (valid_to)`
+
+## API (crud.php)
+
+- Používat `softInsert`, `softUpdate`, `softDelete` místo přímého INSERT/UPDATE/DELETE
+- Používat `findActive`, `findAllActive` pro čtení (WHERE valid_to IS NULL)
+- Přidat tabulku do `$FIELDS`, `$REQUIRED`, `$FIELD_LABELS`
+
+## Příklad migrace
+
+```sql
+CREATE TABLE IF NOT EXISTS nova_tabulka (
+    id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nova_tabulka_id  INT UNSIGNED NULL,
+    -- obchodní sloupce --
+    valid_from       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    valid_to         DATETIME NULL DEFAULT NULL,
+    valid_user_from  INT UNSIGNED NULL,
+    valid_user_to    INT UNSIGNED NULL,
+    INDEX idx_nova_tabulka_id (nova_tabulka_id, valid_to),
+    INDEX idx_v (valid_to)
+) ENGINE=InnoDB;
+```

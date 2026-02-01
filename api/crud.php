@@ -13,6 +13,7 @@ $FIELDS = [
     'tenants'    => ['name','type','email','phone','address','ic','dic','note'],
     'contracts'  => ['property_id','tenant_id','contract_start','contract_end','monthly_rent','contract_url','note'],
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','payment_batch_id','payment_method','account_number'],
+    'bank_accounts' => ['name','account_number','is_primary','sort_order'],
 ];
 
 // Povinná pole při přidávání
@@ -21,6 +22,7 @@ $REQUIRED = [
     'tenants'    => ['name'],
     'contracts'  => ['property_id','tenant_id','contract_start','monthly_rent'],
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date'],
+    'bank_accounts' => ['name','account_number'],
 ];
 
 // Lidsky čitelné názvy polí pro chybové hlášky
@@ -29,6 +31,7 @@ $FIELD_LABELS = [
     'tenants'    => ['name'=>'Jméno / Název'],
     'contracts'  => ['property_id'=>'Nemovitost','tenant_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','note'=>'Poznámka'],
     'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','payment_method'=>'Způsob platby','account_number'=>'Číslo účtu'],
+    'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu'],
 ];
 
 $table = $_GET['table'] ?? body()['table'] ?? '';
@@ -56,6 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $row = findActive($table, $id);
         if (!$row) jsonErr('Záznam neexistuje.', 404);
         jsonOk($row);
+    }
+
+    // bank_accounts: soft-update, vlastní řazení (primární první)
+    if ($table === 'bank_accounts') {
+        jsonOk(db()->query("SELECT * FROM bank_accounts WHERE valid_to IS NULL ORDER BY is_primary DESC, sort_order ASC, id ASC")->fetchAll());
     }
 
     // Joined queries pro přehledněji zobrazené lists
@@ -179,6 +187,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (++$m > 12) { $m = 1; $y++; }
             }
             jsonOk(['ids' => $ids, 'count' => count($ids)], 201);
+        } elseif ($table === 'bank_accounts') {
+            if (isset($data['is_primary']) && (int)$data['is_primary'] === 1) {
+                db()->exec("UPDATE bank_accounts SET is_primary=0");
+            }
+            $data['is_primary'] = isset($data['is_primary']) ? (int)$data['is_primary'] : 0;
+            $data['sort_order'] = isset($data['sort_order']) ? (int)$data['sort_order'] : 0;
+            $cols = implode(', ', array_keys($data));
+            $ph = implode(', ', array_fill(0, count($data), '?'));
+            db()->prepare("INSERT INTO bank_accounts ($cols) VALUES ($ph)")->execute(array_values($data));
+            $newId = (int) db()->lastInsertId();
+            $row = db()->query("SELECT * FROM bank_accounts WHERE id=$newId")->fetch();
+            jsonOk($row, 201);
         } else {
             $newId = softInsert($table, $data);
             jsonOk(findActive($table, $newId), 201);
@@ -194,14 +214,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 jsonErr("Vyplňte pole: $label");
             }
         }
-        $newId = softUpdate($table, $id, $data);
-        jsonOk(findActive($table, $newId));
+        if ($table === 'bank_accounts') {
+            if (isset($data['is_primary']) && (int)$data['is_primary'] === 1) {
+                db()->prepare("UPDATE bank_accounts SET is_primary=0 WHERE valid_to IS NULL")->execute();
+            }
+            $newId = softUpdate($table, $id, $data);
+            jsonOk(findActive($table, $newId));
+        } else {
+            $newId = softUpdate($table, $id, $data);
+            jsonOk(findActive($table, $newId));
+        }
     }
 
     if ($action === 'delete') {
         $id = (int)($b['id'] ?? 0);
         if (!$id) jsonErr('Chybí ID.');
-        softDelete($table, $id);
+        if ($table === 'bank_accounts') {
+            softDelete($table, $id);
+        } else {
+            softDelete($table, $id);
+        }
         jsonOk(['deleted'=>$id]);
     }
 

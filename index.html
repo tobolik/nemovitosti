@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=0.14.25">
+<link rel="stylesheet" href="css/style.css?v=0.14.26">
 </head>
 <body>
 
@@ -52,6 +52,7 @@
         <button class="nav-link" data-view="tenants"><span class="icon">👤</span> Nájemníci</button>
         <button class="nav-link" data-view="contracts"><span class="icon">📄</span> Smlouvy</button>
         <button class="nav-link" data-view="payments"><span class="icon">💰</span> Platby</button>
+        <button class="nav-link" data-view="bank_accounts"><span class="icon">🏦</span> Bankovní účty</button>
         <button class="nav-link" data-view="users" id="nav-users" style="display:none"><span class="icon">⚙</span> Uživatelé</button>
       </nav>
       <div class="sidebar-footer">
@@ -248,6 +249,36 @@
         <div id="pay-table"></div>
       </div>
 
+      <!-- ═══ BANK ACCOUNTS ═══ -->
+      <div class="view" id="view-bank_accounts">
+        <div class="page-title">Bankovní účty</div>
+        <p class="text-muted">Účty pro výběr při platbách. Primární účet bude předvyplněn.</p>
+        <div class="list-actions" id="bank-list-actions"><button type="button" class="btn btn-pri" id="btn-bank-add">+ Přidat účet</button></div>
+        <div class="card" id="bank-form-card" style="display:none">
+          <div class="card-title" id="bank-form-title">Přidat bankovní účet</div>
+          <div class="alert" id="bank-alert"></div>
+          <input type="hidden" id="bank-edit-id">
+          <div class="form-row">
+            <div class="fg"><label>Název *</label><input type="text" id="bank-name" placeholder="např. Hlavní účet"></div>
+            <div class="fg"><label>Číslo účtu *</label><input type="text" id="bank-account" placeholder="123456789/0800"></div>
+          </div>
+          <div class="form-row">
+            <div class="fg">
+              <label class="checkbox-label">
+                <input type="checkbox" id="bank-primary">
+                <span>Primární účet (předvyplněn při platbách)</span>
+              </label>
+            </div>
+            <div class="fg"><label>Pořadí</label><input type="number" id="bank-sort" min="0" value="0"></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-pri" id="btn-bank-save" data-save-btn>Přidat účet</button>
+            <button class="btn btn-ghost" id="btn-bank-cancel" style="display:none">Zrušit</button>
+          </div>
+        </div>
+        <div id="bank-table"></div>
+      </div>
+
       <!-- ═══ USERS ═══ -->
       <div class="view" id="view-users">
         <div class="page-title">Správa uživatelů</div>
@@ -279,7 +310,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v0.14.25</span>
+    <span class="footer-version">v0.14.26</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -321,8 +352,8 @@
           </select>
         </div>
         <div class="fg" id="pay-modal-account-wrap">
-          <label>Číslo účtu</label>
-          <input type="text" id="pay-modal-account" placeholder="např. 123456789/0800">
+          <label>Bankovní účet</label>
+          <select id="pay-modal-account"><option value="">— Vyberte účet —</option></select>
         </div>
       </div>
     </div>
@@ -399,15 +430,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=0.14.25"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=0.14.25"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=0.14.25"></script>
-<script src="js/app.js?v=0.14.25"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=0.14.25"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=0.14.25"></script>
-<script src="js/views/tenants.js?v=0.14.25"></script>
-<script src="js/views/contracts.js?v=0.14.25"></script>
-<script src="js/views/payments.js?v=0.14.25"></script>
-<script src="js/views/users.js?v=0.14.25"></script>
+<script src="js/api.js?v=0.14.26"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=0.14.26"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=0.14.26"></script>
+<script src="js/app.js?v=0.14.26"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=0.14.26"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=0.14.26"></script>
+<script src="js/views/tenants.js?v=0.14.26"></script>
+<script src="js/views/contracts.js?v=0.14.26"></script>
+<script src="js/views/payments.js?v=0.14.26"></script>
+<script src="js/views/bank_accounts.js?v=0.14.26"></script>
+<script src="js/views/users.js?v=0.14.26"></script>
 </body>
 </html>

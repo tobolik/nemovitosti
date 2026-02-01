@@ -244,6 +244,7 @@ button, select, input, textarea { font-family: var(--font-ui); }
   color: var(--txt);
   margin-bottom: 24px;
 }
+.text-muted { color: var(--txt3); font-size: .9rem; margin-bottom: 16px; }
 
 /* ── FOOTER ───────────────────────────────────────────────── */
 footer {
