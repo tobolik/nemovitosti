@@ -19,6 +19,12 @@ const PropertiesView = (() => {
             editLabel:  'Uložit změny',
             successAddMsg: 'Nemovitost byla úspěšně přidána.',
             successEditMsg: 'Nemovitost byla úspěšně aktualizována.',
+            validate(values) {
+                if (values.purchase_date && !UI.isDateValid(values.purchase_date)) {
+                    return 'Datum koupě: zadejte platné datum (např. únor má max. 29 dní).';
+                }
+                return null;
+            },
             getValues() {
                 return {
                     name:           document.getElementById('prop-name').value.trim(),

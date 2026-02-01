@@ -1,0 +1,12 @@
+---
+description: KRITICKÉ – při každé změně kódu zvýšit verzi v index.html
+alwaysApply: true
+---
+
+# Verze aplikace – NIKDY NEZAPOMENOUT
+
+Při každé úpravě kódu aplikace (nové funkce, opravy bugů, změny UI) **vždy** zvýšit verzi v `index.html`.
+
+- Verze je v patičce: `<span class="footer-version">v0.14.5</span>`
+- Formát: `v0.MAJOR.MINOR` – při změně zvyš MINOR (např. v0.14.5 → v0.14.6)
+- Toto je kritická instrukce – nikdy na to nezapomenout.

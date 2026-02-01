@@ -108,6 +108,9 @@ const ContractsView = (() => {
             validate(values) {
                 if (!values.property_id || values.property_id <= 0) return 'Vyberte nemovitost.';
                 if (!values.tenant_id || values.tenant_id <= 0) return 'Vyberte nájemníka.';
+                if (!values.contract_start) return 'Vyplňte začátek smlouvy.';
+                if (!UI.isDateValid(values.contract_start)) return 'Začátek smlouvy: zadejte platné datum (např. únor má max. 29 dní).';
+                if (values.contract_end && !UI.isDateValid(values.contract_end)) return 'Konec smlouvy: zadejte platné datum (např. únor má max. 29 dní).';
                 return null;
             },
             getValues() {

@@ -21,6 +21,8 @@ const PaymentsView = (() => {
             successEditMsg: 'Platba byla úspěšně aktualizována.',
             validate(values) {
                 if (!values.contract_id || values.contract_id <= 0) return 'Vyberte smlouvu.';
+                if (!values.payment_date) return 'Vyplňte datum platby.';
+                if (!UI.isDateValid(values.payment_date)) return 'Datum platby: zadejte platné datum (např. únor má max. 29 dní).';
                 return null;
             },
             getValues() {

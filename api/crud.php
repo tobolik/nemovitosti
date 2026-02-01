@@ -34,6 +34,19 @@ $FIELD_LABELS = [
 $table = $_GET['table'] ?? body()['table'] ?? '';
 if (!isset($FIELDS[$table])) jsonErr('Neznámá tabulka.');
 
+/** Ověří, zda řetězec YYYY-MM-DD představuje platné datum. Vrací chybovou zprávu nebo null. */
+function validateDateField(?string $val, string $label): ?string {
+    if ($val === null || $val === '') return null;
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $val, $m)) {
+        return "$label: neplatný formát data (očekáváno YYYY-MM-DD).";
+    }
+    $y = (int)$m[1]; $mo = (int)$m[2]; $d = (int)$m[3];
+    if (!checkdate($mo, $d, $y)) {
+        return "$label: neplatné datum (např. únor má pouze 28–29 dní).";
+    }
+    return null;
+}
+
 // ── GET ─────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -91,6 +104,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // contract_end & note mohou být prázdné → null
     if ($table === 'contracts' && ($data['contract_end']??'') === '') $data['contract_end'] = null;
+
+    // Validace dat – neplatné datum nesmí být tiše převedeno na null
+    if ($table === 'contracts') {
+        $e = validateDateField($data['contract_start'] ?? null, 'Začátek smlouvy');
+        if ($e) jsonErr($e);
+        $e = validateDateField($data['contract_end'] ?? null, 'Konec smlouvy');
+        if ($e) jsonErr($e);
+    }
+    if ($table === 'properties' && isset($data['purchase_date']) && $data['purchase_date'] !== '') {
+        $e = validateDateField($data['purchase_date'], 'Datum koupě');
+        if ($e) jsonErr($e);
+    }
+    if ($table === 'payments' && isset($data['payment_date']) && $data['payment_date'] !== '') {
+        $e = validateDateField($data['payment_date'], 'Datum platby');
+        if ($e) jsonErr($e);
+    }
 
     // Pole, která musí být kladné ID (> 0) – 0 znamená „nevybráno“
     $POSITIVE_ID_FIELDS = [

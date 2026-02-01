@@ -4,7 +4,9 @@ const MONTH_NAMES = ['leden','únor','březen','duben','květen','červen','čer
 
 async function loadDashboard(year) {
     const yearSelect = document.getElementById('dash-year');
-    const y = year ?? (yearSelect ? parseInt(yearSelect.value, 10) : null) ?? new Date().getFullYear();
+    const currentYear = new Date().getFullYear();
+    const fromSelect = yearSelect && yearSelect.value ? parseInt(yearSelect.value, 10) : NaN;
+    const y = (year != null && !isNaN(year)) ? year : (!isNaN(fromSelect) ? fromSelect : currentYear);
 
     let data;
     try { data = await Api.dashboardLoad(y); }
@@ -176,6 +178,11 @@ function openPaymentModal(el) {
         try {
             const [year, month] = monthKey.split('-');
             if (paid.checked) {
+                const dateVal = dateInput.value;
+                if (!dateVal || !UI.isDateValid(dateVal)) {
+                    alert('Zadejte platné datum platby (např. únor má max. 29 dní).');
+                    return;
+                }
                 const payments = await Api.crudList('payments', { contract_id: contractId });
                 const existing = payments.find(x => String(x.period_year) === year && String(x.period_month) === month);
                 const payload = {
@@ -196,7 +203,7 @@ function openPaymentModal(el) {
                 if (p) await Api.crudDelete('payments', p.id);
             }
             UI.modalClose('modal-payment');
-            App.navigateWithHistory('dashboard');
+            await loadDashboard(parseInt(year, 10));
         } catch (e) {
             alert(e.message);
         }

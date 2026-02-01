@@ -150,7 +150,7 @@ const UI = (() => {
 
     // ── public ──────────────────────────────────────────────────────────
     return {
-        esc, fmt, fmtDate, MONTHS,
+        esc, fmt, fmtDate, isDateValid, MONTHS,
         alertShow,
         modalOpen, modalClose,
         renderTable,
