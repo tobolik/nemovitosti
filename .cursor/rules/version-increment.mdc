@@ -7,6 +7,7 @@ alwaysApply: true
 
 Při každé úpravě kódu aplikace (nové funkce, opravy bugů, změny UI) **vždy** zvýšit verzi v `index.html`.
 
-- Verze je v patičce: `<span class="footer-version">v0.14.5</span>`
-- Formát: `v0.MAJOR.MINOR` – při změně zvyš MINOR (např. v0.14.5 → v0.14.6)
+- Verze je v patičce: `<span class="footer-version">v0.14.17</span>`
+- Formát: `v0.MAJOR.MINOR` – při změně zvyš MINOR (např. v0.14.17 → v0.14.18)
+- **Cache busting:** Aktualizuj i `?v=0.14.17` u všech odkazů na CSS a JS (link href, script src) – stejná hodnota bez „v“ (0.14.17)
 - Toto je kritická instrukce – nikdy na to nezapomenout.
