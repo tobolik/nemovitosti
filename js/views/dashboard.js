@@ -82,7 +82,7 @@ async function loadDashboard(year) {
                 if (isFuture && (cell.type === 'unpaid' || cell.type === 'overdue')) {
                     cls = isCurrentMonth ? 'heatmap-cell current-month-unpaid' : 'heatmap-cell future-unpaid';
                 } else if (isFuture && isPaid) {
-                    cls = 'heatmap-cell paid-advance';
+                    cls = isCurrentMonth ? 'heatmap-cell ' + (cell.type || 'exact') : 'heatmap-cell paid-advance';
                 }
 
                 let content = '';
