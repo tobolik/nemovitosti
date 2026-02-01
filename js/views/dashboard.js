@@ -70,22 +70,27 @@ async function loadDashboard(year) {
                 const key = prop.id + '_' + monthKey;
                 const cell = heatmap[key] || { type: 'empty', monthKey };
 
+                const paidAmt = cell.paid_amount ?? (cell.payment && cell.payment.amount ? cell.payment.amount : 0);
+                const paymentCount = cell.payment_count ?? (cell.payment && cell.payment.count ? cell.payment.count : 0);
+                const remaining = cell.remaining ?? (cell.amount ? Math.max(0, cell.amount - paidAmt) : 0);
+                const isPaid = cell.type === 'exact' || cell.type === 'overpaid';
+
                 let cls = 'heatmap-cell ' + (cell.type || 'empty');
                 let content = '';
-                const paidAmt = cell.paid_amount ?? (cell.payment && cell.payment.amount ? cell.payment.amount : 0);
-                const remaining = cell.remaining ?? (cell.amount ? Math.max(0, cell.amount - paidAmt) : 0);
                 if (cell.type === 'empty') {
                     content = 'Volno';
-                } else if (cell.type === 'paid') {
-                    content = '<span class="cell-amount">' + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-icon cell-check">✓</span>';
+                } else if (cell.type === 'exact' || cell.type === 'overpaid') {
+                    const sumLabel = paymentCount > 1 ? UI.fmt(paidAmt) + ' (' + paymentCount + ' platby)' : UI.fmt(paidAmt);
+                    content = '<span class="cell-amount">' + sumLabel + '</span><br><span class="cell-icon cell-check">✓</span>';
                 } else if (paidAmt > 0 && remaining > 0) {
-                    content = '<span class="cell-partial">' + UI.fmt(paidAmt) + ' / ' + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-remaining">zbývá ' + UI.fmt(remaining) + '</span>';
+                    const partialLabel = paymentCount > 1 ? UI.fmt(paidAmt) + ' (' + paymentCount + ' platby) / ' : UI.fmt(paidAmt) + ' / ';
+                    content = '<span class="cell-partial">' + partialLabel + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-remaining">zbývá ' + UI.fmt(remaining) + '</span>';
                 } else {
                     content = '<span class="cell-amount">' + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-icon cell-cross">✗</span>';
                 }
 
                 const dataAttrs = cell.type !== 'empty'
-                    ? ' data-contract-id="' + cell.contract.id + '" data-contracts-id="' + (cell.contract.contracts_id ?? cell.contract.id) + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (cell.contract.tenant_name || '').replace(/"/g, '&quot;') + '" data-paid="' + (cell.type === 'paid' ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"'
+                    ? ' data-contract-id="' + cell.contract.id + '" data-contracts-id="' + (cell.contract.contracts_id ?? cell.contract.id) + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (cell.contract.tenant_name || '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"'
                     : ' data-property-id="' + prop.id + '" data-month-key="' + monthKey + '"';
 
                 const onClick = cell.type === 'empty'
@@ -197,7 +202,8 @@ async function openPaymentModal(el) {
     if (!isPaid && paymentAmount > 0 && remaining > 0) {
         infoHtml += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(paymentAmount) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(remaining) + ' Kč</div>';
     } else if (isPaid) {
-        infoHtml += '<div class="pay-modal-full"><strong>Měsíc je plně uhrazen.</strong> Zrušte zaškrtnutí pro smazání všech plateb.</div>';
+        const overpaid = paymentAmount > amountVal;
+        infoHtml += '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen' : 'plně uhrazen') + '.</strong> Zrušte zaškrtnutí pro smazání všech plateb.</div>';
     }
     info.innerHTML = infoHtml;
 
@@ -242,7 +248,7 @@ async function openPaymentModal(el) {
             amount.value = editBtn.dataset.amount || '';
             dateInput.value = editBtn.dataset.date || new Date().toISOString().slice(0, 10);
             methodSelect.value = editBtn.dataset.method === 'cash' ? 'cash' : 'account';
-            accountInput.value = editBtn.dataset.account || '';
+            accountSelect.value = editBtn.dataset.account || '';
             accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
             paid.checked = true;
             dateWrap.style.display = 'block';

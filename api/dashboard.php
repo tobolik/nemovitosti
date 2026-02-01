@@ -37,9 +37,10 @@ foreach ($contracts as $c) {
     foreach ($s->fetchAll() as $row) {
         $key = $row['period_year'] . '-' . str_pad((string)$row['period_month'], 2, '0', STR_PAD_LEFT);
         if (!isset($paymentsByContract[$logicalId][$key])) {
-            $paymentsByContract[$logicalId][$key] = ['amount' => 0, 'payment_date' => null];
+            $paymentsByContract[$logicalId][$key] = ['amount' => 0, 'payment_date' => null, 'payment_count' => 0];
         }
         $paymentsByContract[$logicalId][$key]['amount'] += (float)($row['amount'] ?? 0);
+        $paymentsByContract[$logicalId][$key]['payment_count'] += 1;
         if (empty($paymentsByContract[$logicalId][$key]['payment_date']) && !empty($row['payment_date'])) {
             $paymentsByContract[$logicalId][$key]['payment_date'] = $row['payment_date'];
         }
@@ -88,6 +89,8 @@ foreach ($contracts as $c) {
         }
     }
 
+    $balance = $expTotal - $totPaid;
+    $statusType = $balance > 0 ? 'debt' : ($balance < 0 ? 'overpaid' : 'exact');
     $out[] = [
         'contracts_id'   => $logicalId,
         'property_id'    => $c['property_id'],
@@ -100,7 +103,8 @@ foreach ($contracts as $c) {
         'expected_months'=> $expected,
         'expected_total' => $expTotal,
         'total_paid'     => $totPaid,
-        'balance'        => $expTotal - $totPaid,
+        'balance'        => $balance,
+        'status_type'    => $statusType,
         'unpaid_months'  => $unpaid,
     ];
 }
@@ -132,17 +136,25 @@ foreach ($properties as $p) {
             $paid = $paymentsByContract[$logicalId][$monthKey] ?? null;
             $monthRent = (float)$contract['monthly_rent'];
             $paidAmt = $paid ? (float)($paid['amount'] ?? 0) : 0;
-            $isPaid = $paid && !empty($paid['payment_date']) && $paidAmt >= $monthRent;
+            $paymentCount = $paid ? (int)($paid['payment_count'] ?? 0) : 0;
+            $hasPaymentDate = $paid && !empty($paid['payment_date']);
             $isPast = ($year < $nowY) || ($year == $nowY && $m < $nowM);
 
+            if ($hasPaymentDate && $paidAmt >= $monthRent) {
+                $type = $paidAmt > $monthRent ? 'overpaid' : 'exact';
+            } else {
+                $type = $isPast ? 'overdue' : 'unpaid';
+            }
+
             $heatmap[$propId . '_' . $monthKey] = [
-                'type'       => $isPaid ? 'paid' : ($isPast ? 'overdue' : 'unpaid'),
-                'contract'   => ['id'=>$logicalId, 'contracts_id'=>$logicalId, 'monthly_rent'=>(float)$contract['monthly_rent'], 'tenant_name'=>$contract['tenant_name']],
-                'monthKey'   => $monthKey,
-                'amount'     => (float)$contract['monthly_rent'],
-                'payment'    => $paid ? ['amount'=>(float)$paid['amount'], 'date'=>$paid['payment_date']] : null,
-                'paid_amount'=> $paidAmt,
-                'remaining'  => max(0, $monthRent - $paidAmt),
+                'type'          => $type,
+                'contract'      => ['id'=>$logicalId, 'contracts_id'=>$logicalId, 'monthly_rent'=>(float)$contract['monthly_rent'], 'tenant_name'=>$contract['tenant_name']],
+                'monthKey'       => $monthKey,
+                'amount'         => (float)$contract['monthly_rent'],
+                'payment'        => $paid ? ['amount'=>(float)$paid['amount'], 'date'=>$paid['payment_date'], 'count'=>$paymentCount] : null,
+                'paid_amount'    => $paidAmt,
+                'payment_count'  => $paymentCount,
+                'remaining'      => max(0, $monthRent - $paidAmt),
             ];
         }
     }
