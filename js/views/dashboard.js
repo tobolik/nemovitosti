@@ -182,6 +182,13 @@ async function openPaymentModal(el) {
     const existingWrap = document.getElementById('pay-modal-existing');
     const batchHintEl = document.getElementById('pay-modal-batch-hint');
     const editIdEl = document.getElementById('pay-modal-edit-id');
+    const bulkWrap = document.getElementById('pay-modal-bulk-wrap');
+    const bulkCheckbox = document.getElementById('pay-modal-bulk');
+    const rangeRow = document.getElementById('pay-modal-range-row');
+    const monthFromEl = document.getElementById('pay-modal-month-from');
+    const yearFromEl = document.getElementById('pay-modal-year-from');
+    const monthToEl = document.getElementById('pay-modal-month-to');
+    const yearToEl = document.getElementById('pay-modal-year-to');
 
     const bankAccounts = await Api.crudList('bank_accounts');
     const primaryAccount = bankAccounts.find(b => b.is_primary);
@@ -234,13 +241,33 @@ async function openPaymentModal(el) {
             html += '<li class="pay-modal-existing-item">' +
                 '<span>' + amt + ' Kč (' + dt + ')' + batchTag + '</span> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + p.id + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + acc + '" data-batch-id="' + (p.payment_batch_id || '') + '">Upravit</button> ' +
-                '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + p.id + '">Smazat</button>' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + p.id + '" data-batch-id="' + (p.payment_batch_id || '') + '">Smazat</button>' +
                 '</li>';
         });
         html += '</ul><div class="pay-modal-add-link"><a href="#" data-action="add">+ Přidat novou platbu</a></div>';
         existingWrap.innerHTML = html;
     }
     renderExisting();
+
+    if (forMonth.length === 1) {
+        const p = forMonth[0];
+        const method = p.payment_method || 'account';
+        editIdEl.value = String(p.id || '');
+        editIdEl.dataset.batchId = String(p.payment_batch_id || '');
+        editIdEl.dataset.originalAmount = String(p.amount ?? '');
+        amount.value = p.amount ?? '';
+        dateInput.value = p.payment_date ? p.payment_date.slice(0, 10) : new Date().toISOString().slice(0, 10);
+        methodSelect.value = method === 'cash' ? 'cash' : 'account';
+        accountSelect.value = p.account_number || '';
+        accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
+        paid.checked = true;
+        dateWrap.style.display = 'block';
+        methodWrap.style.display = 'flex';
+        batchHintEl.style.display = p.payment_batch_id ? 'block' : 'none';
+        bulkWrap.style.display = 'none';
+    } else {
+        bulkWrap.style.display = editIdEl.value ? 'none' : 'block';
+    }
 
     existingWrap.onclick = async (e) => {
         const editBtn = e.target.closest('[data-action="edit"]');
@@ -259,15 +286,26 @@ async function openPaymentModal(el) {
             dateWrap.style.display = 'block';
             methodWrap.style.display = 'flex';
             batchHintEl.style.display = editBtn.dataset.batchId ? 'block' : 'none';
+            bulkWrap.style.display = 'none';
         } else if (delBtn) {
-            if (!confirm('Opravdu smazat tuto platbu?')) return;
-            try {
-                await Api.crudDelete('payments', parseInt(delBtn.dataset.id, 10));
-                payments = await Api.crudList('payments', { contracts_id: contractsId });
-                forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
-                renderExisting();
-                await loadDashboard(parseInt(year, 10));
-            } catch (err) { alert(err.message); }
+            const batchId = (delBtn.dataset.batchId || '').trim();
+            if (batchId) {
+                const batchCount = payments.filter(x => x.payment_batch_id === batchId).length;
+                const msg = batchCount === 1 ? 'Opravdu smazat tuto platbu?' : 'Opravdu smazat celou dávku? (' + batchCount + ' plateb)';
+                if (!confirm(msg)) return;
+                try {
+                    await Api.paymentsDeleteBatch(batchId);
+                } catch (err) { alert(err.message); return; }
+            } else {
+                if (!confirm('Opravdu smazat tuto platbu?')) return;
+                try {
+                    await Api.crudDelete('payments', parseInt(delBtn.dataset.id, 10));
+                } catch (err) { alert(err.message); return; }
+            }
+            payments = await Api.crudList('payments', { contracts_id: contractsId });
+            forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
+            renderExisting();
+            await loadDashboard(parseInt(year, 10));
         } else if (addLink) {
             e.preventDefault();
             editIdEl.value = '';
@@ -278,6 +316,9 @@ async function openPaymentModal(el) {
             dateWrap.style.display = 'none';
             methodWrap.style.display = 'none';
             batchHintEl.style.display = 'none';
+            bulkWrap.style.display = 'block';
+            bulkCheckbox.checked = false;
+            rangeRow.style.display = 'none';
         }
     };
 
@@ -287,6 +328,12 @@ async function openPaymentModal(el) {
     };
     methodSelect.onchange = () => {
         accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
+    };
+    bulkCheckbox.onchange = () => {
+        rangeRow.style.display = bulkCheckbox.checked ? '' : 'none';
+        if (bulkCheckbox.checked && !amount.value) {
+            amount.value = Math.round(amountVal * 12);
+        }
     };
 
     document.getElementById('btn-pay-modal-save').onclick = async () => {
@@ -330,15 +377,33 @@ async function openPaymentModal(el) {
                     };
                     await Api.crudEdit('payments', parseInt(editId, 10), payData);
                 } else {
+                    const bulk = bulkCheckbox.checked;
                     const payData = {
                         contracts_id: parseInt(contractsId, 10),
-                        period_year: parseInt(year, 10),
-                        period_month: parseInt(month, 10),
                         amount: amt,
                         payment_date: dateInput.value,
                         payment_method: method,
                         account_number: accountNum || null,
                     };
+                    if (bulk) {
+                        const yFrom = parseInt(yearFromEl.value, 10);
+                        const mFrom = parseInt(monthFromEl.value, 10);
+                        const yTo = parseInt(yearToEl.value, 10);
+                        const mTo = parseInt(monthToEl.value, 10);
+                        const tsFrom = yFrom * 12 + mFrom;
+                        const tsTo = yTo * 12 + mTo;
+                        if (tsFrom > tsTo) {
+                            alert('Měsíc „od“ musí být před měsícem „do“.');
+                            return;
+                        }
+                        payData.period_year = yFrom;
+                        payData.period_month = mFrom;
+                        payData.period_year_to = yTo;
+                        payData.period_month_to = mTo;
+                    } else {
+                        payData.period_year = parseInt(year, 10);
+                        payData.period_month = parseInt(month, 10);
+                    }
                     await Api.crudAdd('payments', payData);
                 }
             } else {

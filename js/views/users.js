@@ -94,7 +94,7 @@ const UsersView = (() => {
     function openPass(uid, name) { openPassModal(uid, name); }
 
     async function del(uid, name) {
-        if (!confirm('Smaznout uživatele "' + name + '"?')) return;
+        if (!confirm('Smazat uživatele "' + name + '"?')) return;
         try {
             await Api.usersDelete(uid);
             loadList();

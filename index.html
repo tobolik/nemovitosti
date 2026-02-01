@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=0.14.33">
+<link rel="stylesheet" href="css/style.css?v=0.14.36">
 </head>
 <body>
 
@@ -324,7 +324,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v0.14.33</span>
+    <span class="footer-version">v0.14.36</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -344,6 +344,24 @@
       <div class="payment-info" id="pay-modal-info"></div>
       <div id="pay-modal-batch-hint" class="pay-modal-batch-hint" style="display:none">Změna data platby a čísla účtu se projeví u všech plateb v této dávce.</div>
       <div id="pay-modal-existing" class="pay-modal-existing"></div>
+      <div id="pay-modal-bulk-wrap" class="fg" style="display:none">
+        <label class="checkbox-label">
+          <input type="checkbox" id="pay-modal-bulk">
+          <span>Platba za více měsíců (např. roční platba jednou)</span>
+        </label>
+      </div>
+      <div id="pay-modal-range-row" class="form-row" style="display:none">
+        <div class="fg">
+          <label>Od měsíce *</label>
+          <select id="pay-modal-month-from"><option value="1">Leden</option><option value="2">Únor</option><option value="3">Březen</option><option value="4">Duben</option><option value="5">Květen</option><option value="6">Červen</option><option value="7">Červenec</option><option value="8">Srpen</option><option value="9">Září</option><option value="10">Říjen</option><option value="11">Listopad</option><option value="12">Prosinec</option></select>
+        </div>
+        <div class="fg"><label>Od roku *</label><select id="pay-modal-year-from"></select></div>
+        <div class="fg">
+          <label>Do měsíce *</label>
+          <select id="pay-modal-month-to"><option value="1">Leden</option><option value="2">Únor</option><option value="3">Březen</option><option value="4">Duben</option><option value="5">Květen</option><option value="6">Červen</option><option value="7">Červenec</option><option value="8">Srpen</option><option value="9">Září</option><option value="10">Říjen</option><option value="11">Listopad</option><option value="12">Prosinec</option></select>
+        </div>
+        <div class="fg"><label>Do roku *</label><select id="pay-modal-year-to"></select></div>
+      </div>
       <div class="fg">
         <label>Částka (Kč) *</label>
         <input type="number" id="pay-modal-amount" step="0.01" min="0">
@@ -445,16 +463,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=0.14.33"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=0.14.33"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=0.14.33"></script>
-<script src="js/app.js?v=0.14.33"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=0.14.33"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=0.14.33"></script>
-<script src="js/views/tenants.js?v=0.14.33"></script>
-<script src="js/views/contracts.js?v=0.14.33"></script>
-<script src="js/views/payments.js?v=0.14.33"></script>
-<script src="js/views/bank_accounts.js?v=0.14.33"></script>
-<script src="js/views/users.js?v=0.14.33"></script>
+<script src="js/api.js?v=0.14.36"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=0.14.36"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=0.14.36"></script>
+<script src="js/app.js?v=0.14.36"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=0.14.36"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=0.14.36"></script>
+<script src="js/views/tenants.js?v=0.14.36"></script>
+<script src="js/views/contracts.js?v=0.14.36"></script>
+<script src="js/views/payments.js?v=0.14.36"></script>
+<script src="js/views/bank_accounts.js?v=0.14.36"></script>
+<script src="js/views/users.js?v=0.14.36"></script>
 </body>
 </html>

@@ -111,7 +111,7 @@ const PropertiesView = (() => {
     }
 
     function del(id) {
-        UI.confirmDelete('properties', id, 'Smaznout tuto nemovitost?', () => {
+        UI.confirmDelete('properties', id, 'Smazat tuto nemovitost?', () => {
             _cache = [];
             loadList();
         });

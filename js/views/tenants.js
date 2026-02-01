@@ -131,7 +131,7 @@ const TenantsView = (() => {
     }
 
     function del(id) {
-        UI.confirmDelete('tenants', id, 'Smaznout tohoto nájemníka?', () => {
+        UI.confirmDelete('tenants', id, 'Smazat tohoto nájemníka?', () => {
             _cache = [];
             loadList();
         });

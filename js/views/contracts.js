@@ -210,7 +210,7 @@ const ContractsView = (() => {
     }
 
     function del(id) {
-        UI.confirmDelete('contracts', id, 'Smaznout tuto smlouvu?', () => {
+        UI.confirmDelete('contracts', id, 'Smazat tuto smlouvu?', () => {
             _cache = [];
             loadList();
         });

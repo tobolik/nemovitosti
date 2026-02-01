@@ -285,7 +285,7 @@ const PaymentsView = (() => {
     }
 
     function del(id) {
-        UI.confirmDelete('payments', id, 'Smaznout tuto platbu?', renderPayments);
+        UI.confirmDelete('payments', id, 'Smazat tuto platbu?', renderPayments);
     }
 
     // ── cross-view entry points ─────────────────────────────────────────

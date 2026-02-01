@@ -248,6 +248,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Platby: smazání celé dávky (všechny záznamy s daným payment_batch_id)
+    if ($table === 'payments' && $action === 'deleteBatch') {
+        $batchId = trim($b['payment_batch_id'] ?? '');
+        if ($batchId === '') jsonErr('Chybí payment_batch_id.');
+        $s = db()->prepare("SELECT id FROM payments WHERE payment_batch_id=? AND valid_to IS NULL");
+        $s->execute([$batchId]);
+        $ids = array_column($s->fetchAll(), 'id');
+        foreach ($ids as $pid) {
+            softDelete($table, (int)$pid);
+        }
+        jsonOk(['deleted' => count($ids)]);
+    }
+
     if ($action === 'delete') {
         $id = (int)($b['id'] ?? 0);
         if (!$id) jsonErr('Chybí ID.');
