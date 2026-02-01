@@ -23,6 +23,13 @@ ALTER TABLE tenants ADD COLUMN tenants_id INT UNSIGNED NULL AFTER id;
 ALTER TABLE contracts ADD COLUMN contracts_id INT UNSIGNED NULL AFTER id;
 ALTER TABLE payments ADD COLUMN payments_id INT UNSIGNED NULL AFTER id;
 
+-- Fallback: logická ID chybí (částečná migrace)
+ALTER TABLE users ADD COLUMN users_id INT UNSIGNED NULL AFTER id;
+ALTER TABLE properties ADD COLUMN properties_id INT UNSIGNED NULL AFTER id;
+ALTER TABLE tenants ADD COLUMN tenants_id INT UNSIGNED NULL AFTER id;
+ALTER TABLE contracts ADD COLUMN contracts_id INT UNSIGNED NULL AFTER id;
+ALTER TABLE payments ADD COLUMN payments_id INT UNSIGNED NULL AFTER id;
+
 -- Doplnění pro existující data: každý řádek zatím = vlastní logický záznam
 UPDATE users SET users_id = id WHERE users_id IS NULL;
 UPDATE properties SET properties_id = id WHERE properties_id IS NULL;
@@ -44,3 +51,10 @@ ALTER TABLE properties ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_
 ALTER TABLE tenants ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to, ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
 ALTER TABLE contracts ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to, ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
 ALTER TABLE payments ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to, ADD COLUMN valid_user_to INT UNSIGNED NULL AFTER valid_user_from;
+
+-- Fallback: valid_user_from chybí (částečná migrace) – doplnit mezi valid_to a valid_user_to
+ALTER TABLE users ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE properties ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE tenants ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE contracts ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
+ALTER TABLE payments ADD COLUMN valid_user_from INT UNSIGNED NULL AFTER valid_to;
