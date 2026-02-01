@@ -302,6 +302,8 @@ footer .footer-version { opacity: .8; }
   box-shadow: 0 0 0 3px rgba(147,51,234,.2);
 }
 .fg textarea { resize: vertical; min-height: 56px; line-height: 1.45; }
+.fg .checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500; text-transform: none; letter-spacing: normal; }
+.fg .checkbox-label input { width: 18px; height: 18px; accent-color: var(--purple-600); }
 .fg select {
   appearance: none;
   background-color: rgba(30,41,59,.95);
@@ -598,6 +600,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
   line-height: 1;
 }
 .tag-plus:hover { opacity: 1; transform: scale(1.15); }
+.tag-batch {
+  background: rgba(59,130,246,.2);
+  color: #93c5fd;
+  margin-left: 4px;
+}
 
 /* ============================================================
    ALERTS

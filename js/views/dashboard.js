@@ -191,6 +191,8 @@ async function openPaymentModal(el) {
     amount.value = isPaid ? amountVal : remaining;
     dateInput.value = paymentDate;
     dateWrap.style.display = isPaid ? 'block' : 'none';
+    methodWrap.style.display = isPaid ? 'flex' : 'none';
+    accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
 
     let payments = await Api.crudList('payments', { contracts_id: contractsId });
     let forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
@@ -223,8 +225,12 @@ async function openPaymentModal(el) {
             editIdEl.value = editBtn.dataset.id;
             amount.value = editBtn.dataset.amount || '';
             dateInput.value = editBtn.dataset.date || new Date().toISOString().slice(0, 10);
+            methodSelect.value = editBtn.dataset.method === 'cash' ? 'cash' : 'account';
+            accountInput.value = editBtn.dataset.account || '';
+            accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
             paid.checked = true;
             dateWrap.style.display = 'block';
+            methodWrap.style.display = 'flex';
         } else if (delBtn) {
             try {
                 await Api.crudDelete('payments', parseInt(delBtn.dataset.id, 10));
@@ -239,10 +245,17 @@ async function openPaymentModal(el) {
             amount.value = remaining;
             paid.checked = false;
             dateWrap.style.display = 'none';
+            methodWrap.style.display = 'none';
         }
     };
 
-    paid.onchange = () => { dateWrap.style.display = paid.checked ? 'block' : 'none'; };
+    paid.onchange = () => {
+        dateWrap.style.display = paid.checked ? 'block' : 'none';
+        methodWrap.style.display = paid.checked ? 'flex' : 'none';
+    };
+    methodSelect.onchange = () => {
+        accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
+    };
 
     document.getElementById('btn-pay-modal-save').onclick = async () => {
         try {
@@ -258,22 +271,21 @@ async function openPaymentModal(el) {
                     return;
                 }
                 const editId = editIdEl.value.trim();
+                const method = methodSelect.value === 'account' || methodSelect.value === 'cash' ? methodSelect.value : 'account';
+                const accountNum = method === 'account' ? (accountInput.value || '').trim() : null;
+                const payData = {
+                    contracts_id: parseInt(contractsId, 10),
+                    period_year: parseInt(year, 10),
+                    period_month: parseInt(month, 10),
+                    amount: amt,
+                    payment_date: dateInput.value,
+                    payment_method: method,
+                    account_number: accountNum || null,
+                };
                 if (editId) {
-                    await Api.crudEdit('payments', parseInt(editId, 10), {
-                        contracts_id: parseInt(contractsId, 10),
-                        period_year: parseInt(year, 10),
-                        period_month: parseInt(month, 10),
-                        amount: amt,
-                        payment_date: dateInput.value,
-                    });
+                    await Api.crudEdit('payments', parseInt(editId, 10), payData);
                 } else {
-                    await Api.crudAdd('payments', {
-                        contracts_id: parseInt(contractsId, 10),
-                        period_year: parseInt(year, 10),
-                        period_month: parseInt(month, 10),
-                        amount: amt,
-                        payment_date: dateInput.value,
-                    });
+                    await Api.crudAdd('payments', payData);
                 }
             } else {
                 for (const p of forMonth) {

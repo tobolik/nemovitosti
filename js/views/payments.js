@@ -21,21 +21,41 @@ const PaymentsView = (() => {
             editLabel:  'Uložit změny',
             successAddMsg: 'Platba byla úspěšně zaznamenána.',
             successEditMsg: 'Platba byla úspěšně aktualizována.',
-            validate(values) {
+            validate(values, editMode) {
                 if (!values.contracts_id || values.contracts_id <= 0) return 'Vyberte smlouvu.';
                 if (!values.payment_date) return 'Vyplňte datum platby.';
                 if (!UI.isDateValid(values.payment_date)) return 'Datum platby: zadejte platné datum (např. únor má max. 29 dní).';
+                if (values.period_year_to != null) {
+                    const tsFrom = values.period_year * 12 + values.period_month;
+                    const tsTo = values.period_year_to * 12 + values.period_month_to;
+                    if (tsFrom > tsTo) return 'Měsíc „od“ musí být před měsícem „do“.';
+                }
                 return null;
             },
             getValues() {
-                return {
+                const editId = document.getElementById('pay-edit-id').value;
+                const bulk = !editId && document.getElementById('pay-bulk').checked;
+                const methodEl = document.getElementById('pay-method');
+                const accountEl = document.getElementById('pay-account');
+                const method = methodEl.value === 'account' || methodEl.value === 'cash' ? methodEl.value : 'account';
+                const base = {
                     contracts_id: Number(document.getElementById('pay-contract').value),
-                    period_year:  Number(document.getElementById('pay-year').value),
-                    period_month: Number(document.getElementById('pay-month').value),
                     amount:       document.getElementById('pay-amount').value,
                     payment_date: document.getElementById('pay-date').value,
                     note:         document.getElementById('pay-note').value.trim(),
+                    payment_method: method,
+                    account_number: method === 'account' ? (accountEl.value || '').trim() : null,
                 };
+                if (bulk) {
+                    base.period_year  = Number(document.getElementById('pay-year-from').value);
+                    base.period_month = Number(document.getElementById('pay-month-from').value);
+                    base.period_year_to  = Number(document.getElementById('pay-year-to').value);
+                    base.period_month_to = Number(document.getElementById('pay-month-to').value);
+                } else {
+                    base.period_year  = Number(document.getElementById('pay-year').value);
+                    base.period_month = Number(document.getElementById('pay-month').value);
+                }
+                return base;
             },
             fillForm(row) {
                 document.getElementById('pay-contract').value = row.contracts_id || '';
@@ -43,13 +63,23 @@ const PaymentsView = (() => {
                 document.getElementById('pay-month').value    = row.period_month || '';
                 document.getElementById('pay-amount').value   = row.amount       || '';
                 document.getElementById('pay-date').value     = row.payment_date || '';
+                document.getElementById('pay-method').value  = row.payment_method === 'cash' ? 'cash' : 'account';
+                document.getElementById('pay-account').value  = row.account_number || '';
                 document.getElementById('pay-note').value     = row.note         || '';
+                const accWrap = document.getElementById('pay-account-wrap');
+                accWrap.style.display = row.payment_method === 'cash' ? 'none' : 'block';
             },
             resetForm() {
                 document.getElementById('pay-contract').value = '';
                 document.getElementById('pay-amount').value   = '';
                 document.getElementById('pay-note').value     = '';
                 document.getElementById('pay-date').value     = todayISO();
+                document.getElementById('pay-method').value   = 'account';
+                document.getElementById('pay-account').value  = '';
+                document.getElementById('pay-bulk').checked   = false;
+                document.getElementById('pay-single-row').style.display = '';
+                document.getElementById('pay-range-row').style.display = 'none';
+                document.getElementById('pay-account-wrap').style.display = 'block';
             },
             onSaved: renderPayments,
         });
@@ -58,8 +88,12 @@ const PaymentsView = (() => {
         document.getElementById('pay-contract').addEventListener('change', function () {
             const val = Number(this.value);
             const c   = contractsCache.find(x => (x.contracts_id ?? x.id) === val);
-            if (c && !document.getElementById('pay-amount').value) {
-                document.getElementById('pay-amount').value = c.monthly_rent;
+            if (c) {
+                const bulk = document.getElementById('pay-bulk').checked;
+                const amtEl = document.getElementById('pay-amount');
+                if (!amtEl.value) {
+                    amtEl.value = bulk ? Math.round(c.monthly_rent * 12) : c.monthly_rent;
+                }
             }
         });
 
@@ -68,18 +102,48 @@ const PaymentsView = (() => {
             filterContractId = Number(this.value);
             renderPayments();
         });
+
+        // Způsob platby: zobrazit/skrýt číslo účtu
+        document.getElementById('pay-method').addEventListener('change', function () {
+            document.getElementById('pay-account-wrap').style.display = this.value === 'account' ? 'block' : 'none';
+        });
     }
 
-    // ── year dropdown (one-time init) ───────────────────────────────────
-    (function initYearSelect() {
-        const sel  = document.getElementById('pay-year');
-        const now  = new Date().getFullYear();
+    // ── year dropdowns (one-time init) ──────────────────────────────────
+    (function initYearSelects() {
+        const now = new Date().getFullYear();
+        const opts = [];
         for (let y = now - 2; y <= now + 1; y++) {
-            sel.innerHTML += '<option value="' + y + '"' + (y === now ? ' selected' : '') + '>' + y + '</option>';
+            opts.push('<option value="' + y + '"' + (y === now ? ' selected' : '') + '>' + y + '</option>');
         }
-        // defaults
+        const optsStr = opts.join('');
+        document.getElementById('pay-year').innerHTML += optsStr;
+        document.getElementById('pay-year-from').innerHTML = optsStr;
+        document.getElementById('pay-year-to').innerHTML = optsStr;
         document.getElementById('pay-month').value = new Date().getMonth() + 1;
-        document.getElementById('pay-date').value  = todayISO();
+        document.getElementById('pay-date').value = todayISO();
+    })();
+
+    // ── bulk checkbox toggle ───────────────────────────────────────────
+    (function initBulkToggle() {
+        const bulk = document.getElementById('pay-bulk');
+        const singleRow = document.getElementById('pay-single-row');
+        const rangeRow = document.getElementById('pay-range-row');
+        bulk.addEventListener('change', () => {
+            const isBulk = bulk.checked;
+            singleRow.style.display = isBulk ? 'none' : '';
+            rangeRow.style.display = isBulk ? '' : 'none';
+            if (isBulk) {
+                const c = contractsCache.find(x => (x.contracts_id ?? x.id) === Number(document.getElementById('pay-contract').value));
+                const now = new Date();
+                const y = now.getFullYear();
+                document.getElementById('pay-year-from').value = y;
+                document.getElementById('pay-month-from').value = 1;
+                document.getElementById('pay-year-to').value = y;
+                document.getElementById('pay-month-to').value = 12;
+                if (c) document.getElementById('pay-amount').value = Math.round(c.monthly_rent * 12);
+            }
+        });
     })();
 
     function todayISO() {
@@ -126,6 +190,7 @@ const PaymentsView = (() => {
                 { label: 'Období' },
                 { label: 'Částka' },
                 { label: 'Datum platby' },
+                { label: 'Způsob platby' },
                 { label: 'Vs. nájemné' },
                 { label: 'Poznámka' },
                 { label: 'Akce', act: true },
@@ -141,11 +206,14 @@ const PaymentsView = (() => {
                 else if (diff > 0)  diffHtml = '<span style="color:var(--green)">+' + UI.fmt(diff) + ' Kč</span>';
                 else                diffHtml = '<span style="color:var(--green)">✓ přesně</span>';
 
+                const methodLabel = p.payment_method === 'cash' ? 'Hotovost' : (p.account_number ? 'Účet ' + UI.esc(p.account_number) : 'Na účet');
+                const batchHint = p.payment_batch_id ? ' <span class="tag tag-batch" title="Součást jedné platby">dávka</span>' : '';
                 return (
                     '<td><strong>' + UI.esc(p.tenant_name) + '</strong> – ' + UI.esc(p.property_name) + '</td>' +
-                    '<td>' + UI.MONTHS[p.period_month] + ' ' + p.period_year + '</td>' +
+                    '<td>' + UI.MONTHS[p.period_month] + ' ' + p.period_year + batchHint + '</td>' +
                     '<td>' + UI.fmt(amt) + ' Kč</td>' +
                     '<td>' + UI.esc(p.payment_date) + '</td>' +
+                    '<td>' + UI.esc(methodLabel) + '</td>' +
                     '<td>' + diffHtml + '</td>' +
                     '<td>' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +

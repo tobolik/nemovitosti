@@ -12,7 +12,7 @@ $FIELDS = [
     'properties' => ['name','address','size_m2','purchase_price','purchase_date','purchase_contract_url','type','note'],
     'tenants'    => ['name','type','email','phone','address','ic','dic','note'],
     'contracts'  => ['property_id','tenant_id','contract_start','contract_end','monthly_rent','contract_url','note'],
-    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note'],
+    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','payment_batch_id','payment_method','account_number'],
 ];
 
 // Povinná pole při přidávání
@@ -28,7 +28,7 @@ $FIELD_LABELS = [
     'properties' => ['name'=>'Název','address'=>'Adresa'],
     'tenants'    => ['name'=>'Jméno / Název'],
     'contracts'  => ['property_id'=>'Nemovitost','tenant_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','note'=>'Poznámka'],
-    'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka'],
+    'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','payment_method'=>'Způsob platby','account_number'=>'Číslo účtu'],
 ];
 
 $table = $_GET['table'] ?? body()['table'] ?? '';
@@ -140,8 +140,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 jsonErr("Vyplňte pole: $label");
             }
         }
-        $newId = softInsert($table, $data);
-        jsonOk(findActive($table, $newId), 201);
+        // Platba za více měsíců: period_year_to + period_month_to → vytvoří N záznamů
+        if ($table === 'payments' && isset($b['period_year_to'], $b['period_month_to'])) {
+            $yFrom = (int)($data['period_year'] ?? 0);
+            $mFrom = (int)($data['period_month'] ?? 0);
+            $yTo   = (int)($b['period_year_to']);
+            $mTo   = (int)($b['period_month_to']);
+            if ($yFrom <= 0 || $mFrom < 1 || $mFrom > 12 || $yTo <= 0 || $mTo < 1 || $mTo > 12) {
+                jsonErr('Vyplňte platný rozsah měsíců (od–do).');
+            }
+            $tsFrom = $yFrom * 12 + $mFrom;
+            $tsTo   = $yTo * 12 + $mTo;
+            if ($tsFrom > $tsTo) jsonErr('Měsíc „od“ musí být před měsícem „do“.');
+            $numMonths = $tsTo - $tsFrom + 1;
+            $totalAmt  = (float)($data['amount'] ?? 0);
+            if ($totalAmt <= 0) jsonErr('Zadejte kladnou částku platby.');
+            $amtPerMonth = round($totalAmt / $numMonths, 2);
+            $paymentDate = $data['payment_date'] ?? '';
+            $e = validateDateField($paymentDate, 'Datum platby');
+            if ($e) jsonErr($e);
+            $batchId = bin2hex(random_bytes(16));
+            $paymentMethod = in_array($data['payment_method'] ?? '', ['account','cash']) ? $data['payment_method'] : null;
+            $accountNumber = trim($data['account_number'] ?? '') ?: null;
+            $ids = [];
+            for ($y = $yFrom, $m = $mFrom; $y < $yTo || ($y === $yTo && $m <= $mTo); ) {
+                $row = [
+                    'contracts_id'     => $data['contracts_id'],
+                    'period_year'      => $y,
+                    'period_month'     => $m,
+                    'amount'           => $amtPerMonth,
+                    'payment_date'     => $paymentDate,
+                    'note'             => $data['note'] ?? null,
+                    'payment_batch_id' => $batchId,
+                    'payment_method'   => $paymentMethod,
+                    'account_number'   => $accountNumber,
+                ];
+                $ids[] = softInsert($table, $row);
+                if (++$m > 12) { $m = 1; $y++; }
+            }
+            jsonOk(['ids' => $ids, 'count' => count($ids)], 201);
+        } else {
+            $newId = softInsert($table, $data);
+            jsonOk(findActive($table, $newId), 201);
+        }
     }
 
     if ($action === 'edit') {

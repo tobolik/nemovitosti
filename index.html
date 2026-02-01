@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=0.14.23">
+<link rel="stylesheet" href="css/style.css?v=0.14.25">
 </head>
 <body>
 
@@ -199,7 +199,13 @@
           <div class="alert" id="pay-alert"></div>
           <input type="hidden" id="pay-edit-id">
           <div class="fg"><label>Smlouva *</label><select id="pay-contract"></select></div>
-          <div class="form-row">
+          <div class="fg">
+            <label class="checkbox-label">
+              <input type="checkbox" id="pay-bulk">
+              <span>Platba za více měsíců (např. roční platba jednou)</span>
+            </label>
+          </div>
+          <div id="pay-single-row" class="form-row">
             <div class="fg">
               <label>Za měsíc *</label>
               <select id="pay-month">
@@ -212,6 +218,18 @@
               </select>
             </div>
             <div class="fg"><label>Za rok *</label><select id="pay-year"></select></div>
+          </div>
+          <div id="pay-range-row" class="form-row" style="display:none">
+            <div class="fg">
+              <label>Od měsíce *</label>
+              <select id="pay-month-from"><option value="1">Leden</option><option value="2">Únor</option><option value="3">Březen</option><option value="4">Duben</option><option value="5">Květen</option><option value="6">Červen</option><option value="7">Červenec</option><option value="8">Srpen</option><option value="9">Září</option><option value="10">Říjen</option><option value="11">Listopad</option><option value="12">Prosinec</option></select>
+            </div>
+            <div class="fg"><label>Od roku *</label><select id="pay-year-from"></select></div>
+            <div class="fg">
+              <label>Do měsíce *</label>
+              <select id="pay-month-to"><option value="1">Leden</option><option value="2">Únor</option><option value="3">Březen</option><option value="4">Duben</option><option value="5">Květen</option><option value="6">Červen</option><option value="7">Červenec</option><option value="8">Srpen</option><option value="9">Září</option><option value="10">Říjen</option><option value="11">Listopad</option><option value="12">Prosinec</option></select>
+            </div>
+            <div class="fg"><label>Do roku *</label><select id="pay-year-to"></select></div>
           </div>
           <div class="form-row">
             <div class="fg"><label>Částka (Kč) *</label><input type="number" id="pay-amount" step="0.01" min="0"></div>
@@ -261,7 +279,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v0.14.23</span>
+    <span class="footer-version">v0.14.25</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -293,6 +311,19 @@
       <div class="fg" id="pay-modal-date-wrap" style="display:none">
         <label>Datum úhrady *</label>
         <input type="date" id="pay-modal-date">
+      </div>
+      <div class="form-row" id="pay-modal-method-wrap" style="display:none">
+        <div class="fg">
+          <label>Způsob platby</label>
+          <select id="pay-modal-method">
+            <option value="account">Na účet</option>
+            <option value="cash">Hotovost</option>
+          </select>
+        </div>
+        <div class="fg" id="pay-modal-account-wrap">
+          <label>Číslo účtu</label>
+          <input type="text" id="pay-modal-account" placeholder="např. 123456789/0800">
+        </div>
       </div>
     </div>
     <div class="form-actions">
@@ -368,15 +399,15 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=0.14.23"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=0.14.23"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=0.14.23"></script>
-<script src="js/app.js?v=0.14.23"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=0.14.23"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=0.14.23"></script>
-<script src="js/views/tenants.js?v=0.14.23"></script>
-<script src="js/views/contracts.js?v=0.14.23"></script>
-<script src="js/views/payments.js?v=0.14.23"></script>
-<script src="js/views/users.js?v=0.14.23"></script>
+<script src="js/api.js?v=0.14.25"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=0.14.25"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=0.14.25"></script>
+<script src="js/app.js?v=0.14.25"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=0.14.25"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=0.14.25"></script>
+<script src="js/views/tenants.js?v=0.14.25"></script>
+<script src="js/views/contracts.js?v=0.14.25"></script>
+<script src="js/views/payments.js?v=0.14.25"></script>
+<script src="js/views/users.js?v=0.14.25"></script>
 </body>
 </html>
