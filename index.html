@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nemovitosti – Správa nemovitostí</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN SCREEN
+     ═══════════════════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1>Nemovitosti</h1>
+      <p>Správa nemovitostí &amp; platební morálka</p>
+    </div>
+    <div class="fg">
+      <label>E-mail</label>
+      <input type="email" id="login-email" placeholder="admin@example.com" autocomplete="email">
+    </div>
+    <div class="fg">
+      <label>Heslo</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div id="login-error"></div>
+    <button class="btn-login" id="btn-login">Přihlásit se</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     APP SHELL
+     ═══════════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-brand">Nemovitosti</div>
+    <div class="nav-links">
+      <button class="nav-link active" data-view="dashboard">Přehled</button>
+      <button class="nav-link" data-view="properties">Nemovitosti</button>
+      <button class="nav-link" data-view="tenants">Nájemníci</button>
+      <button class="nav-link" data-view="contracts">Smlouvy</button>
+      <button class="nav-link" data-view="payments">Platby</button>
+      <button class="nav-link" data-view="users" id="nav-users" style="display:none">Uživatelé</button>
+    </div>
+    <div class="nav-right">
+      <span class="nav-name" id="nav-username"></span>
+      <button class="btn-logout" id="btn-logout">Logout</button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="container">
+
+      <!-- ═══ DASHBOARD ═══ -->
+      <div class="view active" id="view-dashboard">
+        <div class="page-title">Přehled platební morálky</div>
+        <div class="stats" id="dash-stats"></div>
+        <div id="dash-table"></div>
+      </div>
+
+      <!-- ═══ PROPERTIES ═══ -->
+      <div class="view" id="view-properties">
+        <div class="page-title">Nemovitosti</div>
+        <div class="card">
+          <div class="card-title" id="prop-form-title">Přidat nemovitost</div>
+          <div class="alert" id="prop-alert"></div>
+          <input type="hidden" id="prop-edit-id">
+          <div class="form-row">
+            <div class="fg"><label>Název *</label><input type="text" id="prop-name"></div>
+            <div class="fg">
+              <label>Typ</label>
+              <select id="prop-type">
+                <option value="apartment">Byt</option>
+                <option value="house">Dům</option>
+                <option value="commercial">Komerční</option>
+                <option value="land">Pozemek</option>
+              </select>
+            </div>
+          </div>
+          <div class="fg"><label>Adresa *</label><input type="text" id="prop-address"></div>
+          <div class="fg"><label>Poznámka</label><textarea id="prop-note" rows="2"></textarea></div>
+          <div class="form-actions">
+            <button class="btn btn-pri" id="btn-prop-save">Přidat nemovitost</button>
+            <button class="btn btn-ghost" id="btn-prop-cancel" style="display:none">Zrušit</button>
+          </div>
+        </div>
+        <div id="prop-table"></div>
+      </div>
+
+      <!-- ═══ TENANTS ═══ -->
+      <div class="view" id="view-tenants">
+        <div class="page-title">Nájemníci</div>
+        <div class="card">
+          <div class="card-title" id="ten-form-title">Přidat nájemníka</div>
+          <div class="alert" id="ten-alert"></div>
+          <input type="hidden" id="ten-edit-id">
+          <div class="form-row">
+            <div class="fg"><label>Jméno *</label><input type="text" id="ten-name"></div>
+            <div class="fg"><label>E-mail</label><input type="email" id="ten-email"></div>
+          </div>
+          <div class="form-row">
+            <div class="fg"><label>Telefon</label><input type="tel" id="ten-phone"></div>
+          </div>
+          <div class="fg"><label>Poznámka</label><textarea id="ten-note" rows="2"></textarea></div>
+          <div class="form-actions">
+            <button class="btn btn-pri" id="btn-ten-save">Přidat nájemníka</button>
+            <button class="btn btn-ghost" id="btn-ten-cancel" style="display:none">Zrušit</button>
+          </div>
+        </div>
+        <div id="ten-table"></div>
+      </div>
+
+      <!-- ═══ CONTRACTS ═══ -->
+      <div class="view" id="view-contracts">
+        <div class="page-title">Nájemní smlouvy</div>
+        <div class="card">
+          <div class="card-title" id="con-form-title">Přidat smlouvu</div>
+          <div class="alert" id="con-alert"></div>
+          <input type="hidden" id="con-edit-id">
+          <div class="form-row">
+            <div class="fg"><label>Nemovitost *</label><select id="con-property"></select></div>
+            <div class="fg"><label>Nájemník *</label><select id="con-tenant"></select></div>
+          </div>
+          <div class="form-row">
+            <div class="fg"><label>Začátek smlouvy *</label><input type="date" id="con-start"></div>
+            <div class="fg"><label>Konec smlouvy (prázdné = neurčitá)</label><input type="date" id="con-end"></div>
+          </div>
+          <div class="form-row">
+            <div class="fg"><label>Měsíční nájemné (Kč) *</label><input type="number" id="con-rent" step="0.01" min="0"></div>
+          </div>
+          <div class="fg"><label>Poznámka</label><textarea id="con-note" rows="2"></textarea></div>
+          <div class="form-actions">
+            <button class="btn btn-pri" id="btn-con-save">Přidat smlouvu</button>
+            <button class="btn btn-ghost" id="btn-con-cancel" style="display:none">Zrušit</button>
+          </div>
+        </div>
+        <div id="con-table"></div>
+      </div>
+
+      <!-- ═══ PAYMENTS ═══ -->
+      <div class="view" id="view-payments">
+        <div class="page-title">Platby</div>
+        <div class="card">
+          <div class="card-title" id="pay-form-title">Zaznamenat platbu</div>
+          <div class="alert" id="pay-alert"></div>
+          <input type="hidden" id="pay-edit-id">
+          <div class="fg"><label>Smlouva *</label><select id="pay-contract"></select></div>
+          <div class="form-row">
+            <div class="fg">
+              <label>Za měsíc *</label>
+              <select id="pay-month">
+                <option value="1">Leden</option><option value="2">Únor</option>
+                <option value="3">Březen</option><option value="4">Duben</option>
+                <option value="5">Květen</option><option value="6">Červen</option>
+                <option value="7">Červenec</option><option value="8">Srpen</option>
+                <option value="9">Září</option><option value="10">Říjen</option>
+                <option value="11">Listopad</option><option value="12">Prosinec</option>
+              </select>
+            </div>
+            <div class="fg"><label>Za rok *</label><select id="pay-year"></select></div>
+          </div>
+          <div class="form-row">
+            <div class="fg"><label>Částka (Kč) *</label><input type="number" id="pay-amount" step="0.01" min="0"></div>
+            <div class="fg"><label>Datum platby *</label><input type="date" id="pay-date"></div>
+          </div>
+          <div class="fg"><label>Poznámka</label><textarea id="pay-note" rows="2"></textarea></div>
+          <div class="form-actions">
+            <button class="btn btn-pri" id="btn-pay-save">Zaznamenat platbu</button>
+            <button class="btn btn-ghost" id="btn-pay-cancel" style="display:none">Zrušit</button>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <label>Filtr:</label>
+          <select id="pay-filter-contract"><option value="">— Všechny smlouvy —</option></select>
+        </div>
+        <div id="pay-table"></div>
+      </div>
+
+      <!-- ═══ USERS ═══ -->
+      <div class="view" id="view-users">
+        <div class="page-title">Správa uživatelů</div>
+        <div class="card">
+          <div class="card-title">Přidat uživatele</div>
+          <div class="alert" id="usr-alert"></div>
+          <div class="form-row">
+            <div class="fg"><label>Jméno *</label><input type="text" id="usr-name"></div>
+            <div class="fg"><label>E-mail *</label><input type="email" id="usr-email"></div>
+          </div>
+          <div class="form-row">
+            <div class="fg"><label>Heslo * (min 8 znaků)</label><input type="password" id="usr-pass"></div>
+            <div class="fg">
+              <label>Rolle</label>
+              <select id="usr-role">
+                <option value="user">Uživatel</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-pri" id="btn-usr-add">Přidat uživatele</button>
+          </div>
+        </div>
+        <div id="usr-table"></div>
+      </div>
+
+    </div><!-- /container -->
+  </main>
+
+  <footer>© 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka</footer>
+</div>
+
+<!-- ═══ MODAL: Změna hesla ═══ -->
+<div class="modal" id="modal-pass">
+  <div class="modal-ov"></div>
+  <div class="modal-box">
+    <div class="modal-title">Změna hesla – <span id="modal-pass-name"></span></div>
+    <div class="alert" id="modal-pass-alert"></div>
+    <div class="fg">
+      <label>Nové heslo (min 8 znaků)</label>
+      <input type="password" id="modal-pass-input">
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-pri" id="btn-modal-pass-save">Změnit heslo</button>
+      <button class="btn btn-ghost" onclick="UI.modalClose('modal-pass')">Zrušit</button>
+    </div>
+    <input type="hidden" id="modal-pass-uid">
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCRIPTS – loaded in dependency order (no bundler needed)
+     ═══════════════════════════════════════════════════════════ -->
+<script src="js/api.js"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/app.js"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js"></script>
+<script src="js/views/tenants.js"></script>
+<script src="js/views/contracts.js"></script>
+<script src="js/views/payments.js"></script>
+<script src="js/views/users.js"></script>
+</body>
+</html>

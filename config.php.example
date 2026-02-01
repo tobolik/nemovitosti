@@ -1,0 +1,14 @@
+<?php
+// config.php.example
+// Zkopíujte jako config.php a vyplňte vaše hodnoty.
+// NIGDY necommitujte config.php!
+declare(strict_types=1);
+
+define('DB_HOST', '127.0.0.1');
+define('DB_PORT',  3306);
+define('DB_NAME', 'nemovitosti');
+define('DB_USER', 'YOUR_USER');   // ← změňte
+define('DB_PASS', 'YOUR_PASS');   // ← změňte
+
+define('SESSION_NAME', 'nemov');
+define('SESSION_LIFE',  3600);

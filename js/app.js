@@ -1,0 +1,111 @@
+// js/app.js – boot, router, session
+
+const App = (() => {
+    let currentUser = null;
+    let currentView = '';
+
+    // ── views registry: view name → loader function ─────────────────────
+    // Populated by each view module via App.registerView()
+    const views = {};
+
+    function registerView(name, loaderFn) {
+        views[name] = loaderFn;
+    }
+
+    // ── navigation ──────────────────────────────────────────────────────
+    function navigate(viewName) {
+        if (!views[viewName]) return;
+        currentView = viewName;
+
+        // nav links highlighting
+        document.querySelectorAll('.nav-link').forEach(btn =>
+            btn.classList.toggle('active', btn.dataset.view === viewName)
+        );
+        // show/hide views
+        document.querySelectorAll('.view').forEach(v =>
+            v.classList.toggle('active', v.id === 'view-' + viewName)
+        );
+        // call loader and return its promise
+        return views[viewName]();
+    }
+
+    // ── login screen ────────────────────────────────────────────────────
+    function showLogin()  {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('app').style.display = 'none';
+    }
+    function hideLogin()  {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app').style.display  = 'flex';
+    }
+
+    // ── mount app after successful auth ─────────────────────────────────
+    function mountApp(user) {
+        currentUser = user;
+        Api.setCsrf(user.csrf);
+
+        document.getElementById('nav-username').textContent = user.name;
+        // Users tab: only for admin
+        document.getElementById('nav-users').style.display = user.role === 'admin' ? '' : 'none';
+
+        hideLogin();
+        navigate('dashboard');
+    }
+
+    // ── login button ────────────────────────────────────────────────────
+    document.getElementById('btn-login').addEventListener('click', async () => {
+        const btn  = document.getElementById('btn-login');
+        const errEl = document.getElementById('login-error');
+        errEl.textContent = '';
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>';
+
+        try {
+            const user = await Api.authLogin(
+                document.getElementById('login-email').value.trim(),
+                document.getElementById('login-pass').value
+            );
+            document.getElementById('login-pass').value = '';
+            mountApp(user);
+        } catch (e) {
+            errEl.textContent = e.message;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Přihlásit se';
+        }
+    });
+
+    // Enter key on password field triggers login
+    document.getElementById('login-pass').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('btn-login').click();
+    });
+
+    // ── logout button ───────────────────────────────────────────────────
+    document.getElementById('btn-logout').addEventListener('click', async () => {
+        try { await Api.authLogout(); } catch(e) { /* ignore */ }
+        currentUser = null;
+        showLogin();
+    });
+
+    // ── nav link clicks ─────────────────────────────────────────────────
+    document.querySelectorAll('.nav-link').forEach(btn => {
+        btn.addEventListener('click', () => navigate(btn.dataset.view));
+    });
+
+    // ── boot: check existing session ────────────────────────────────────
+    (async () => {
+        try {
+            const user = await Api.authCheck();
+            mountApp(user);
+        } catch (e) {
+            showLogin();
+        }
+    })();
+
+    // ── public ──────────────────────────────────────────────────────────
+    return {
+        registerView,
+        navigate,
+        getUser: () => currentUser,
+    };
+})();

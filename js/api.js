@@ -1,0 +1,102 @@
+// js/api.js – centralizovaný fetch wrapper
+// Všechny API volání procházejí sem. CSRF token se injectuje automaticky.
+
+const Api = (() => {
+    let _csrf = '';
+
+    // ── core fetch ──────────────────────────────────────────────────────
+    async function request(url, opts = {}) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (_csrf && opts.method && opts.method !== 'GET') {
+            headers['X-Csrf-Token'] = _csrf;
+        }
+        const res = await fetch(url, { ...opts, headers });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || 'Chyba serveru');
+        return json.data;
+    }
+
+    function post(url, payload) {
+        return request(url, { method: 'POST', body: JSON.stringify(payload) });
+    }
+
+    function get(url) {
+        return request(url);
+    }
+
+    // ── setter / getter csrf ────────────────────────────────────────────
+    function setCsrf(token) { _csrf = token; }
+    function getCsrf()      { return _csrf; }
+
+    // ════════════════════════════════════════════════════════════════════
+    // AUTH
+    // ════════════════════════════════════════════════════════════════════
+    async function authCheck() {
+        // Vrátí current user (+ csrf) nebo hodí error
+        return get('/api/auth.php');
+    }
+
+    async function authLogin(email, password) {
+        return post('/api/auth.php', { action: 'login', email, password });
+    }
+
+    async function authLogout() {
+        return post('/api/auth.php', { action: 'logout' });
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // GENERIC CRUD  (properties | tenants | contracts | payments)
+    // ════════════════════════════════════════════════════════════════════
+    function crudList(table, params = {}) {
+        let url = '/api/crud.php?table=' + table;
+        Object.keys(params).forEach(k => { url += '&' + k + '=' + params[k]; });
+        return get(url);
+    }
+
+    function crudAdd(table, data) {
+        return post('/api/crud.php?table=' + table, { action: 'add', table, ...data });
+    }
+
+    function crudEdit(table, id, data) {
+        return post('/api/crud.php?table=' + table, { action: 'edit', table, id, ...data });
+    }
+
+    function crudDelete(table, id) {
+        return post('/api/crud.php?table=' + table, { action: 'delete', table, id });
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // DASHBOARD
+    // ════════════════════════════════════════════════════════════════════
+    function dashboardLoad() {
+        return get('/api/dashboard.php');
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // USERS
+    // ════════════════════════════════════════════════════════════════════
+    function usersList() {
+        return get('/api/users.php');
+    }
+
+    function usersAdd(data) {
+        return post('/api/users.php', { action: 'add', ...data });
+    }
+
+    function usersDelete(id) {
+        return post('/api/users.php', { action: 'delete', id });
+    }
+
+    function usersChangePassword(id, password) {
+        return post('/api/users.php', { action: 'change_password', id, password });
+    }
+
+    // ── public interface ────────────────────────────────────────────────
+    return {
+        setCsrf, getCsrf,
+        authCheck, authLogin, authLogout,
+        crudList, crudAdd, crudEdit, crudDelete,
+        dashboardLoad,
+        usersList, usersAdd, usersDelete, usersChangePassword,
+    };
+})();
