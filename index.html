@@ -134,7 +134,13 @@
           </div>
           <div class="fg"><label>Adresa</label><input type="text" id="ten-address" placeholder="Začněte psát ulici, PSČ nebo město..." autocomplete="off"></div>
           <div class="form-row">
-            <div class="fg"><label>IČO</label><input type="text" id="ten-ic" placeholder="12345678"></div>
+            <div class="fg">
+              <label>IČO</label>
+              <div class="input-with-btn">
+                <input type="text" id="ten-ic" placeholder="12345678">
+                <button type="button" class="btn btn-ghost btn-sm" id="ten-ares-btn" title="Načíst z ARES" style="display:none">Načíst z ARES</button>
+              </div>
+            </div>
             <div class="fg"><label>DIČ</label><input type="text" id="ten-dic" placeholder="CZ12345678"></div>
           </div>
           <div class="fg"><label>Poznámka</label><textarea id="ten-note" rows="2"></textarea></div>

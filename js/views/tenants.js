@@ -4,8 +4,45 @@ const TenantsView = (() => {
     let form   = null;
     let _cache = [];
 
+    function initAresButton() {
+        const typeEl = document.getElementById('ten-type');
+        const btnAres = document.getElementById('ten-ares-btn');
+        const alertEl = document.getElementById('ten-alert');
+        if (!btnAres) return;
+
+        function toggleAresButton() {
+            btnAres.style.display = typeEl.value === 'company' ? '' : 'none';
+        }
+        typeEl.addEventListener('change', toggleAresButton);
+        toggleAresButton();
+
+        btnAres.addEventListener('click', async () => {
+            const ic = document.getElementById('ten-ic').value.replace(/\D/g, '');
+            if (ic.length !== 8) {
+                UI.alertShow('ten-alert', 'Zadejte platné IČ (8 číslic).', 'err');
+                return;
+            }
+            btnAres.disabled = true;
+            btnAres.textContent = '…';
+            try {
+                const data = await Api.aresLookup(ic);
+                document.getElementById('ten-name').value = data.name || '';
+                document.getElementById('ten-address').value = data.address || '';
+                document.getElementById('ten-ic').value = data.ic || ic;
+                document.getElementById('ten-dic').value = data.dic || '';
+                UI.alertShow('ten-alert', 'Data načtena z ARES.', 'ok');
+            } catch (e) {
+                UI.alertShow('ten-alert', e.message || 'ARES nedostupný.', 'err');
+            } finally {
+                btnAres.disabled = false;
+                btnAres.textContent = 'Načíst z ARES';
+            }
+        });
+    }
+
     function initForm() {
         if (form) return;
+        initAresButton();
         form = UI.createCrudForm({
             table:      'tenants',
             alertId:    'ten-alert',
@@ -36,12 +73,16 @@ const TenantsView = (() => {
                 document.getElementById('ten-ic').value      = row.ic      || '';
                 document.getElementById('ten-dic').value     = row.dic     || '';
                 document.getElementById('ten-note').value    = row.note    || '';
+                const btn = document.getElementById('ten-ares-btn');
+                if (btn) btn.style.display = (row.type === 'company') ? '' : 'none';
             },
             resetForm() {
                 ['ten-name','ten-email','ten-phone','ten-address','ten-ic','ten-dic','ten-note'].forEach(id =>
                     document.getElementById(id).value = ''
                 );
                 document.getElementById('ten-type').value = 'person';
+                const btn = document.getElementById('ten-ares-btn');
+                if (btn) btn.style.display = 'none';
             },
             onSaved: loadList,
         });
