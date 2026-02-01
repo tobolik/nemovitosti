@@ -22,21 +22,21 @@ $contracts = db()->query("
     ORDER BY t.name ASC
 ")->fetchAll();
 
-// Payments per contract – platby mohou mít contract_id na starší verzi smlouvy (soft-update)
+// Payments per contract – platby odkazují na contracts_id (logické ID)
 $paymentsByContract = [];
 $s = db()->prepare("
     SELECT p.period_year, p.period_month, p.amount, p.payment_date
     FROM payments p
-    JOIN contracts c ON c.id = p.contract_id AND c.contracts_id = ?
-    WHERE p.valid_to IS NULL
+    JOIN contracts c ON c.contracts_id = p.contracts_id AND c.valid_to IS NULL
+    WHERE p.valid_to IS NULL AND p.contracts_id = ?
 ");
 foreach ($contracts as $c) {
     $logicalId = $c['contracts_id'] ?? $c['id'];
     $s->execute([$logicalId]);
-    $paymentsByContract[$c['id']] = [];
+    $paymentsByContract[$logicalId] = [];
     foreach ($s->fetchAll() as $row) {
         $key = $row['period_year'] . '-' . str_pad((string)$row['period_month'], 2, '0', STR_PAD_LEFT);
-        $paymentsByContract[$c['id']][$key] = $row;
+        $paymentsByContract[$logicalId][$key] = $row;
     }
 }
 
@@ -51,12 +51,13 @@ $yearIncome = 0;
 $expectedYearIncome = 0;
 
 foreach ($contracts as $c) {
+    $logicalId = $c['contracts_id'] ?? $c['id'];
     $sY   = (int)date('Y', strtotime($c['contract_start']));
     $sM   = (int)date('n', strtotime($c['contract_start']));
     $rent = (float)$c['monthly_rent'];
 
     $expected = max(0, ($nowY - $sY)*12 + ($nowM - $sM) + 1);
-    $paid = $paymentsByContract[$c['id']] ?? [];
+    $paid = $paymentsByContract[$logicalId] ?? [];
     $totPaid = 0;
     foreach ($paid as $prow) $totPaid += (float)($prow['amount'] ?? 0);
     $expTotal = $expected * $rent;
@@ -81,7 +82,7 @@ foreach ($contracts as $c) {
     }
 
     $out[] = [
-        'contract_id'    => $c['id'],
+        'contract_id'    => $logicalId,
         'property_id'    => $c['property_id'],
         'tenant_id'      => $c['tenant_id'],
         'property_name'  => $c['property_name'],
@@ -120,13 +121,14 @@ foreach ($properties as $p) {
         if (!$contract) {
             $heatmap[$propId . '_' . $monthKey] = ['type' => 'empty', 'monthKey' => $monthKey];
         } else {
-            $paid = $paymentsByContract[$contract['id']][$monthKey] ?? null;
+            $logicalId = $contract['contracts_id'] ?? $contract['id'];
+            $paid = $paymentsByContract[$logicalId][$monthKey] ?? null;
             $isPaid = $paid && !empty($paid['payment_date']);
             $isPast = ($year < $nowY) || ($year == $nowY && $m < $nowM);
 
             $heatmap[$propId . '_' . $monthKey] = [
                 'type'     => $isPaid ? 'paid' : ($isPast ? 'overdue' : 'unpaid'),
-                'contract' => ['id'=>$contract['id'], 'monthly_rent'=>(float)$contract['monthly_rent'], 'tenant_name'=>$contract['tenant_name']],
+                'contract' => ['id'=>$logicalId, 'contracts_id'=>$logicalId, 'monthly_rent'=>(float)$contract['monthly_rent'], 'tenant_name'=>$contract['tenant_name']],
                 'monthKey' => $monthKey,
                 'amount'   => (float)$contract['monthly_rent'],
                 'payment'  => $paid ? ['amount'=>(float)$paid['amount'], 'date'=>$paid['payment_date']] : null,
@@ -142,9 +144,10 @@ $occupancyRate = count($properties) > 0 ? round($activeCount / count($properties
 $currentMonthKey = $nowY . '-' . str_pad((string)$nowM, 2, '0', STR_PAD_LEFT);
 $monthlyIncome = 0;
 foreach ($contracts as $c) {
+    $logicalId = $c['contracts_id'] ?? $c['id'];
     $firstOfMonth = $currentMonthKey . '-01';
     if ($c['contract_start'] <= $firstOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth)) {
-        $paid = $paymentsByContract[$c['id']][$currentMonthKey] ?? null;
+        $paid = $paymentsByContract[$logicalId][$currentMonthKey] ?? null;
         if ($paid && !empty($paid['payment_date'])) {
             $monthlyIncome += (float)($paid['amount'] ?? $c['monthly_rent']);
         }

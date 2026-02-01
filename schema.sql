@@ -83,11 +83,11 @@ CREATE TABLE IF NOT EXISTS contracts (
     INDEX idx_contracts_id (contracts_id, valid_to)
 ) ENGINE=InnoDB;
 
--- 5) Platby
+-- 5) Platby (contracts_id = logické ID smlouvy, contracts.contracts_id)
 CREATE TABLE IF NOT EXISTS payments (
     id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     payments_id   INT UNSIGNED NULL,
-    contract_id   INT UNSIGNED NOT NULL,
+    contracts_id  INT UNSIGNED NOT NULL,
     period_year   SMALLINT UNSIGNED NOT NULL,
     period_month  TINYINT UNSIGNED NOT NULL,   -- 1–12
     amount        DECIMAL(12,2) NOT NULL,
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS payments (
     valid_to        DATETIME NULL DEFAULT NULL,
     valid_user_from INT UNSIGNED NULL,
     valid_user_to   INT UNSIGNED NULL,
-    INDEX idx_c (contract_id, valid_to),
+    INDEX idx_contracts_id (contracts_id, valid_to),
     INDEX idx_v (valid_to),
     INDEX idx_payments_id (payments_id, valid_to)
 ) ENGINE=InnoDB;

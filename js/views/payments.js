@@ -20,14 +20,14 @@ const PaymentsView = (() => {
             successAddMsg: 'Platba byla úspěšně zaznamenána.',
             successEditMsg: 'Platba byla úspěšně aktualizována.',
             validate(values) {
-                if (!values.contract_id || values.contract_id <= 0) return 'Vyberte smlouvu.';
+                if (!values.contracts_id || values.contracts_id <= 0) return 'Vyberte smlouvu.';
                 if (!values.payment_date) return 'Vyplňte datum platby.';
                 if (!UI.isDateValid(values.payment_date)) return 'Datum platby: zadejte platné datum (např. únor má max. 29 dní).';
                 return null;
             },
             getValues() {
                 return {
-                    contract_id:  Number(document.getElementById('pay-contract').value),
+                    contracts_id: Number(document.getElementById('pay-contract').value),
                     period_year:  Number(document.getElementById('pay-year').value),
                     period_month: Number(document.getElementById('pay-month').value),
                     amount:       document.getElementById('pay-amount').value,
@@ -36,7 +36,7 @@ const PaymentsView = (() => {
                 };
             },
             fillForm(row) {
-                document.getElementById('pay-contract').value = row.contract_id  || '';
+                document.getElementById('pay-contract').value = row.contracts_id || '';
                 document.getElementById('pay-year').value     = row.period_year  || '';
                 document.getElementById('pay-month').value    = row.period_month || '';
                 document.getElementById('pay-amount').value   = row.amount       || '';
@@ -54,8 +54,8 @@ const PaymentsView = (() => {
 
         // Auto-fill amount when contract selection changes
         document.getElementById('pay-contract').addEventListener('change', function () {
-            const cid = Number(this.value);
-            const c   = contractsCache.find(x => x.id === cid);
+            const val = Number(this.value);
+            const c   = contractsCache.find(x => (x.contracts_id ?? x.id) === val);
             if (c && !document.getElementById('pay-amount').value) {
                 document.getElementById('pay-amount').value = c.monthly_rent;
             }
@@ -88,9 +88,10 @@ const PaymentsView = (() => {
     async function fillDropdowns() {
         contractsCache = await Api.crudList('contracts');
 
+        const cid = (c) => c.contracts_id ?? c.id;
         const opts = '<option value="">— Vyberte smlouvu —</option>' +
             contractsCache.map(c =>
-                '<option value="' + c.id + '">' +
+                '<option value="' + cid(c) + '">' +
                     UI.esc(c.tenant_name) + ' – ' + UI.esc(c.property_name) +
                     ' (' + UI.fmt(c.monthly_rent) + ' Kč/měs.)' +
                 '</option>'
@@ -100,7 +101,7 @@ const PaymentsView = (() => {
         // Filter dropdown
         const fOpts = '<option value="">— Všechny smlouvy —</option>' +
             contractsCache.map(c =>
-                '<option value="' + c.id + '"' + (filterContractId === c.id ? ' selected' : '') + '>' +
+                '<option value="' + cid(c) + '"' + (filterContractId === cid(c) ? ' selected' : '') + '>' +
                     UI.esc(c.tenant_name) + ' – ' + UI.esc(c.property_name) +
                 '</option>'
             ).join('');
@@ -109,7 +110,7 @@ const PaymentsView = (() => {
 
     // ── render payments table ───────────────────────────────────────────
     async function renderPayments() {
-        const params = filterContractId ? { contract_id: filterContractId } : {};
+        const params = filterContractId ? { contracts_id: filterContractId } : {};
         let data;
         try { data = await Api.crudList('payments', params); }
         catch (e) { return; }

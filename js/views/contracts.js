@@ -185,7 +185,7 @@ const ContractsView = (() => {
                 '<td>' + (c.note ? UI.esc(c.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td class="td-act">' +
                     '<button class="btn btn-ghost btn-sm" onclick="ContractsView.edit(' + c.id + ')">Úprava</button>' +
-                    '<button class="btn btn-ghost btn-sm" onclick="PaymentsView.navigateWithFilter(' + c.id + ')">Platby</button>' +
+                    '<button class="btn btn-ghost btn-sm" onclick="PaymentsView.navigateWithFilter(' + (c.contracts_id ?? c.id) + ')">Platby</button>' +
                     '<button class="btn btn-danger btn-sm" onclick="ContractsView.del(' + c.id + ')">Smazat</button>' +
                 '</td>'
             ),

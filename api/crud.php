@@ -12,7 +12,7 @@ $FIELDS = [
     'properties' => ['name','address','size_m2','purchase_price','purchase_date','type','note'],
     'tenants'    => ['name','type','email','phone','address','ic','dic','note'],
     'contracts'  => ['property_id','tenant_id','contract_start','contract_end','monthly_rent','note'],
-    'payments'   => ['contract_id','period_year','period_month','amount','payment_date','note'],
+    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note'],
 ];
 
 // Povinná pole při přidávání
@@ -20,7 +20,7 @@ $REQUIRED = [
     'properties' => ['name','address'],
     'tenants'    => ['name'],
     'contracts'  => ['property_id','tenant_id','contract_start','monthly_rent'],
-    'payments'   => ['contract_id','period_year','period_month','amount','payment_date'],
+    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date'],
 ];
 
 // Lidsky čitelné názvy polí pro chybové hlášky
@@ -28,7 +28,7 @@ $FIELD_LABELS = [
     'properties' => ['name'=>'Název','address'=>'Adresa'],
     'tenants'    => ['name'=>'Jméno / Název'],
     'contracts'  => ['property_id'=>'Nemovitost','tenant_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','note'=>'Poznámka'],
-    'payments'   => ['contract_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka'],
+    'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka'],
 ];
 
 $table = $_GET['table'] ?? body()['table'] ?? '';
@@ -71,16 +71,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     if ($table === 'payments') {
-        $cid = isset($_GET['contract_id']) ? (int)$_GET['contract_id'] : 0;
+        $cid = isset($_GET['contracts_id']) ? (int)$_GET['contracts_id'] : (isset($_GET['contract_id']) ? (int)$_GET['contract_id'] : 0);
         $sql = "
             SELECT pay.*, c.monthly_rent, p.name AS property_name, t.name AS tenant_name
             FROM payments pay
-            JOIN contracts  c ON c.id = pay.contract_id AND c.valid_to IS NULL
+            JOIN contracts  c ON c.contracts_id = pay.contracts_id AND c.valid_to IS NULL
             JOIN properties p ON p.id = c.property_id   AND p.valid_to IS NULL
             JOIN tenants    t ON t.id = c.tenant_id     AND t.valid_to IS NULL
             WHERE pay.valid_to IS NULL";
         $params = [];
-        if ($cid > 0) { $sql .= " AND pay.contract_id=?"; $params[] = $cid; }
+        if ($cid > 0) {
+            $sql .= " AND pay.contracts_id=?";
+            $params[] = $cid;
+        }
         $sql .= " ORDER BY pay.period_year DESC, pay.period_month DESC";
         $s = db()->prepare($sql); $s->execute($params);
         jsonOk($s->fetchAll());
@@ -124,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Pole, která musí být kladné ID (> 0) – 0 znamená „nevybráno“
     $POSITIVE_ID_FIELDS = [
         'contracts' => ['property_id', 'tenant_id'],
-        'payments'  => ['contract_id'],
+        'payments'  => ['contracts_id'],
     ];
 
     if ($action === 'add') {

@@ -77,7 +77,7 @@ async function loadDashboard(year) {
                 }
 
                 const dataAttrs = cell.type !== 'empty'
-                    ? ' data-contract-id="' + cell.contract.id + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (cell.contract.tenant_name || '').replace(/"/g, '&quot;') + '" data-paid="' + (cell.type === 'paid' ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + (cell.payment && cell.payment.amount ? cell.payment.amount : '') + '"'
+                    ? ' data-contract-id="' + cell.contract.id + '" data-contracts-id="' + (cell.contract.contracts_id ?? cell.contract.id) + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (cell.contract.tenant_name || '').replace(/"/g, '&quot;') + '" data-paid="' + (cell.type === 'paid' ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + (cell.payment && cell.payment.amount ? cell.payment.amount : '') + '"'
                     : ' data-property-id="' + prop.id + '" data-month-key="' + monthKey + '"';
 
                 const onClick = cell.type === 'empty'
@@ -144,6 +144,7 @@ App.registerView('dashboard', () => loadDashboard());
 // ── PaymentModal ─────────────────────────────────────────────────────────
 function openPaymentModal(el) {
     const contractId = el.dataset.contractId;
+    const contractsId = el.dataset.contractsId || contractId;
     const monthKey = el.dataset.monthKey;
     const amountVal = parseFloat(el.dataset.amount) || 0;
     const tenantName = el.dataset.tenant || '';
@@ -183,10 +184,10 @@ function openPaymentModal(el) {
                     alert('Zadejte platné datum platby (např. únor má max. 29 dní).');
                     return;
                 }
-                const payments = await Api.crudList('payments', { contract_id: contractId });
+                const payments = await Api.crudList('payments', { contracts_id: contractsId });
                 const existing = payments.find(x => String(x.period_year) === year && String(x.period_month) === month);
                 const payload = {
-                    contract_id: parseInt(contractId, 10),
+                    contracts_id: parseInt(contractsId, 10),
                     period_year: parseInt(year, 10),
                     period_month: parseInt(month, 10),
                     amount: parseFloat(amount.value) || amountVal,
@@ -198,7 +199,7 @@ function openPaymentModal(el) {
                     await Api.crudAdd('payments', payload);
                 }
             } else {
-                const payments = await Api.crudList('payments', { contract_id: contractId });
+                const payments = await Api.crudList('payments', { contracts_id: contractsId });
                 const p = payments.find(x => String(x.period_year) === year && String(x.period_month) === month);
                 if (p) await Api.crudDelete('payments', p.id);
             }
