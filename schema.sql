@@ -4,9 +4,9 @@
 --   valid_from  DATETIME NOT NULL  – kdy záznam začal platit
 --   valid_to    DATETIME NULL      – kdy přestal (NULL = platí nyní)
 -- ============================================================
-CREATE DATABASE IF NOT EXISTS nemovitosti
+CREATE DATABASE IF NOT EXISTS tobolikcz01
   CHARACTER SET utf8mb4 COLLATE utf8mb4_czech_ci;
-USE nemovitosti;
+USE tobolikcz01;
 
 -- 1) Uživatelé
 CREATE TABLE IF NOT EXISTS users (
@@ -22,23 +22,29 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- 2) Nemovitosti
 CREATE TABLE IF NOT EXISTS properties (
-    id      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name    VARCHAR(255) NOT NULL,
-    address TEXT NOT NULL,
-    type    ENUM('apartment','house','commercial','land') NOT NULL DEFAULT 'apartment',
-    note    TEXT NULL,
-    valid_from DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    valid_to   DATETIME NULL DEFAULT NULL,
+    id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name           VARCHAR(255) NOT NULL,
+    address        TEXT NOT NULL,
+    size_m2        DECIMAL(10,2) NULL,
+    purchase_price DECIMAL(12,2) NULL,
+    type           ENUM('apartment','house','commercial','land','garage') NOT NULL DEFAULT 'apartment',
+    note           TEXT NULL,
+    valid_from     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    valid_to       DATETIME NULL DEFAULT NULL,
     INDEX idx_v (valid_to)
 ) ENGINE=InnoDB;
 
 -- 3) Nájemníci
 CREATE TABLE IF NOT EXISTS tenants (
-    id     INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name   VARCHAR(255) NOT NULL,
-    email  VARCHAR(255) NULL,
-    phone  VARCHAR(30)  NULL,
-    note   TEXT NULL,
+    id        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name      VARCHAR(255) NOT NULL,
+    type      ENUM('person','company') NOT NULL DEFAULT 'person',
+    email     VARCHAR(255) NULL,
+    phone     VARCHAR(30)  NULL,
+    address   TEXT NULL,
+    ic        VARCHAR(20)  NULL,
+    dic       VARCHAR(20)  NULL,
+    note      TEXT NULL,
     valid_from DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     valid_to   DATETIME NULL DEFAULT NULL,
     INDEX idx_v (valid_to)

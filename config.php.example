@@ -6,7 +6,7 @@ declare(strict_types=1);
 
 define('DB_HOST', '127.0.0.1');
 define('DB_PORT',  3306);
-define('DB_NAME', 'nemovitosti');
+define('DB_NAME', 'tobolikcz01');
 define('DB_USER', 'YOUR_USER');   // ← změňte
 define('DB_PASS', 'YOUR_PASS');   // ← změňte
 

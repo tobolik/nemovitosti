@@ -9,8 +9,8 @@ requireLogin();
 
 // Whitelist: tabulka → povolená pole
 $FIELDS = [
-    'properties' => ['name','address','type','note'],
-    'tenants'    => ['name','email','phone','note'],
+    'properties' => ['name','address','size_m2','purchase_price','type','note'],
+    'tenants'    => ['name','type','email','phone','address','ic','dic','note'],
     'contracts'  => ['property_id','tenant_id','contract_start','contract_end','monthly_rent','note'],
     'payments'   => ['contract_id','period_year','period_month','amount','payment_date','note'],
 ];

@@ -77,8 +77,9 @@ const Api = (() => {
     // ════════════════════════════════════════════════════════════════════
     // DASHBOARD
     // ════════════════════════════════════════════════════════════════════
-    function dashboardLoad() {
-        return get('/api/dashboard.php');
+    function dashboardLoad(year) {
+        const url = year ? '/api/dashboard.php?year=' + year : '/api/dashboard.php';
+        return get(url);
     }
 
     // ════════════════════════════════════════════════════════════════════

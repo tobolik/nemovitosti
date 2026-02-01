@@ -17,22 +17,31 @@ const TenantsView = (() => {
             editLabel:  'Uložit změny',
             getValues() {
                 return {
-                    name:  document.getElementById('ten-name').value.trim(),
-                    email: document.getElementById('ten-email').value.trim(),
-                    phone: document.getElementById('ten-phone').value.trim(),
-                    note:  document.getElementById('ten-note').value.trim(),
+                    name:    document.getElementById('ten-name').value.trim(),
+                    type:    document.getElementById('ten-type').value,
+                    email:   document.getElementById('ten-email').value.trim(),
+                    phone:   document.getElementById('ten-phone').value.trim(),
+                    address: document.getElementById('ten-address').value.trim(),
+                    ic:      document.getElementById('ten-ic').value.trim() || null,
+                    dic:     document.getElementById('ten-dic').value.trim() || null,
+                    note:    document.getElementById('ten-note').value.trim(),
                 };
             },
             fillForm(row) {
-                document.getElementById('ten-name').value  = row.name  || '';
-                document.getElementById('ten-email').value = row.email || '';
-                document.getElementById('ten-phone').value = row.phone || '';
-                document.getElementById('ten-note').value  = row.note  || '';
+                document.getElementById('ten-name').value    = row.name    || '';
+                document.getElementById('ten-type').value     = row.type    || 'person';
+                document.getElementById('ten-email').value   = row.email   || '';
+                document.getElementById('ten-phone').value   = row.phone   || '';
+                document.getElementById('ten-address').value = row.address || '';
+                document.getElementById('ten-ic').value      = row.ic      || '';
+                document.getElementById('ten-dic').value     = row.dic     || '';
+                document.getElementById('ten-note').value    = row.note    || '';
             },
             resetForm() {
-                ['ten-name','ten-email','ten-phone','ten-note'].forEach(id =>
+                ['ten-name','ten-email','ten-phone','ten-address','ten-ic','ten-dic','ten-note'].forEach(id =>
                     document.getElementById(id).value = ''
                 );
+                document.getElementById('ten-type').value = 'person';
             },
             onSaved: loadList,
         });
@@ -45,17 +54,21 @@ const TenantsView = (() => {
 
         UI.renderTable('ten-table',
             [
-                { label: 'Jméno' },
+                { label: 'Jméno / Název' },
+                { label: 'Typ' },
                 { label: 'E-mail' },
                 { label: 'Telefon' },
+                { label: 'IČO' },
                 { label: 'Poznámka' },
                 { label: 'Akce', act: true },
             ],
             data,
             (t) => (
                 '<td><strong>' + UI.esc(t.name) + '</strong></td>' +
+                '<td>' + (t.type === 'company' ? 'PO' : 'FO') + '</td>' +
                 '<td>' + (t.email ? UI.esc(t.email) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td>' + (t.phone ? UI.esc(t.phone) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
+                '<td>' + (t.ic ? UI.esc(t.ic) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td>' + (t.note  ? UI.esc(t.note)  : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td class="td-act">' +
                     '<button class="btn btn-ghost btn-sm" onclick="TenantsView.edit(' + t.id + ')">Úprava</button>' +

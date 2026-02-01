@@ -1,6 +1,6 @@
 // js/views/properties.js
 
-const TYPE_LABELS = { apartment:'Byt', house:'Dům', commercial:'Komerční', land:'Pozemek' };
+const TYPE_LABELS = { apartment:'Byt', house:'Dům', garage:'Garáž', commercial:'Komerční', land:'Pozemek' };
 
 const PropertiesView = (() => {
     // CRUD form controller (created once on first load)
@@ -19,20 +19,24 @@ const PropertiesView = (() => {
             editLabel:  'Uložit změny',
             getValues() {
                 return {
-                    name:    document.getElementById('prop-name').value.trim(),
-                    address: document.getElementById('prop-address').value.trim(),
-                    type:    document.getElementById('prop-type').value,
-                    note:    document.getElementById('prop-note').value.trim(),
+                    name:           document.getElementById('prop-name').value.trim(),
+                    address:        document.getElementById('prop-address').value.trim(),
+                    size_m2:        document.getElementById('prop-size-m2').value || null,
+                    purchase_price: document.getElementById('prop-purchase-price').value || null,
+                    type:           document.getElementById('prop-type').value,
+                    note:           document.getElementById('prop-note').value.trim(),
                 };
             },
             fillForm(row) {
-                document.getElementById('prop-name').value    = row.name    || '';
-                document.getElementById('prop-address').value = row.address || '';
-                document.getElementById('prop-type').value    = row.type    || 'apartment';
-                document.getElementById('prop-note').value    = row.note    || '';
+                document.getElementById('prop-name').value           = row.name           || '';
+                document.getElementById('prop-address').value        = row.address        || '';
+                document.getElementById('prop-size-m2').value         = row.size_m2        || '';
+                document.getElementById('prop-purchase-price').value  = row.purchase_price || '';
+                document.getElementById('prop-type').value            = row.type           || 'apartment';
+                document.getElementById('prop-note').value            = row.note           || '';
             },
             resetForm() {
-                ['prop-name','prop-address','prop-note'].forEach(id =>
+                ['prop-name','prop-address','prop-size-m2','prop-purchase-price','prop-note'].forEach(id =>
                     document.getElementById(id).value = ''
                 );
                 document.getElementById('prop-type').value = 'apartment';
@@ -60,6 +64,8 @@ const PropertiesView = (() => {
                 '<td><strong>' + UI.esc(p.name) + '</strong></td>' +
                 '<td>' + UI.esc(TYPE_LABELS[p.type] || p.type) + '</td>' +
                 '<td>' + UI.esc(p.address) + '</td>' +
+                '<td>' + (p.size_m2 ? UI.fmt(p.size_m2) + ' m²' : '—') + '</td>' +
+                '<td>' + (p.purchase_price ? UI.fmt(p.purchase_price) + ' Kč' : '—') + '</td>' +
                 '<td>' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td class="td-act">' +
                     '<button class="btn btn-ghost btn-sm" onclick="PropertiesView.edit(' + p.id + ')">Úprava</button>' +

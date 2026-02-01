@@ -2,6 +2,14 @@
 
 Aplikace pro evidenci nemovitostí, nájemníků, smlouv a sledování platební morálky.
 
+## Verzování
+
+Verze v patičce (`index.html`). Při změnách navýšit podle [Semantic Versioning](https://semver.org/):
+
+- **MAJOR** (x.0.0) – zásadní změny, breaking changes
+- **MINOR** (1.x.0) – nové funkce, zpětně kompatibilní
+- **PATCH** (1.0.x) – opravy chyb, drobné úpravy
+
 ## Technologie
 
 - **Frontend:** Vanilla JS SPA (žádné dependencies, žádný build krok)
@@ -41,8 +49,9 @@ V repozitáři: **Settings → Secrets and variables → Actions** přidejte:
 ### 1. Databáze – via phpMyAdmin
 
 1. Přihlášte se do phpMyAdmin (poskytneme hosting providером).
-2. Vytvořte novou databázi, např. `nemovitosti` (charset: utf8mb4, collation: utf8mb4_czech_ci).
+2. Vytvořte novou databázi, např. `tobolikcz01` (charset: utf8mb4, collation: utf8mb4_czech_ci).
 3. Importujte soubor `schema.sql` (Import → Zvolte soubor → Execute).
+4. **Existující instalace:** Spusťte `schema_migration.sql` pro přidání sloupců (size_m2, purchase_price, type, ic, dic).
 
 ### 2. Konfigurace
 

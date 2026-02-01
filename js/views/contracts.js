@@ -49,13 +49,13 @@ const ContractsView = (() => {
         ]);
 
         document.getElementById('con-property').innerHTML =
-            '<option value="">— Wyberte nemovitost —</option>' +
+            '<option value="">— Vyberte nemovitost —</option>' +
             props.map(p =>
                 '<option value="' + p.id + '">' + UI.esc(p.name) + ' – ' + UI.esc(p.address) + '</option>'
             ).join('');
 
         document.getElementById('con-tenant').innerHTML =
-            '<option value="">— Wyberte nájemníka —</option>' +
+            '<option value="">— Vyberte nájemníka —</option>' +
             tens.map(t =>
                 '<option value="' + t.id + '">' + UI.esc(t.name) + '</option>'
             ).join('');
@@ -112,12 +112,29 @@ const ContractsView = (() => {
         _cache = [];
         await fillDropdowns();
         await loadList();
+        prefillFromCalendarIfPending();
     }
 
-    // Exposed so PaymentsView can get cached contracts
+    let _pendingPrefill = null;
+    function prefillFromCalendar(propertyId, monthKey, propertyName) {
+        _pendingPrefill = { propertyId, monthKey, propertyName };
+    }
+    async function prefillFromCalendarIfPending() {
+        if (!_pendingPrefill) return;
+        const { propertyId, monthKey } = _pendingPrefill;
+        _pendingPrefill = null;
+        await fillDropdowns();
+        document.getElementById('con-property').value = propertyId;
+        document.getElementById('con-start').value = monthKey + '-01';
+        document.getElementById('con-edit-id').value = '';
+        document.getElementById('con-form-title').textContent = 'Přidat smlouvu';
+        document.getElementById('btn-con-save').textContent = 'Přidat smlouvu';
+        document.getElementById('btn-con-cancel').style.display = 'none';
+    }
+
     function getCache() { return _cache; }
 
-    return { load, edit, del, getCache };
+    return { load, edit, del, getCache, prefillFromCalendar };
 })();
 
 App.registerView('contracts', ContractsView.load);
