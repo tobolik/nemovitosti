@@ -49,8 +49,8 @@ foreach ($statements as $i => $stmt) {
         $applied++;
     } catch (PDOException $e) {
         $msg = $e->getMessage();
-        $isDuplicate = str_contains($msg, 'Duplicate column') || str_contains($msg, 'Duplicate key')
-            || str_contains($msg, 'Duplicate key name') || str_contains($msg, 'already exists')
+        $isDuplicate = strpos($msg, 'Duplicate column') !== false || strpos($msg, 'Duplicate key') !== false
+            || strpos($msg, 'Duplicate key name') !== false || strpos($msg, 'already exists') !== false
             || in_array($e->getCode(), [1060, 1061, '42S21'], true);
         if ($isDuplicate) {
             $skipped++;
