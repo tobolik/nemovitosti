@@ -308,3 +308,4 @@ const DashboardView = {
         PaymentsView.prefill(contractId, year, month, rent);
     }
 };
+window.DashboardView = DashboardView;

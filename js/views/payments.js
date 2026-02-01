@@ -199,3 +199,4 @@ const PaymentsView = (() => {
 })();
 
 App.registerView('payments', PaymentsView.load);
+window.PaymentsView = PaymentsView;

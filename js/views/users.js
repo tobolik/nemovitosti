@@ -111,3 +111,4 @@ const UsersView = (() => {
 })();
 
 App.registerView('users', UsersView.load);
+window.UsersView = UsersView;

@@ -246,3 +246,4 @@ const ContractsView = (() => {
 })();
 
 App.registerView('contracts', ContractsView.load);
+window.ContractsView = ContractsView;

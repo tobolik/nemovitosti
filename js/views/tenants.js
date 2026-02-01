@@ -148,3 +148,4 @@ const TenantsView = (() => {
 })();
 
 App.registerView('tenants', TenantsView.load);
+window.TenantsView = TenantsView;

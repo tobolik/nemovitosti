@@ -133,3 +133,4 @@ const PropertiesView = (() => {
 })();
 
 App.registerView('properties', PropertiesView.load);
+window.PropertiesView = PropertiesView;
