@@ -236,6 +236,19 @@
             <div class="fg"><label>Částka (Kč) *</label><input type="number" id="pay-amount" step="0.01" min="0"></div>
             <div class="fg"><label>Datum platby *</label><input type="date" id="pay-date"></div>
           </div>
+          <div class="form-row">
+            <div class="fg">
+              <label>Způsob platby</label>
+              <select id="pay-method">
+                <option value="account">Na účet</option>
+                <option value="cash">Hotovost</option>
+              </select>
+            </div>
+            <div class="fg" id="pay-account-wrap">
+              <label>Bankovní účet</label>
+              <select id="pay-account"><option value="">— Vyberte účet —</option></select>
+            </div>
+          </div>
           <div class="fg"><label>Poznámka</label><textarea id="pay-note" rows="2"></textarea></div>
           <div class="form-actions">
             <button class="btn btn-pri" id="btn-pay-save" data-save-btn>Zaznamenat platbu</button>
