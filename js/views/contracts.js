@@ -109,6 +109,7 @@ const ContractsView = (() => {
 
     async function load() {
         initForm();
+        initTenantModal();
         _cache = [];
         await fillDropdowns();
         await loadList();

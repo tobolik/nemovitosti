@@ -155,7 +155,13 @@
           <input type="hidden" id="con-edit-id">
           <div class="form-row">
             <div class="fg"><label>Nemovitost *</label><select id="con-property"></select></div>
-            <div class="fg"><label>Nájemník *</label><select id="con-tenant"></select></div>
+            <div class="fg fg-tenant-row">
+              <label>Nájemník *</label>
+              <div class="select-with-btn">
+                <select id="con-tenant"></select>
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-con-add-tenant" title="Přidat nového nájemníka">+ Nájemník</button>
+              </div>
+            </div>
           </div>
           <div class="form-row">
             <div class="fg"><label>Začátek smlouvy *</label><input type="date" id="con-start"></div>
@@ -243,7 +249,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v0.11.0</span>
+    <span class="footer-version">v0.12.0</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -283,6 +289,50 @@
     <input type="hidden" id="pay-modal-contract-id">
     <input type="hidden" id="pay-modal-month-key">
     <input type="hidden" id="pay-modal-property-name">
+  </div>
+</div>
+
+<!-- ═══ MODAL: Nový nájemník (ze smluv) ═══ -->
+<div class="modal" id="modal-tenant">
+  <div class="modal-ov" onclick="UI.modalClose('modal-tenant')"></div>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 class="modal-title">Přidat nájemníka</h3>
+      <button type="button" class="modal-close" onclick="UI.modalClose('modal-tenant')" aria-label="Zavřít">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert" id="modal-tenant-alert"></div>
+      <div class="form-row">
+        <div class="fg">
+          <label>Typ</label>
+          <select id="modal-tenant-type">
+            <option value="person">Fyzická osoba</option>
+            <option value="company">Právnická osoba</option>
+          </select>
+        </div>
+        <div class="fg"><label>Jméno / Název *</label><input type="text" id="modal-tenant-name"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>E-mail</label><input type="email" id="modal-tenant-email"></div>
+        <div class="fg"><label>Telefon</label><input type="tel" id="modal-tenant-phone"></div>
+      </div>
+      <div class="fg"><label>Adresa</label><input type="text" id="modal-tenant-address" placeholder="Začněte psát ulici..." autocomplete="off"></div>
+      <div class="form-row fg-ic-row">
+        <div class="fg">
+          <label>IČO</label>
+          <div class="input-with-btn">
+            <input type="text" id="modal-tenant-ic" placeholder="12345678">
+            <button type="button" class="btn btn-ghost btn-sm" id="modal-tenant-ares-btn" title="Načíst z ARES" style="display:none">Načíst z ARES</button>
+          </div>
+        </div>
+        <div class="fg"><label>DIČ</label><input type="text" id="modal-tenant-dic" placeholder="CZ12345678"></div>
+      </div>
+      <div class="fg"><label>Poznámka</label><textarea id="modal-tenant-note" rows="2"></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-pri" id="btn-modal-tenant-save">Přidat a vybrat</button>
+      <button class="btn btn-ghost" onclick="UI.modalClose('modal-tenant')">Zrušit</button>
+    </div>
   </div>
 </div>
 

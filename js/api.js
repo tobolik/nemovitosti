@@ -108,5 +108,6 @@ const Api = (() => {
         crudList, crudAdd, crudEdit, crudDelete,
         dashboardLoad,
         usersList, usersAdd, usersDelete, usersChangePassword,
+        aresLookup,
     };
 })();

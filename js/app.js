@@ -53,6 +53,7 @@ const App = (() => {
         if (typeof AddressAutocomplete !== 'undefined') {
             AddressAutocomplete.create('prop-address');
             AddressAutocomplete.create('ten-address');
+            AddressAutocomplete.create('modal-tenant-address');
         }
         // Sidebar: collapsed on mobile
         const sb = document.getElementById('sidebar');
