@@ -32,6 +32,27 @@ foreach ($rentChangesRaw as $rc) {
     $rentChangesByContract[$cid][] = $rc;
 }
 
+/**
+ * Očekávaná částka za měsíc: plný měsíc = full rent, jinak poměrná část (smlouva začíná/končí v průběhu).
+ * Pouze pro heatmapu – zbytek logiky beze změny.
+ */
+function getExpectedRentForMonth(array $c, int $year, int $m, array $rentChangesByContract): float {
+    $firstOfMonth = sprintf('%04d-%02d-01', $year, $m);
+    $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
+    $fullRent = getRentForMonth((float)$c['monthly_rent'], (int)($c['contracts_id'] ?? $c['id']), $year, $m, $rentChangesByContract);
+    $start = $c['contract_start'];
+    $end = $c['contract_end'] ?? $lastDayOfMonth;
+    if ($start <= $firstOfMonth && $end >= $lastDayOfMonth) {
+        return $fullRent;
+    }
+    $from = max($start, $firstOfMonth);
+    $to = min($end, $lastDayOfMonth);
+    if ($from > $to) return 0.0;
+    $daysInMonth = (int)date('t', strtotime($firstOfMonth));
+    $daysCovered = (int)((strtotime($to) - strtotime($from)) / 86400) + 1;
+    return round($fullRent * $daysCovered / $daysInMonth, 2);
+}
+
 // Payments per contract – platby odkazují na contracts_id (entity_id smlouvy)
 // paidRent: jen platby typu rent (pro očekávaný nájem, neuhrazené měsíce)
 // paidTotal: všechny platby (pro součet v sekci Nájemník)
@@ -158,14 +179,14 @@ foreach ($properties as $p) {
     for ($m = 1; $m <= 12; $m++) {
         $monthKey = $year . '-' . str_pad((string)$m, 2, '0', STR_PAD_LEFT);
         $firstOfMonth = $monthKey . '-01';
+        $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
 
         $contract = null;
         $propEntityId = $p['properties_id'] ?? $p['id'];
         foreach ($contracts as $c) {
             $cPropMatch = ($c['properties_id'] == $propEntityId);
-            if ($cPropMatch
-                && $c['contract_start'] <= $firstOfMonth
-                && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth)) {
+            $hasDayInMonth = $c['contract_start'] <= $lastDayOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth);
+            if ($cPropMatch && $hasDayInMonth) {
                 $contract = $c;
                 break;
             }
@@ -176,14 +197,15 @@ foreach ($properties as $p) {
         } else {
             $entityId = $contract['contracts_id'] ?? $contract['id'];
             $paid = $paymentsByContract[$entityId][$monthKey] ?? null;
-            $monthRent = getRentForMonth((float)$contract['monthly_rent'], $entityId, $year, $m, $rentChangesByContract);
+            $expectedRent = getExpectedRentForMonth($contract, $year, $m, $rentChangesByContract);
+            $fullMonthRent = getRentForMonth((float)$contract['monthly_rent'], $entityId, $year, $m, $rentChangesByContract);
             $paidAmt = $paid ? (float)($paid['amount_rent'] ?? $paid['amount'] ?? 0) : 0;
             $paymentCount = $paid ? (int)($paid['payment_count'] ?? 0) : 0;
             $hasPaymentDate = $paid && !empty($paid['payment_date']);
             $isPast = ($year < $nowY) || ($year == $nowY && $m < $nowM);
 
-            if ($hasPaymentDate && $paidAmt >= $monthRent) {
-                $type = $paidAmt > $monthRent ? 'overpaid' : 'exact';
+            if ($hasPaymentDate && $paidAmt >= $expectedRent) {
+                $type = $paidAmt > $expectedRent ? 'overpaid' : 'exact';
             } else {
                 $type = $isPast ? 'overdue' : 'unpaid';
             }
@@ -191,13 +213,14 @@ foreach ($properties as $p) {
             $heatmap[$propId . '_' . $monthKey] = [
                 'type'          => $type,
                 'isPast'        => $isPast,
-                'contract'      => ['id'=>$entityId, 'contracts_id'=>$entityId, 'monthly_rent'=>$monthRent, 'tenant_name'=>$contract['tenant_name']],
+                'contract'      => ['id'=>$entityId, 'contracts_id'=>$entityId, 'monthly_rent'=>$fullMonthRent, 'tenant_name'=>$contract['tenant_name']],
                 'monthKey'       => $monthKey,
-                'amount'         => $monthRent,
+                'amount'         => $expectedRent,
+                'amount_full'    => $fullMonthRent,
                 'payment'        => $paid ? ['amount'=>(float)($paid['amount_rent'] ?? $paid['amount'] ?? 0), 'date'=>$paid['payment_date'], 'count'=>$paymentCount] : null,
                 'paid_amount'    => $paidAmt,
                 'payment_count'  => $paymentCount,
-                'remaining'      => max(0, $monthRent - $paidAmt),
+                'remaining'      => max(0, $expectedRent - $paidAmt),
             ];
         }
     }

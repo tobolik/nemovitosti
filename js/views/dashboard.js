@@ -97,8 +97,10 @@ async function loadDashboard(year) {
                         content = '<span class="cell-amount">' + UI.fmt(cell.amount || 0) + '</span>';
                     }
                 } else if (cell.type === 'exact' || cell.type === 'overpaid') {
+                    const fullPrescribed = cell.amount_full != null && cell.amount_full > (cell.amount || 0);
                     const sumLabel = paymentCount > 1 ? UI.fmt(paidAmt) + ' (' + paymentCount + ' platby)' : UI.fmt(paidAmt);
-                    content = '<span class="cell-amount">' + sumLabel + '</span><br><span class="cell-icon cell-check">✓</span>';
+                    const prescribedLabel = fullPrescribed ? UI.fmt(paidAmt) + ' / ' + UI.fmt(cell.amount_full) : sumLabel;
+                    content = '<span class="cell-amount">' + prescribedLabel + '</span><br><span class="cell-icon cell-check">✓</span>';
                 } else if (paidAmt > 0 && remaining > 0) {
                     const partialLabel = paymentCount > 1 ? UI.fmt(paidAmt) + ' (' + paymentCount + ' platby) / ' : UI.fmt(paidAmt) + ' / ';
                     content = '<span class="cell-partial">' + partialLabel + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-remaining">zbývá ' + UI.fmt(remaining) + '</span>';
