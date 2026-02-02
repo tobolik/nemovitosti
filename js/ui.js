@@ -55,9 +55,10 @@ const UI = (() => {
 
     // ── generic table renderer ──────────────────────────────────────────
     // Vloží <table> do elementu `containerId`.
-    // headers: [{ label, key?, width? }]
+    // headers: [{ label, key?, width?, act?, hideMobile? }]
     // rows: array of objects
     // rowFn: (item) => string of <td>...</td> (celý řádek)
+    // hideMobile: adds 'col-hide-mobile' class to column (hidden on mobile)
     function renderTable(containerId, headers, rows, rowFn, { emptyMsg = 'Žádné záznamy.' } = {}) {
         const el = document.getElementById(containerId);
         if (!el) return;
@@ -67,9 +68,12 @@ const UI = (() => {
             return;
         }
 
-        const ths = headers.map(h =>
-            '<th' + (h.act ? ' class="th-act"' : '') + '>' + esc(h.label) + '</th>'
-        ).join('');
+        const ths = headers.map(h => {
+            let cls = [];
+            if (h.act) cls.push('th-act');
+            if (h.hideMobile) cls.push('col-hide-mobile');
+            return '<th' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + '>' + esc(h.label) + '</th>';
+        }).join('');
 
         const trs = rows.map(item => {
             const cls = item._rowClass || '';

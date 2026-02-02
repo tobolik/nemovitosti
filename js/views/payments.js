@@ -236,13 +236,13 @@ const PaymentsView = (() => {
 
         UI.renderTable('pay-table',
             [
-                { label: 'Nájemník – Nemovitost' },
+                { label: 'Smlouva' },
                 { label: 'Období' },
                 { label: 'Částka' },
-                { label: 'Datum platby' },
-                { label: 'Způsob platby' },
-                { label: 'Vs. nájemné' },
-                { label: 'Poznámka' },
+                { label: 'Datum', hideMobile: true },
+                { label: 'Způsob', hideMobile: true },
+                { label: 'Vs. nájemné', hideMobile: true },
+                { label: 'Poznámka', hideMobile: true },
                 { label: 'Akce', act: true },
             ],
             data,
@@ -259,13 +259,13 @@ const PaymentsView = (() => {
                 const methodLabel = p.payment_method === 'cash' ? 'Hotovost' : (p.account_number ? 'Účet ' + UI.esc(p.account_number) : 'Na účet');
                 const batchHint = p.payment_batch_id ? ' <span class="tag tag-batch" title="Součást jedné platby">dávka</span>' : '';
                 return (
-                    '<td><strong>' + UI.esc(p.tenant_name) + '</strong> – ' + UI.esc(p.property_name) + '</td>' +
+                    '<td><strong>' + UI.esc(p.tenant_name) + '</strong><br><span style="color:var(--txt3);font-size:.8em">' + UI.esc(p.property_name) + '</span></td>' +
                     '<td>' + UI.MONTHS[p.period_month] + ' ' + p.period_year + batchHint + '</td>' +
                     '<td>' + UI.fmt(amt) + ' Kč</td>' +
-                    '<td>' + UI.esc(p.payment_date) + '</td>' +
-                    '<td>' + UI.esc(methodLabel) + '</td>' +
-                    '<td>' + diffHtml + '</td>' +
-                    '<td>' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
+                    '<td class="col-hide-mobile">' + UI.esc(p.payment_date) + '</td>' +
+                    '<td class="col-hide-mobile">' + UI.esc(methodLabel) + '</td>' +
+                    '<td class="col-hide-mobile">' + diffHtml + '</td>' +
+                    '<td class="col-hide-mobile">' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +
                         '<button class="btn btn-ghost btn-sm" onclick="PaymentsView.edit(' + p.id + ')">Úprava</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="PaymentsView.del(' + p.id + ')">Smazat</button>' +

@@ -53,15 +53,15 @@ const BankAccountsView = (() => {
                 { label: 'Název' },
                 { label: 'Číslo účtu' },
                 { label: 'Primární' },
-                { label: 'Pořadí' },
+                { label: 'Pořadí', hideMobile: true },
                 { label: 'Akce', act: true },
             ],
             data,
             (b) => (
                 '<td><strong>' + UI.esc(b.name) + '</strong></td>' +
                 '<td>' + UI.esc(b.account_number || '—') + '</td>' +
-                '<td>' + (b.is_primary ? '<span class="badge badge-ok">Ano</span>' : '—') + '</td>' +
-                '<td>' + (b.sort_order ?? 0) + '</td>' +
+                '<td>' + (b.is_primary ? '<span class="badge badge-ok">ANO</span>' : '—') + '</td>' +
+                '<td class="col-hide-mobile">' + (b.sort_order ?? 0) + '</td>' +
                 '<td class="td-act">' +
                     '<button class="btn btn-ghost btn-sm" onclick="BankAccountsView.edit(' + b.id + ')">Úprava</button>' +
                     '<button class="btn btn-danger btn-sm" onclick="BankAccountsView.del(' + b.id + ')">Smazat</button>' +
