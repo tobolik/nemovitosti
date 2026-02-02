@@ -119,6 +119,8 @@ const ContractsView = (() => {
                     document.getElementById('con-rc-effective').value = btn.dataset.effective || '';
                     document.getElementById('con-rc-amount').value = btn.dataset.amount || '';
                     btn.dataset.editId = btn.dataset.id;
+                    const addBtn = document.getElementById('btn-con-rc-add');
+                    if (addBtn) addBtn.textContent = 'Uložit';
                 };
             });
             listEl.querySelectorAll('[data-action="del"]').forEach(btn => {
@@ -126,6 +128,11 @@ const ContractsView = (() => {
                     if (!confirm('Smazat tuto změnu nájemného?')) return;
                     try {
                         await Api.crudDelete('contract_rent_changes', parseInt(btn.dataset.id, 10));
+                        document.querySelector('#con-rent-changes-list [data-edit-id]')?.removeAttribute('data-edit-id');
+                        document.getElementById('con-rc-effective').value = '';
+                        document.getElementById('con-rc-amount').value = '';
+                        const addBtn = document.getElementById('btn-con-rc-add');
+                        if (addBtn) addBtn.textContent = '+ Přidat';
                         loadRentChanges(_rentChangesContractsId);
                     } catch (e) { alert(e.message); }
                 };
@@ -165,6 +172,7 @@ const ContractsView = (() => {
                 }
                 effectiveEl.value = '';
                 amountEl.value = '';
+                if (btnAdd) btnAdd.textContent = '+ Přidat';
                 loadRentChanges(_rentChangesContractsId);
             } catch (e) { alert(e.message); }
         };
