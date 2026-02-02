@@ -384,9 +384,10 @@ footer .footer-version { opacity: .8; }
   border: 1px solid var(--glass-border);
   border-radius: var(--r-xl);
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   margin-bottom: 22px;
 }
-table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width: max-content; }
 .tbl th {
   text-align: left;
   padding: 12px 16px;
@@ -766,16 +767,23 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
   
   /* Full width content on mobile */
   .container, .main { 
-    padding-left: 12px; 
-    padding-right: 12px; 
+    padding-left: 8px; 
+    padding-right: 8px; 
   }
   .stats { grid-template-columns: 1fr; }
   
-  /* Responsive tables - full width */
+  /* Responsive tables - horizontal scroll */
   .tbl-wrap {
     border-radius: var(--r);
-    margin-left: 0;
-    margin-right: 0;
+    margin-left: -8px;
+    margin-right: -8px;
+    width: calc(100% + 16px);
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+  }
+  table.tbl {
+    min-width: 500px;
   }
   .tbl th, .tbl td { 
     padding: 10px 8px; 
@@ -790,17 +798,18 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
     display: none;
   }
   
-  /* Make action buttons stack vertically on mobile */
+  /* Make action buttons more compact on mobile */
   .td-act {
     flex-direction: column;
     gap: 4px;
     align-items: stretch;
+    min-width: 70px;
   }
   .td-act .btn {
     width: 100%;
     justify-content: center;
-    padding: 6px 10px;
-    font-size: .75rem;
+    padding: 6px 8px;
+    font-size: .72rem;
   }
   
   /* Improve footer on mobile */
@@ -813,11 +822,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
   
   /* Improve cards on mobile - full width */
   .card {
-    padding: 16px;
+    padding: 14px;
     margin-bottom: 16px;
     border-radius: var(--r);
-    margin-left: 0;
-    margin-right: 0;
+    margin-left: -8px;
+    margin-right: -8px;
+    width: calc(100% + 16px);
   }
   
   /* Card title without extra padding when form visible */
@@ -828,7 +838,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
   /* Modal improvements for mobile */
   .modal-box {
     width: 95%;
-    padding: 20px;
+    padding: 16px;
     max-height: 85vh;
   }
   
@@ -838,67 +848,88 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
   }
   .form-actions .btn {
     flex: 1;
-    min-width: 120px;
+    min-width: 100px;
   }
   
   /* Heatmap scroll hint */
   .heatmap-wrap {
-    margin-left: 0;
-    margin-right: 0;
+    margin-left: -8px;
+    margin-right: -8px;
+  }
+  
+  /* Filter bar full width */
+  .filter-bar {
+    padding-left: 0;
+    margin-left: 52px;
   }
 }
 
 @media (max-width: 480px) {
   .page-title { 
-    font-size: 1.15rem;
-    padding-left: 48px;
+    font-size: 1.1rem;
+    padding-left: 46px;
   }
   .text-muted {
-    padding-left: 48px;
-    font-size: .8rem;
+    padding-left: 46px;
+    font-size: .78rem;
   }
   .list-actions {
-    padding-left: 48px;
+    padding-left: 46px;
   }
   
   /* Hamburger adjustment */
   .hamburger {
-    top: 12px;
-    left: 12px;
-    padding: 10px;
-    font-size: 1.1rem;
+    top: 10px;
+    left: 8px;
+    padding: 8px 10px;
+    font-size: 1rem;
   }
   
   /* Full width on small screens */
   .container, .main { 
-    padding-left: 10px; 
-    padding-right: 10px; 
+    padding-left: 6px; 
+    padding-right: 6px; 
   }
   
   /* Cards full width */
   .card {
-    padding: 14px;
-    border-radius: var(--r);
+    padding: 12px;
+    margin-left: -6px;
+    margin-right: -6px;
+    width: calc(100% + 12px);
+  }
+  
+  /* Tables edge to edge */
+  .tbl-wrap {
+    margin-left: -6px;
+    margin-right: -6px;
+    width: calc(100% + 12px);
   }
   
   /* Even smaller table cells */
   .tbl th, .tbl td { 
     padding: 8px 6px; 
-    font-size: .75rem; 
+    font-size: .72rem; 
   }
   .tbl th {
-    font-size: .6rem;
-    letter-spacing: .03em;
+    font-size: .58rem;
+    letter-spacing: .02em;
   }
   
   /* Compact buttons */
   .btn {
-    padding: 7px 12px;
-    font-size: .8rem;
+    padding: 6px 10px;
+    font-size: .78rem;
   }
   .btn-sm {
-    padding: 5px 8px;
-    font-size: .72rem;
+    padding: 4px 6px;
+    font-size: .68rem;
+  }
+  
+  /* Action buttons even more compact */
+  .td-act .btn {
+    padding: 5px 6px;
+    font-size: .68rem;
   }
   
   /* Filter bar on mobile */
@@ -906,6 +937,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+    margin-left: 46px;
   }
   .filter-bar select {
     max-width: none;
@@ -914,25 +946,31 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
   
   /* Stats cards */
   .stat {
-    padding: 16px;
+    padding: 14px;
   }
   .stat-val {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
   }
   .stat-label {
-    font-size: .7rem;
+    font-size: .68rem;
   }
   
   /* Heatmap cells */
   .heatmap-cell {
-    min-width: 55px;
-    min-height: 40px;
-    padding: 4px;
+    min-width: 50px;
+    min-height: 38px;
+    padding: 3px;
   }
   .heatmap-cell .cell-amount {
-    font-size: .65rem;
+    font-size: .6rem;
   }
   .heatmap-property {
-    font-size: .75rem;
+    font-size: .7rem;
+  }
+  
+  /* Heatmap full width */
+  .heatmap-wrap {
+    margin-left: -6px;
+    margin-right: -6px;
   }
 }
