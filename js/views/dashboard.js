@@ -217,6 +217,8 @@ async function openPaymentModal(el) {
     const existingWrap = document.getElementById('pay-modal-existing');
     const batchHintEl = document.getElementById('pay-modal-batch-hint');
     const editIdEl = document.getElementById('pay-modal-edit-id');
+    const typeSelect = document.getElementById('pay-modal-type');
+    const typeWrap = document.getElementById('pay-modal-type-wrap');
     const bulkWrap = document.getElementById('pay-modal-bulk-wrap');
     const bulkCheckbox = document.getElementById('pay-modal-bulk');
     const rangeRow = document.getElementById('pay-modal-range-row');
@@ -265,12 +267,23 @@ async function openPaymentModal(el) {
     }
     info.innerHTML = infoHtml;
 
+    const typeLabels = { rent: 'Nájem', deposit: 'Kauce', energy: 'Doplatek energie', other: 'Jiné' };
+    function setTypeWrapClass(t) {
+        const v = (t && ['rent','deposit','energy','other'].includes(t)) ? t : 'rent';
+        if (typeWrap) {
+            typeWrap.classList.remove('pay-type-rent', 'pay-type-deposit', 'pay-type-energy', 'pay-type-other');
+            typeWrap.classList.add('pay-type-' + v);
+        }
+    }
+
     paid.checked = isPaid;
     amount.value = isPaid ? amountVal : remaining;
     dateInput.value = paymentDate;
     dateWrap.style.display = isPaid ? 'block' : 'none';
     methodWrap.style.display = isPaid ? 'flex' : 'none';
     accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
+    typeSelect.value = 'rent';
+    setTypeWrapClass('rent');
 
     let payments = await Api.crudList('payments', { contracts_id: contractsId });
     let forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
@@ -286,10 +299,13 @@ async function openPaymentModal(el) {
             const dt = p.payment_date ? UI.fmtDate(p.payment_date) : '—';
             const method = p.payment_method || 'account';
             const accId = p.bank_accounts_id ?? '';
+            const pt = p.payment_type || 'rent';
+            const typeLabel = typeLabels[pt] || 'Nájem';
+            const typeBadge = '<span class="pay-modal-type-badge pay-type-' + pt + '">' + UI.esc(typeLabel) + '</span>';
             const batchTag = p.payment_batch_id ? ' <span class="tag tag-batch" title="Součást jedné platby za více měsíců">dávka</span>' : '';
             html += '<li class="pay-modal-existing-item">' +
-                '<span>' + amt + ' Kč (' + dt + ')' + batchTag + '</span> ' +
-                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + p.id + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-batch-id="' + (p.payment_batch_id || '') + '">Upravit</button> ' +
+                '<span>' + typeBadge + ' ' + amt + ' Kč (' + dt + ')' + batchTag + '</span> ' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + p.id + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '">Upravit</button> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + p.id + '" data-batch-id="' + (p.payment_batch_id || '') + '">Smazat</button>' +
                 '</li>';
         });
@@ -301,6 +317,7 @@ async function openPaymentModal(el) {
     if (forMonth.length === 1) {
         const p = forMonth[0];
         const method = p.payment_method || 'account';
+        const pt = p.payment_type || 'rent';
         editIdEl.value = String(p.id || '');
         editIdEl.dataset.batchId = String(p.payment_batch_id || '');
         editIdEl.dataset.originalAmount = String(p.amount ?? '');
@@ -309,6 +326,8 @@ async function openPaymentModal(el) {
         methodSelect.value = method === 'cash' ? 'cash' : 'account';
         accountSelect.value = p.bank_accounts_id || '';
         accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
+        typeSelect.value = ['rent','deposit','energy','other'].includes(pt) ? pt : 'rent';
+        setTypeWrapClass(typeSelect.value);
         paid.checked = true;
         dateWrap.style.display = 'block';
         methodWrap.style.display = 'flex';
@@ -323,6 +342,7 @@ async function openPaymentModal(el) {
         const delBtn = e.target.closest('[data-action="delete"]');
         const addLink = e.target.closest('[data-action="add"]');
         if (editBtn) {
+            const pt = editBtn.dataset.type || 'rent';
             editIdEl.value = String(editBtn.dataset.id || '');
             editIdEl.dataset.batchId = String(editBtn.dataset.batchId || '');
             editIdEl.dataset.originalAmount = String(editBtn.dataset.amount || '');
@@ -331,6 +351,8 @@ async function openPaymentModal(el) {
             methodSelect.value = editBtn.dataset.method === 'cash' ? 'cash' : 'account';
             accountSelect.value = editBtn.dataset.account || '';
             accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
+            typeSelect.value = ['rent','deposit','energy','other'].includes(pt) ? pt : 'rent';
+            setTypeWrapClass(typeSelect.value);
             paid.checked = true;
             dateWrap.style.display = 'block';
             methodWrap.style.display = 'flex';
@@ -361,6 +383,8 @@ async function openPaymentModal(el) {
             delete editIdEl.dataset.batchId;
             delete editIdEl.dataset.originalAmount;
             amount.value = remaining;
+            typeSelect.value = 'rent';
+            setTypeWrapClass('rent');
             paid.checked = false;
             dateWrap.style.display = 'none';
             methodWrap.style.display = 'none';
@@ -377,6 +401,9 @@ async function openPaymentModal(el) {
     };
     methodSelect.onchange = () => {
         accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
+    };
+    typeSelect.onchange = () => {
+        setTypeWrapClass(typeSelect.value);
     };
     bulkCheckbox.onchange = () => {
         rangeRow.style.display = bulkCheckbox.checked ? '' : 'none';
@@ -406,12 +433,13 @@ async function openPaymentModal(el) {
                     alert('Vyberte bankovní účet.');
                     return;
                 }
+                const paymentType = ['rent','deposit','energy','other'].includes(typeSelect.value) ? typeSelect.value : 'rent';
                 if (editId && batchId) {
                     const batchData = {
                         payment_date: dateInput.value,
                         payment_method: method,
                         bank_accounts_id: accountId || null,
-                        payment_type: 'rent',
+                        payment_type: paymentType,
                     };
                     const origAmt = parseFloat(editIdEl.dataset.originalAmount || 0);
                     if (amt !== origAmt) {
@@ -428,7 +456,7 @@ async function openPaymentModal(el) {
                         payment_date: dateInput.value,
                         payment_method: method,
                         bank_accounts_id: accountId || null,
-                        payment_type: 'rent',
+                        payment_type: paymentType,
                     };
                     await Api.crudEdit('payments', parseInt(editId, 10), payData);
                 } else {
@@ -439,7 +467,7 @@ async function openPaymentModal(el) {
                         payment_date: dateInput.value,
                         payment_method: method,
                         bank_accounts_id: accountId || null,
-                        payment_type: 'rent',
+                        payment_type: paymentType,
                     };
                     if (bulk) {
                         const yFrom = parseInt(yearFromEl.value, 10);

@@ -531,6 +531,16 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .pay-modal-range-row .fg select { min-width: 90px; }
 .pay-modal-add-link { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
 .pay-modal-add-link a { font-size: .9rem; color: var(--primary); }
+.pay-modal-type-wrap { padding-left: 12px; border-left: 3px solid transparent; border-radius: 0 var(--r) var(--r) 0; }
+.pay-modal-type-wrap.pay-type-rent { border-left-color: transparent; }
+.pay-modal-type-wrap.pay-type-deposit { border-left-color: rgba(59, 130, 246, .6); }
+.pay-modal-type-wrap.pay-type-energy { border-left-color: rgba(34, 197, 94, .5); }
+.pay-modal-type-wrap.pay-type-other { border-left-color: rgba(148, 163, 184, .5); }
+.pay-modal-type-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: .75rem; font-weight: 600; margin-right: 6px; }
+.pay-modal-type-badge.pay-type-rent { background: transparent; color: var(--txt2); }
+.pay-modal-type-badge.pay-type-deposit { background: rgba(59, 130, 246, .2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, .4); }
+.pay-modal-type-badge.pay-type-energy { background: rgba(34, 197, 94, .2); color: #86efac; border: 1px solid rgba(34, 197, 94, .4); }
+.pay-modal-type-badge.pay-type-other { background: rgba(148, 163, 184, .2); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, .4); }
 .heatmap-property { font-weight: 500; color: var(--txt); white-space: nowrap; padding-right: 12px; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .modal-close { background: none; border: none; font-size: 1.5rem; color: var(--txt3); cursor: pointer; line-height: 1; padding: 4px; }
@@ -718,10 +728,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   max-width: 420px;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   z-index: 1;
   color: var(--txt);
   box-shadow: 0 25px 50px -12px rgba(0,0,0,.4);
 }
+.modal-box::-webkit-scrollbar { display: none; }
 .modal-box .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; color: var(--txt); }
 .modal-box .fg label { color: var(--txt2); }
 .modal-box .fg input, .modal-box .fg select, .modal-box .fg textarea {

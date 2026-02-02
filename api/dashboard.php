@@ -205,7 +205,8 @@ foreach ($properties as $p) {
             $isPast = ($year < $nowY) || ($year == $nowY && $m < $nowM);
 
             if ($hasPaymentDate && $paidAmt >= $expectedRent) {
-                $type = $paidAmt > $expectedRent ? 'overpaid' : 'exact';
+                $isPartialMonth = $expectedRent < $fullMonthRent;
+                $type = ($isPartialMonth || $paidAmt <= $fullMonthRent) ? 'exact' : 'overpaid';
             } else {
                 $type = $isPast ? 'overdue' : 'unpaid';
             }
