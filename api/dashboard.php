@@ -72,20 +72,25 @@ foreach ($contracts as $c) {
     $sY   = (int)date('Y', strtotime($c['contract_start']));
     $sM   = (int)date('n', strtotime($c['contract_start']));
     $baseRent = (float)$c['monthly_rent'];
+    $endY = !empty($c['contract_end']) ? (int)date('Y', strtotime($c['contract_end'])) : null;
+    $endM = !empty($c['contract_end']) ? (int)date('n', strtotime($c['contract_end'])) : null;
 
-    $expected = max(0, ($nowY - $sY)*12 + ($nowM - $sM) + 1);
     $paid = $paymentsByContract[$entityId] ?? [];
     $totPaid = 0;
     foreach ($paid as $prow) $totPaid += (float)($prow['amount'] ?? 0);
     $expTotal = 0;
+    $expected = 0;
     for ($y=$sY, $m=$sM; $y<$nowY || ($y===$nowY && $m<=$nowM); ) {
+        if ($endY !== null && ($y > $endY || ($y === $endY && $m > $endM))) break;
         $rent = getRentForMonth($baseRent, $entityId, $y, $m, $rentChangesByContract);
         $expTotal += $rent;
+        $expected++;
         if (++$m > 12) { $m=1; $y++; }
     }
 
     $unpaid = [];
     for ($y=$sY, $m=$sM; $y<$nowY || ($y===$nowY && $m<=$nowM); ) {
+        if ($endY !== null && ($y > $endY || ($y === $endY && $m > $endM))) break;
         $key = $y . '-' . str_pad((string)$m, 2, '0', STR_PAD_LEFT);
         $rent = getRentForMonth($baseRent, $entityId, $y, $m, $rentChangesByContract);
         $paidAmt = isset($paid[$key]) ? (float)($paid[$key]['amount'] ?? 0) : 0;
