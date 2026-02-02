@@ -1,5 +1,5 @@
 ---
-description: KRITICKÉ – při každé změně kódu zvýšit verzi v index.html
+description: KRITICKÉ – verze, cache busting, push, závěrečná hláška
 alwaysApply: true
 ---
 
@@ -7,7 +7,16 @@ alwaysApply: true
 
 Při každé úpravě kódu aplikace (nové funkce, opravy bugů, změny UI) **vždy** zvýšit verzi v `index.html`.
 
-- Verze je v patičce: `<span class="footer-version">v0.14.17</span>`
-- Formát: `v0.MAJOR.MINOR` – při změně zvyš MINOR (např. v0.14.17 → v0.14.18)
-- **Cache busting:** Aktualizuj i `?v=0.14.17` u všech odkazů na CSS a JS (link href, script src) – stejná hodnota bez „v“ (0.14.17)
+- Verze je v patičce: `<span class="footer-version">v1.0.2</span>`
+- Formát: `vMAJOR.MINOR.PATCH` – při změně zvyš PATCH (např. v1.0.2 → v1.0.3)
+- **Cache busting:** Aktualizuj i `?v=1.0.2` u všech odkazů na CSS a JS (link href, script src) – stejná hodnota bez „v“
 - Toto je kritická instrukce – nikdy na to nezapomenout.
+
+# Závěrečná hláška – POKAŽDÉ
+
+Na konci práce (po dokončení úkolů, před ukončením odpovědi) **vždy** uveď:
+
+1. **Aktuální verze:** např. „Verze: v1.0.2“
+2. **Push:** „Projekt byl pushnut“ nebo „Projekt nebyl pushnut – spusť `git add -A && git commit -m \"...\" && git push`“
+
+Pokud byly provedeny změny a projekt nebyl pushnut, nabídni push nebo ho proveď.

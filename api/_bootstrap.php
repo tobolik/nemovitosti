@@ -90,7 +90,7 @@ function body(): array {
 }
 
 // ── Soft-record helpers ─────────────────────────────────────────────────────
-// Entity_id sloupce: users_id, properties_id, tenants_id, contracts_id, payments_id
+// Entity_id sloupce: users_id, properties_id, tenants_id, contracts_id, payments_id, contract_rent_changes_id
 function _entityIdCol(string $tbl): string {
     return $tbl . '_id';
 }

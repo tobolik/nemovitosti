@@ -24,7 +24,7 @@ $contracts = db()->query("
 ")->fetchAll();
 
 // Změny nájemného (contract_rent_changes) – seskupeno podle contracts_id, řazeno podle effective_from
-$rentChangesRaw = db()->query("SELECT * FROM contract_rent_changes ORDER BY contracts_id, effective_from ASC")->fetchAll();
+$rentChangesRaw = db()->query("SELECT * FROM contract_rent_changes WHERE valid_to IS NULL ORDER BY contracts_id, effective_from ASC")->fetchAll();
 $rentChangesByContract = [];
 foreach ($rentChangesRaw as $rc) {
     $cid = (int)$rc['contracts_id'];

@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     if ($table === 'contract_rent_changes') {
         $cid = isset($_GET['contracts_id']) ? (int)$_GET['contracts_id'] : 0;
-        $sql = "SELECT * FROM contract_rent_changes WHERE 1=1";
+        $sql = "SELECT * FROM contract_rent_changes WHERE valid_to IS NULL";
         $params = [];
         if ($cid > 0) {
             $sql .= " AND contracts_id=?";
@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $sql .= " ORDER BY pay.period_year DESC, pay.period_month DESC";
         $s = db()->prepare($sql); $s->execute($params);
         $rows = $s->fetchAll();
-        $rentChangesRaw = db()->query("SELECT * FROM contract_rent_changes ORDER BY contracts_id, effective_from ASC")->fetchAll();
+        $rentChangesRaw = db()->query("SELECT * FROM contract_rent_changes WHERE valid_to IS NULL ORDER BY contracts_id, effective_from ASC")->fetchAll();
         $rentChangesByContract = [];
         foreach ($rentChangesRaw as $rc) {
             $cid2 = (int)$rc['contracts_id'];
@@ -301,9 +301,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newId = softUpdate($table, $id, $data);
             jsonOk(findActive($table, $newId));
         } elseif ($table === 'contract_rent_changes') {
-            $stmt = db()->prepare("UPDATE contract_rent_changes SET amount=?, effective_from=? WHERE id=?");
-            $stmt->execute([(float)$data['amount'], $data['effective_from'], $id]);
-            jsonOk(db()->query("SELECT * FROM contract_rent_changes WHERE id=$id")->fetch());
+            $newId = softUpdate($table, $id, [
+                'amount'        => (float)$data['amount'],
+                'effective_from'=> $data['effective_from'],
+            ]);
+            jsonOk(findActive($table, $newId));
         } else {
             $newId = softUpdate($table, $id, $data);
             jsonOk(findActive($table, $newId));
@@ -327,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($b['id'] ?? 0);
         if (!$id) jsonErr('Chybí ID.');
         if ($table === 'contract_rent_changes') {
-            db()->prepare("DELETE FROM contract_rent_changes WHERE id=?")->execute([$id]);
+            softDelete($table, $id);
         } elseif ($table === 'bank_accounts') {
             softDelete($table, $id);
         } else {
