@@ -203,12 +203,14 @@ const ContractsView = (() => {
             },
             getValues() {
                 const depAmt = document.getElementById('con-deposit-amount').value.trim();
+                const firstMonthVal = document.getElementById('con-first-month-rent').value.trim();
                 return {
                     properties_id: Number(document.getElementById('con-property').value),
                     tenants_id:    Number(document.getElementById('con-tenant').value),
                     contract_start: document.getElementById('con-start').value,
                     contract_end:   document.getElementById('con-end').value || '',
                     monthly_rent:   document.getElementById('con-rent').value,
+                    first_month_rent: firstMonthVal ? parseFloat(firstMonthVal) : null,
                     contract_url:   document.getElementById('con-contract-url').value.trim() || null,
                     deposit_amount: depAmt ? parseFloat(depAmt) : null,
                     deposit_paid_date: document.getElementById('con-deposit-paid-date').value || null,
@@ -222,23 +224,39 @@ const ContractsView = (() => {
                 document.getElementById('con-start').value    = row.contract_start || '';
                 document.getElementById('con-end').value      = row.contract_end   || '';
                 document.getElementById('con-rent').value     = row.monthly_rent   || '';
+                document.getElementById('con-first-month-rent').value = row.first_month_rent ?? '';
                 document.getElementById('con-contract-url').value = row.contract_url || '';
                 document.getElementById('con-deposit-amount').value = row.deposit_amount ?? '';
                 document.getElementById('con-deposit-paid-date').value = row.deposit_paid_date ? row.deposit_paid_date.slice(0, 10) : '';
                 document.getElementById('con-deposit-return-date').value = row.deposit_return_date ? row.deposit_return_date.slice(0, 10) : '';
                 document.getElementById('con-note').value     = row.note           || '';
+                toggleFirstMonthRentVisibility();
                 const contractsId = row.contracts_id ?? row.id;
                 loadRentChanges(contractsId);
                 document.getElementById('con-rent-changes-wrap').style.display = 'block';
             },
             resetForm() {
-                ['con-property','con-tenant','con-start','con-end','con-rent','con-contract-url','con-deposit-amount','con-deposit-paid-date','con-deposit-return-date','con-note']
+                ['con-property','con-tenant','con-start','con-end','con-rent','con-first-month-rent','con-contract-url','con-deposit-amount','con-deposit-paid-date','con-deposit-return-date','con-note']
                     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+                document.getElementById('con-first-month-wrap').style.display = 'none';
                 document.getElementById('con-rent-changes-wrap').style.display = 'none';
             },
             onSaved: loadList,
         });
     }
+
+    function toggleFirstMonthRentVisibility() {
+        const startVal = document.getElementById('con-start').value;
+        const wrap = document.getElementById('con-first-month-wrap');
+        if (!wrap) return;
+        if (!startVal || startVal.length < 10) {
+            wrap.style.display = 'none';
+            return;
+        }
+        const day = parseInt(startVal.slice(8, 10), 10);
+        wrap.style.display = day !== 1 ? 'block' : 'none';
+    }
+    document.getElementById('con-start').addEventListener('change', toggleFirstMonthRentVisibility);
 
     // ── fill dropdowns ──────────────────────────────────────────────────
     async function fillDropdowns() {
@@ -339,6 +357,17 @@ const ContractsView = (() => {
         await fillDropdowns();
         await loadList();
         prefillFromCalendarIfPending();
+        try {
+            const raw = sessionStorage.getItem('dashboard-open-edit');
+            if (raw) {
+                const { view, id } = JSON.parse(raw);
+                if (view === 'contracts' && id) {
+                    sessionStorage.removeItem('dashboard-open-edit');
+                    const numId = parseInt(id, 10);
+                    if (!isNaN(numId)) setTimeout(() => ContractsView.edit(numId), 0);
+                }
+            }
+        } catch (_) {}
     }
 
     let _pendingPrefill = null;

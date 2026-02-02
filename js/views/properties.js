@@ -123,6 +123,17 @@ const PropertiesView = (() => {
         form.exitEdit();
         _cache = [];
         await loadList();
+        try {
+            const raw = sessionStorage.getItem('dashboard-open-edit');
+            if (raw) {
+                const { view, id } = JSON.parse(raw);
+                if (view === 'properties' && id) {
+                    sessionStorage.removeItem('dashboard-open-edit');
+                    const numId = parseInt(id, 10);
+                    if (!isNaN(numId)) setTimeout(() => PropertiesView.edit(numId), 0);
+                }
+            }
+        } catch (_) {}
     }
 
     return { load, edit, del };

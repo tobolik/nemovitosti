@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=1.0.26">
+<link rel="stylesheet" href="css/style.css?v=1.0.29">
 </head>
 <body>
 
@@ -185,6 +185,11 @@
           <div class="form-row">
             <div class="fg"><label>Měsíční nájemné (Kč) *</label><input type="number" id="con-rent" step="0.01" min="0"></div>
           </div>
+          <div class="fg con-first-month-wrap" id="con-first-month-wrap" style="display:none">
+            <label>Nájem za první měsíc (Kč)</label>
+            <p class="text-muted" style="font-size:.8rem;margin-bottom:6px">Smlouva nezačíná 1. v měsíci – zadejte dohodnutou poměrnou část (např. 1100 při nájmu 2200).</p>
+            <input type="number" id="con-first-month-rent" step="0.01" min="0" placeholder="poměrná část">
+          </div>
           <div class="fg"><label>Nájemní smlouva (odkaz na PDF)</label><input type="url" id="con-contract-url" placeholder="https://drive.google.com/..."></div>
           <div class="fg">
             <label>Kauce</label>
@@ -356,7 +361,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v1.0.26</span>
+    <span class="footer-version">v1.0.29</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -504,16 +509,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=1.0.26"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=1.0.26"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=1.0.26"></script>
-<script src="js/app.js?v=1.0.26"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=1.0.26"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=1.0.26"></script>
-<script src="js/views/tenants.js?v=1.0.26"></script>
-<script src="js/views/contracts.js?v=1.0.26"></script>
-<script src="js/views/payments.js?v=1.0.26"></script>
-<script src="js/views/bank_accounts.js?v=1.0.26"></script>
-<script src="js/views/users.js?v=1.0.26"></script>
+<script src="js/api.js?v=1.0.29"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=1.0.29"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=1.0.29"></script>
+<script src="js/app.js?v=1.0.29"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=1.0.29"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=1.0.29"></script>
+<script src="js/views/tenants.js?v=1.0.29"></script>
+<script src="js/views/contracts.js?v=1.0.29"></script>
+<script src="js/views/payments.js?v=1.0.29"></script>
+<script src="js/views/bank_accounts.js?v=1.0.29"></script>
+<script src="js/views/users.js?v=1.0.29"></script>
 </body>
 </html>

@@ -80,10 +80,11 @@ async function loadDashboard(year) {
                 const isCurrentMonth = y === now.getFullYear() && m === now.getMonth() + 1;
 
                 let cls = 'heatmap-cell ' + (cell.type || 'empty');
+                if (cell.is_contract_start_month) cls += ' heatmap-cell-start-month';
                 if (isFuture && (cell.type === 'unpaid' || cell.type === 'overdue')) {
-                    cls = isCurrentMonth ? 'heatmap-cell current-month-unpaid' : 'heatmap-cell future-unpaid';
+                    cls = (isCurrentMonth ? 'heatmap-cell current-month-unpaid' : 'heatmap-cell future-unpaid') + (cell.is_contract_start_month ? ' heatmap-cell-start-month' : '');
                 } else if (isFuture && isPaid) {
-                    cls = isCurrentMonth ? 'heatmap-cell ' + (cell.type || 'exact') : 'heatmap-cell paid-advance';
+                    cls = (isCurrentMonth ? 'heatmap-cell ' + (cell.type || 'exact') : 'heatmap-cell paid-advance') + (cell.is_contract_start_month ? ' heatmap-cell-start-month' : '');
                 }
 
                 let content = '';
@@ -161,10 +162,15 @@ async function loadDashboard(year) {
         (d) => {
             const pct = d.expected_total > 0 ? Math.min(100, (d.total_paid / d.expected_total) * 100) : 100;
             const hasDbt = d.balance > 0;
+            const now = new Date();
+            const currentY = now.getFullYear();
+            const currentM = now.getMonth() + 1;
+            const hasHistoricalArrear = (d.unpaid_months || []).some(u => u.year < currentY || (u.year === currentY && u.month < currentM));
+            const progClass = hasDbt ? (hasHistoricalArrear ? 'bad' : 'current-debt') : 'ok';
             const depAmt = d.deposit_amount || 0;
             const hoverInfo = [];
             if (depAmt > 0) hoverInfo.push('Kauce: ' + UI.fmt(depAmt) + ' Kč' + (d.deposit_to_return ? ' (k vrácení)' : ''));
-            hoverInfo.push(hasDbt ? 'Stav: Má dluh' : 'Stav: V pořádku');
+            hoverInfo.push(hasDbt ? (hasHistoricalArrear ? 'Stav: Nedoplatek (historický)' : 'Stav: Aktuální měsíc neuhrazen') : 'Stav: V pořádku');
             const progTitle = hoverInfo.length ? hoverInfo.join(' | ') : '';
 
             let tags = '';
@@ -179,9 +185,9 @@ async function loadDashboard(year) {
 
             const tenantId = d.tenant_row_id || d.tenants_id;
             const propId = d.property_row_id || d.properties_id;
-            const tenantLink = tenantId ? ' onclick="App.navigate(\'tenants\'); setTimeout(() => TenantsView.edit(' + tenantId + '), 50)" class="dash-link" title="Upravit nájemníka"' : '';
-            const propLink = propId ? ' onclick="App.navigate(\'properties\'); setTimeout(() => PropertiesView.edit(' + propId + '), 50)" class="dash-link" title="Upravit nemovitost"' : '';
-            const contractLink = d.id ? ' onclick="App.navigate(\'contracts\'); setTimeout(() => ContractsView.edit(' + d.id + '), 50)" class="dash-link" title="Upravit smlouvu"' : '';
+            const tenantLink = tenantId ? ' onclick="DashboardView.openEdit(\'tenants\',' + tenantId + ')" class="dash-link" title="Upravit nájemníka"' : '';
+            const propLink = propId ? ' onclick="DashboardView.openEdit(\'properties\',' + propId + ')" class="dash-link" title="Upravit nemovitost"' : '';
+            const contractLink = d.id ? ' onclick="DashboardView.openEdit(\'contracts\',' + d.id + ')" class="dash-link" title="Upravit smlouvu"' : '';
             const paymentsTitle = progTitle || 'Klikni pro platby';
             const paymentsLink = ' onclick="PaymentsView.navigateWithFilter(' + d.contracts_id + ')" class="dash-link" title="' + UI.esc(paymentsTitle) + '"';
 
@@ -189,7 +195,7 @@ async function loadDashboard(year) {
                 '<td><strong' + tenantLink + '>' + UI.esc(d.tenant_name) + '</strong></td>' +
                 '<td' + propLink + '>' + UI.esc(d.property_name) + '</td>' +
                 '<td' + contractLink + '>' + UI.fmt(d.monthly_rent) + ' Kč</td>' +
-                '<td' + paymentsLink + '><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill ' + (hasDbt ? 'bad' : 'ok') + '" style="width:' + Math.round(pct) + '%"></div></div>' +
+                '<td' + paymentsLink + '><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill ' + progClass + '" style="width:' + Math.round(pct) + '%"></div></div>' +
                 '<span class="prog-lbl">' + UI.fmt(d.total_paid) + ' / ' + UI.fmt(d.expected_total) + ' Kč</span></div></td>' +
                 '<td class="dash-unpaid-cell">' + tagsHtml + '</td>'
             );
@@ -567,7 +573,15 @@ function initQuickPayDelegation() {
     });
 }
 
+const DASHBOARD_OPEN_EDIT_KEY = 'dashboard-open-edit';
+
+function openEdit(viewName, id) {
+    sessionStorage.setItem(DASHBOARD_OPEN_EDIT_KEY, JSON.stringify({ view: viewName, id: String(id) }));
+    location.hash = viewName;
+}
+
 const DashboardView = {
+    openEdit,
     openPaymentModal,
     openNewContract,
     async quickPay(contractsId, year, month, rent, tenantName, propertyName) {
