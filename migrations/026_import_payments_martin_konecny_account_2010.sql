@@ -28,14 +28,14 @@ SELECT 'Import – Martin Konečný', '7770101774/2010', 0, 999
 WHERE NOT EXISTS (
   SELECT 1 FROM bank_accounts ba
   WHERE ba.valid_to IS NULL
-    AND ba.account_number COLLATE utf8mb4_czech_ci = '7770101774/2010' COLLATE utf8mb4_czech_ci
+    AND ba.account_number = '7770101774/2010'
 );
 UPDATE bank_accounts SET bank_accounts_id = id WHERE bank_accounts_id IS NULL;
 SET @ba_id := (
   SELECT bank_accounts_id
   FROM bank_accounts
   WHERE valid_to IS NULL
-    AND account_number COLLATE utf8mb4_czech_ci = '7770101774/2010' COLLATE utf8mb4_czech_ci
+    AND account_number = '7770101774/2010'
   ORDER BY is_primary DESC, sort_order ASC, id ASC
   LIMIT 1
 );
