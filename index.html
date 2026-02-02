@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=1.0.0">
+<link rel="stylesheet" href="css/style.css?v=1.0.1">
 </head>
 <body>
 
@@ -186,6 +186,15 @@
             <div class="fg"><label>Měsíční nájemné (Kč) *</label><input type="number" id="con-rent" step="0.01" min="0"></div>
           </div>
           <div class="fg"><label>Nájemní smlouva (odkaz na PDF)</label><input type="url" id="con-contract-url" placeholder="https://drive.google.com/..."></div>
+          <div class="fg">
+            <label>Kauce</label>
+            <p class="text-muted" style="font-size:.8rem;margin-bottom:6px">Částka přijatá jako kauce – po skončení smlouvy ji evidujte jako vrácenou.</p>
+            <div class="form-row">
+              <div class="fg"><label>Částka (Kč)</label><input type="number" id="con-deposit-amount" step="0.01" min="0" placeholder="0"></div>
+              <div class="fg"><label>Datum přijetí</label><input type="date" id="con-deposit-paid-date"></div>
+              <div class="fg"><label>Datum vrácení</label><input type="date" id="con-deposit-return-date" placeholder="Po skončení smlouvy"></div>
+            </div>
+          </div>
           <div id="con-rent-changes-wrap" class="fg" style="display:none">
             <label>Změny výše nájemného</label>
             <p class="text-muted" style="font-size:.8rem;margin-bottom:8px">Platné od data – nové nájemné se použije od prvního dne uvedeného měsíce.</p>
@@ -338,7 +347,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v1.0.0</span>
+    <span class="footer-version">v1.0.1</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -477,16 +486,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=1.0.0"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=1.0.0"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=1.0.0"></script>
-<script src="js/app.js?v=1.0.0"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=1.0.0"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=1.0.0"></script>
-<script src="js/views/tenants.js?v=1.0.0"></script>
-<script src="js/views/contracts.js?v=1.0.0"></script>
-<script src="js/views/payments.js?v=1.0.0"></script>
-<script src="js/views/bank_accounts.js?v=1.0.0"></script>
-<script src="js/views/users.js?v=1.0.0"></script>
+<script src="js/api.js?v=1.0.1"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=1.0.1"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=1.0.1"></script>
+<script src="js/app.js?v=1.0.1"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=1.0.1"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=1.0.1"></script>
+<script src="js/views/tenants.js?v=1.0.1"></script>
+<script src="js/views/contracts.js?v=1.0.1"></script>
+<script src="js/views/payments.js?v=1.0.1"></script>
+<script src="js/views/bank_accounts.js?v=1.0.1"></script>
+<script src="js/views/users.js?v=1.0.1"></script>
 </body>
 </html>

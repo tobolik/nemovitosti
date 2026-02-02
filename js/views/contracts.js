@@ -194,6 +194,7 @@ const ContractsView = (() => {
                 return null;
             },
             getValues() {
+                const depAmt = document.getElementById('con-deposit-amount').value.trim();
                 return {
                     property_id:    Number(document.getElementById('con-property').value),
                     tenant_id:      Number(document.getElementById('con-tenant').value),
@@ -201,6 +202,9 @@ const ContractsView = (() => {
                     contract_end:   document.getElementById('con-end').value || '',
                     monthly_rent:   document.getElementById('con-rent').value,
                     contract_url:   document.getElementById('con-contract-url').value.trim() || null,
+                    deposit_amount: depAmt ? parseFloat(depAmt) : null,
+                    deposit_paid_date: document.getElementById('con-deposit-paid-date').value || null,
+                    deposit_return_date: document.getElementById('con-deposit-return-date').value || null,
                     note:           document.getElementById('con-note').value.trim(),
                 };
             },
@@ -211,13 +215,16 @@ const ContractsView = (() => {
                 document.getElementById('con-end').value      = row.contract_end   || '';
                 document.getElementById('con-rent').value     = row.monthly_rent   || '';
                 document.getElementById('con-contract-url').value = row.contract_url || '';
+                document.getElementById('con-deposit-amount').value = row.deposit_amount ?? '';
+                document.getElementById('con-deposit-paid-date').value = row.deposit_paid_date ? row.deposit_paid_date.slice(0, 10) : '';
+                document.getElementById('con-deposit-return-date').value = row.deposit_return_date ? row.deposit_return_date.slice(0, 10) : '';
                 document.getElementById('con-note').value     = row.note           || '';
                 const contractsId = row.contracts_id ?? row.id;
                 loadRentChanges(contractsId);
                 document.getElementById('con-rent-changes-wrap').style.display = 'block';
             },
             resetForm() {
-                ['con-property','con-tenant','con-start','con-end','con-rent','con-contract-url','con-note']
+                ['con-property','con-tenant','con-start','con-end','con-rent','con-contract-url','con-deposit-amount','con-deposit-paid-date','con-deposit-return-date','con-note']
                     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
                 document.getElementById('con-rent-changes-wrap').style.display = 'none';
             },
@@ -258,6 +265,7 @@ const ContractsView = (() => {
                 { label: 'Od', hideMobile: true },
                 { label: 'Do', hideMobile: true },
                 { label: 'Nájemné' },
+                { label: 'Kauce', hideMobile: true },
                 { label: 'Smlouva', hideMobile: true },
                 { label: 'Poznámka', hideMobile: true },
                 { label: 'Akce', act: true },
@@ -267,12 +275,26 @@ const ContractsView = (() => {
                 const contractLink = c.contract_url
                     ? '<a href="' + UI.esc(c.contract_url) + '" target="_blank" rel="noopener" title="Otevřít nájemní smlouvu (PDF)">📄</a>'
                     : '<span style="color:var(--txt3)">—</span>';
+                const dep = parseFloat(c.deposit_amount) || 0;
+                const depReturned = c.deposit_return_date;
+                const contractEnded = c.contract_end && c.contract_end <= new Date().toISOString().slice(0, 10);
+                let depositCell = '—';
+                if (dep > 0) {
+                    if (depReturned) {
+                        depositCell = UI.fmt(dep) + ' Kč <span class="badge badge-ok" title="Vráceno ' + (c.deposit_return_date ? UI.fmtDate(c.deposit_return_date) : '') + '">vráceno</span>';
+                    } else if (contractEnded) {
+                        depositCell = UI.fmt(dep) + ' Kč <span class="badge badge-danger" title="K vrácení po skončení smlouvy">k vrácení</span>';
+                    } else {
+                        depositCell = UI.fmt(dep) + ' Kč';
+                    }
+                }
                 return (
                     '<td>' + UI.esc(c.property_name) + '</td>' +
                     '<td><strong>' + UI.esc(c.tenant_name) + '</strong></td>' +
                     '<td class="col-hide-mobile">' + UI.esc(c.contract_start) + '</td>' +
                     '<td class="col-hide-mobile">' + (c.contract_end ? UI.esc(c.contract_end) : '<span style="color:var(--txt3)">neurčitá</span>') + '</td>' +
                     '<td>' + UI.fmt(c.monthly_rent) + ' Kč</td>' +
+                    '<td class="col-hide-mobile">' + depositCell + '</td>' +
                     '<td class="col-hide-mobile">' + contractLink + '</td>' +
                     '<td class="col-hide-mobile">' + (c.note ? UI.esc(c.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +

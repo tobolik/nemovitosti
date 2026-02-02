@@ -108,6 +108,10 @@ foreach ($contracts as $c) {
     $balance = $expTotal - $totPaid;
     $statusType = $balance > 0 ? 'debt' : ($balance < 0 ? 'overpaid' : 'exact');
     $currentRent = getRentForMonth($baseRent, $logicalId, $nowY, $nowM, $rentChangesByContract);
+    $depositAmt = (float)($c['deposit_amount'] ?? 0);
+    $depositReturned = !empty($c['deposit_return_date']);
+    $contractEnded = !empty($c['contract_end']) && $c['contract_end'] <= date('Y-m-d');
+    $depositToReturn = $depositAmt > 0 && !$depositReturned && $contractEnded;
     $out[] = [
         'contracts_id'   => $logicalId,
         'property_id'    => $c['property_id'],
@@ -123,6 +127,8 @@ foreach ($contracts as $c) {
         'balance'        => $balance,
         'status_type'    => $statusType,
         'unpaid_months'  => $unpaid,
+        'deposit_amount' => $depositAmt,
+        'deposit_to_return' => $depositToReturn,
     ];
 }
 

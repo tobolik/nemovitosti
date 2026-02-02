@@ -131,7 +131,10 @@ async function loadDashboard(year) {
         return;
     }
 
-    contracts.forEach(d => { d._rowClass = d.balance > 0 ? 'row-warn' : ''; });
+    contracts.forEach(d => {
+        d._rowClass = d.balance > 0 ? 'row-warn' : '';
+        if (d.deposit_to_return) d._rowClass = (d._rowClass || '') + ' row-deposit-return';
+    });
 
     UI.renderTable('dash-table',
         [
@@ -140,6 +143,7 @@ async function loadDashboard(year) {
             { label: 'Nájemné / měs.' },
             { label: 'Uhrazeno / Očekáváno' },
             { label: 'Stav' },
+            { label: 'Kauce', hideMobile: true },
             { label: 'Neuhrazené měsíce' },
             { label: 'Akce', act: true },
         ],
@@ -147,6 +151,10 @@ async function loadDashboard(year) {
         (d) => {
             const pct = d.expected_total > 0 ? Math.min(100, (d.total_paid / d.expected_total) * 100) : 100;
             const hasDbt = d.balance > 0;
+            const depAmt = d.deposit_amount || 0;
+            const depCell = depAmt > 0
+                ? (d.deposit_to_return ? UI.fmt(depAmt) + ' Kč <span class="badge badge-danger">k vrácení</span>' : UI.fmt(depAmt) + ' Kč')
+                : '<span style="color:var(--txt3)">—</span>';
 
             let tags = '';
             (d.unpaid_months || []).forEach(u => {
@@ -164,6 +172,7 @@ async function loadDashboard(year) {
                 '<td><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill ' + (hasDbt ? 'bad' : 'ok') + '" style="width:' + Math.round(pct) + '%"></div></div>' +
                 '<span class="prog-lbl">' + UI.fmt(d.total_paid) + ' / ' + UI.fmt(d.expected_total) + ' Kč</span></div></td>' +
                 '<td><span class="badge ' + (hasDbt ? 'badge-danger' : 'badge-ok') + '">' + (hasDbt ? 'Má dluh' : 'V pořádku') + '</span></td>' +
+                '<td class="col-hide-mobile">' + depCell + '</td>' +
                 '<td>' + (tags || '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td class="td-act"><button class="btn btn-ghost btn-sm" onclick="PaymentsView.navigateWithFilter(' + d.contracts_id + ')">Platby</button></td>'
             );

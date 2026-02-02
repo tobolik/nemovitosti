@@ -407,6 +407,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .tbl tbody tr { transition: background .12s; }
 .tbl tbody tr:hover { background: var(--glass-hover); }
 .tbl tr.row-warn { background: rgba(220,38,38,.08); }
+.tbl tr.row-deposit-return { border-left: 3px solid var(--orange-600); }
 .td-act { display: flex; gap: 5px; justify-content: flex-end; white-space: nowrap; }
 .th-act { text-align: right; }
 
