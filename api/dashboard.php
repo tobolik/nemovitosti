@@ -198,11 +198,31 @@ foreach ($contracts as $c) {
 $roi = $totalInvestment > 0 ? round($yearIncome / $totalInvestment * 100, 1) : 0;
 $collectionRate = $expectedYearIncome > 0 ? round($yearIncome / $expectedYearIncome * 100, 1) : 100;
 
+// Rozsah let pro tlačítka – podle nejstarší smlouvy a plateb
+$yearMin = $nowY - 2;
+$yearMax = $nowY + 1;
+foreach ($contracts as $c) {
+    $sy = (int)date('Y', strtotime($c['contract_start']));
+    if ($sy < $yearMin) $yearMin = $sy;
+    if (!empty($c['contract_end'])) {
+        $ey = (int)date('Y', strtotime($c['contract_end']));
+        if ($ey > $yearMax) $yearMax = $ey;
+    }
+}
+foreach ($paymentsByContract as $rows) {
+    foreach ($rows as $key => $_) {
+        $py = (int)explode('-', $key)[0];
+        if ($py < $yearMin) $yearMin = $py;
+    }
+}
+
 jsonOk([
     'contracts'   => $out,
     'properties' => $properties,
     'heatmap'    => $heatmap,
     'year'       => $year,
+    'yearMin'    => $yearMin,
+    'yearMax'    => $yearMax,
     'monthNames' => $monthNames,
     'stats'      => [
         'occupancyRate'  => $occupancyRate,

@@ -13,7 +13,7 @@ async function loadDashboard(year) {
     try { data = await Api.dashboardLoad(y); }
     catch (e) { return; }
 
-    const { contracts, properties, heatmap, stats, monthNames } = data;
+    const { contracts, properties, heatmap, stats, monthNames, yearMin, yearMax } = data;
     const months = monthNames || MONTH_NAMES;
 
     // ── Stats (Obsazenost, Měsíční výnos, ROI, Míra inkasa) ─────────────
@@ -41,9 +41,10 @@ async function loadDashboard(year) {
 
     // ── Year selector (tlačítka) ─────────────────────────────────────────
     if (yearSelect) {
-        const nowY = new Date().getFullYear();
+        const minY = (yearMin != null && !isNaN(yearMin)) ? yearMin : currentYear - 2;
+        const maxY = (yearMax != null && !isNaN(yearMax)) ? yearMax : currentYear + 1;
         let btns = '';
-        for (let yr = nowY - 2; yr <= nowY + 1; yr++) {
+        for (let yr = minY; yr <= maxY; yr++) {
             const active = yr === y ? ' active' : '';
             btns += '<button type="button" class="heatmap-year-btn' + active + '" data-year="' + yr + '">' + yr + '</button>';
         }
