@@ -22,6 +22,15 @@ $contracts = db()->query("
     ORDER BY t.name ASC
 ")->fetchAll();
 
+// Změny nájemného (contract_rent_changes) – seskupeno podle contracts_id, řazeno podle effective_from
+$rentChangesRaw = db()->query("SELECT * FROM contract_rent_changes ORDER BY contracts_id, effective_from ASC")->fetchAll();
+$rentChangesByContract = [];
+foreach ($rentChangesRaw as $rc) {
+    $cid = (int)$rc['contracts_id'];
+    if (!isset($rentChangesByContract[$cid])) $rentChangesByContract[$cid] = [];
+    $rentChangesByContract[$cid][] = $rc;
+}
+
 // Payments per contract – platby odkazují na contracts_id (logické ID)
 $paymentsByContract = [];
 $s = db()->prepare("
@@ -61,19 +70,25 @@ foreach ($contracts as $c) {
     $logicalId = $c['contracts_id'] ?? $c['id'];
     $sY   = (int)date('Y', strtotime($c['contract_start']));
     $sM   = (int)date('n', strtotime($c['contract_start']));
-    $rent = (float)$c['monthly_rent'];
+    $baseRent = (float)$c['monthly_rent'];
 
     $expected = max(0, ($nowY - $sY)*12 + ($nowM - $sM) + 1);
     $paid = $paymentsByContract[$logicalId] ?? [];
     $totPaid = 0;
     foreach ($paid as $prow) $totPaid += (float)($prow['amount'] ?? 0);
-    $expTotal = $expected * $rent;
+    $expTotal = 0;
+    for ($y=$sY, $m=$sM; $y<$nowY || ($y===$nowY && $m<=$nowM); ) {
+        $rent = getRentForMonth($baseRent, $logicalId, $y, $m, $rentChangesByContract);
+        $expTotal += $rent;
+        if (++$m > 12) { $m=1; $y++; }
+    }
 
     $unpaid = [];
     for ($y=$sY, $m=$sM; $y<$nowY || ($y===$nowY && $m<=$nowM); ) {
         $key = $y . '-' . str_pad((string)$m, 2, '0', STR_PAD_LEFT);
+        $rent = getRentForMonth($baseRent, $logicalId, $y, $m, $rentChangesByContract);
         $paidAmt = isset($paid[$key]) ? (float)($paid[$key]['amount'] ?? 0) : 0;
-        if ($paidAmt < $rent) $unpaid[] = ['year'=>$y,'month'=>$m];
+        if ($paidAmt < $rent) $unpaid[] = ['year'=>$y,'month'=>$m,'rent'=>$rent];
         if (++$m > 12) { $m=1; $y++; }
     }
 
@@ -82,6 +97,7 @@ foreach ($contracts as $c) {
         $key = $year . '-' . str_pad((string)$m, 2, '0', STR_PAD_LEFT);
         $firstOfMonth = $key . '-01';
         if ($c['contract_start'] <= $firstOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth)) {
+            $rent = getRentForMonth($baseRent, $logicalId, $year, $m, $rentChangesByContract);
             $expectedYearIncome += $rent;
             if (isset($paid[$key]) && !empty($paid[$key]['payment_date'])) {
                 $yearIncome += (float)($paid[$key]['amount'] ?? $rent);
@@ -91,13 +107,14 @@ foreach ($contracts as $c) {
 
     $balance = $expTotal - $totPaid;
     $statusType = $balance > 0 ? 'debt' : ($balance < 0 ? 'overpaid' : 'exact');
+    $currentRent = getRentForMonth($baseRent, $logicalId, $nowY, $nowM, $rentChangesByContract);
     $out[] = [
         'contracts_id'   => $logicalId,
         'property_id'    => $c['property_id'],
         'tenant_id'      => $c['tenant_id'],
         'property_name'  => $c['property_name'],
         'tenant_name'    => $c['tenant_name'],
-        'monthly_rent'   => $rent,
+        'monthly_rent'   => $currentRent,
         'contract_start' => $c['contract_start'],
         'contract_end'   => $c['contract_end'],
         'expected_months'=> $expected,
@@ -134,7 +151,7 @@ foreach ($properties as $p) {
         } else {
             $logicalId = $contract['contracts_id'] ?? $contract['id'];
             $paid = $paymentsByContract[$logicalId][$monthKey] ?? null;
-            $monthRent = (float)$contract['monthly_rent'];
+            $monthRent = getRentForMonth((float)$contract['monthly_rent'], $logicalId, $year, $m, $rentChangesByContract);
             $paidAmt = $paid ? (float)($paid['amount'] ?? 0) : 0;
             $paymentCount = $paid ? (int)($paid['payment_count'] ?? 0) : 0;
             $hasPaymentDate = $paid && !empty($paid['payment_date']);

@@ -92,6 +92,84 @@ const ContractsView = (() => {
         });
     }
 
+    let _rentChangesContractsId = null;
+
+    async function loadRentChanges(contractsId) {
+        _rentChangesContractsId = contractsId;
+        const listEl = document.getElementById('con-rent-changes-list');
+        if (!listEl) return;
+        try {
+            const data = await Api.crudList('contract_rent_changes', { contracts_id: contractsId });
+            if (!data || !data.length) {
+                listEl.innerHTML = '<div class="text-muted" style="font-size:.85rem;padding:8px 0">Žádné změny nájemného.</div>';
+                return;
+            }
+            let html = '<table class="tbl tbl-sm" style="margin-bottom:0"><thead><tr><th>Platné od</th><th>Nájemné (Kč)</th><th class="th-act"></th></tr></thead><tbody>';
+            data.forEach(rc => {
+                const dt = rc.effective_from ? UI.fmtDate(rc.effective_from) : '—';
+                const amt = UI.fmt(rc.amount ?? 0);
+                html += '<tr><td>' + dt + '</td><td>' + amt + '</td><td class="td-act">' +
+                    '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + rc.id + '" data-effective="' + (rc.effective_from || '') + '" data-amount="' + (rc.amount ?? '') + '">Upravit</button> ' +
+                    '<button type="button" class="btn btn-danger btn-sm" data-action="del" data-id="' + rc.id + '">Smazat</button></td></tr>';
+            });
+            html += '</tbody></table>';
+            listEl.innerHTML = html;
+            listEl.querySelectorAll('[data-action="edit"]').forEach(btn => {
+                btn.onclick = () => {
+                    document.getElementById('con-rc-effective').value = btn.dataset.effective || '';
+                    document.getElementById('con-rc-amount').value = btn.dataset.amount || '';
+                    btn.dataset.editId = btn.dataset.id;
+                };
+            });
+            listEl.querySelectorAll('[data-action="del"]').forEach(btn => {
+                btn.onclick = async () => {
+                    if (!confirm('Smazat tuto změnu nájemného?')) return;
+                    try {
+                        await Api.crudDelete('contract_rent_changes', parseInt(btn.dataset.id, 10));
+                        loadRentChanges(_rentChangesContractsId);
+                    } catch (e) { alert(e.message); }
+                };
+            });
+        } catch (e) {
+            listEl.innerHTML = '<div class="alert alert-err show">' + UI.esc(e.message || 'Chyba při načítání.') + '</div>';
+        }
+    }
+
+    function initRentChangesHandlers() {
+        const btnAdd = document.getElementById('btn-con-rc-add');
+        const effectiveEl = document.getElementById('con-rc-effective');
+        const amountEl = document.getElementById('con-rc-amount');
+        if (!btnAdd) return;
+        btnAdd.onclick = async () => {
+            if (!_rentChangesContractsId) return;
+            const editId = document.querySelector('#con-rent-changes-list [data-edit-id]')?.dataset?.editId;
+            const effective = (effectiveEl?.value || '').trim();
+            const amount = parseFloat(amountEl?.value) || 0;
+            if (!effective) { alert('Vyplňte datum „Platné od“.'); return; }
+            if (!UI.isDateValid(effective)) { alert('Zadejte platné datum.'); return; }
+            if (amount <= 0) { alert('Zadejte kladnou částku.'); return; }
+            try {
+                if (editId) {
+                    await Api.crudEdit('contract_rent_changes', parseInt(editId, 10), {
+                        contracts_id: _rentChangesContractsId,
+                        amount,
+                        effective_from: effective,
+                    });
+                    document.querySelector('#con-rent-changes-list [data-edit-id]')?.removeAttribute('data-edit-id');
+                } else {
+                    await Api.crudAdd('contract_rent_changes', {
+                        contracts_id: _rentChangesContractsId,
+                        amount,
+                        effective_from: effective,
+                    });
+                }
+                effectiveEl.value = '';
+                amountEl.value = '';
+                loadRentChanges(_rentChangesContractsId);
+            } catch (e) { alert(e.message); }
+        };
+    }
+
     function initForm() {
         if (form) return;
         form = UI.createCrudForm({
@@ -134,10 +212,14 @@ const ContractsView = (() => {
                 document.getElementById('con-rent').value     = row.monthly_rent   || '';
                 document.getElementById('con-contract-url').value = row.contract_url || '';
                 document.getElementById('con-note').value     = row.note           || '';
+                const contractsId = row.contracts_id ?? row.id;
+                loadRentChanges(contractsId);
+                document.getElementById('con-rent-changes-wrap').style.display = 'block';
             },
             resetForm() {
                 ['con-property','con-tenant','con-start','con-end','con-rent','con-contract-url','con-note']
                     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+                document.getElementById('con-rent-changes-wrap').style.display = 'none';
             },
             onSaved: loadList,
         });
@@ -220,6 +302,7 @@ const ContractsView = (() => {
         initForm();
         form.exitEdit();
         initTenantModal();
+        initRentChangesHandlers();
         _cache = [];
         await fillDropdowns();
         await loadList();

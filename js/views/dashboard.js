@@ -151,8 +151,9 @@ async function loadDashboard(year) {
             (d.unpaid_months || []).forEach(u => {
                 const tenant = (d.tenant_name || '').replace(/"/g, '&quot;');
                 const prop = (d.property_name || '').replace(/"/g, '&quot;');
+                const rent = u.rent != null ? u.rent : d.monthly_rent;
                 tags += '<span class="tag">' + u.month + '/' + u.year +
-                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-year="' + u.year + '" data-month="' + u.month + '" data-rent="' + d.monthly_rent + '" data-tenant="' + tenant + '" data-property="' + prop + '" title="Přidat platbu">+</span></span>';
+                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-year="' + u.year + '" data-month="' + u.month + '" data-rent="' + rent + '" data-tenant="' + tenant + '" data-property="' + prop + '" title="Přidat platbu">+</span></span>';
             });
 
             return (
@@ -170,7 +171,7 @@ async function loadDashboard(year) {
     );
 }
 
-App.registerView('dashboard', () => { loadDashboard(); initQuickPayDelegation(); });
+App.registerView('dashboard', () => { loadDashboard(); initQuickPayDelegation(); initPayModalShortcut(); });
 
 // ── PaymentModal ─────────────────────────────────────────────────────────
 async function openPaymentModal(el) {
@@ -469,6 +470,19 @@ function openNewContract(el) {
     const propertyName = el.dataset.propertyName || '';
     App.navigate('contracts');
     ContractsView.prefillFromCalendar(parseInt(propertyId, 10), monthKey, propertyName);
+}
+
+// Ctrl+Enter – uložit platbu v modalu
+function initPayModalShortcut() {
+    const el = document.getElementById('modal-payment');
+    if (!el || el.dataset.shortcutBound) return;
+    el.dataset.shortcutBound = '1';
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter' && el.classList.contains('show')) {
+            e.preventDefault();
+            document.getElementById('btn-pay-modal-save').click();
+        }
+    });
 }
 
 // Event delegation pro tlačítko + u neuhrazených měsíců

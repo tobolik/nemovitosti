@@ -14,6 +14,7 @@ $FIELDS = [
     'contracts'  => ['property_id','tenant_id','contract_start','contract_end','monthly_rent','contract_url','note'],
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','payment_batch_id','payment_method','account_number'],
     'bank_accounts' => ['name','account_number','is_primary','sort_order'],
+    'contract_rent_changes' => ['contracts_id','amount','effective_from'],
 ];
 
 // Povinná pole při přidávání
@@ -23,6 +24,7 @@ $REQUIRED = [
     'contracts'  => ['property_id','tenant_id','contract_start','monthly_rent'],
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date'],
     'bank_accounts' => ['name','account_number'],
+    'contract_rent_changes' => ['contracts_id','amount','effective_from'],
 ];
 
 // Lidsky čitelné názvy polí pro chybové hlášky
@@ -32,6 +34,7 @@ $FIELD_LABELS = [
     'contracts'  => ['property_id'=>'Nemovitost','tenant_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','note'=>'Poznámka'],
     'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','payment_method'=>'Způsob platby','account_number'=>'Číslo účtu'],
     'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu'],
+    'contract_rent_changes' => ['contracts_id'=>'Smlouva','amount'=>'Částka','effective_from'=>'Platné od'],
 ];
 
 $table = $_GET['table'] ?? body()['table'] ?? '';
@@ -78,6 +81,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ")->fetchAll());
     }
 
+    if ($table === 'contract_rent_changes') {
+        $cid = isset($_GET['contracts_id']) ? (int)$_GET['contracts_id'] : 0;
+        $sql = "SELECT * FROM contract_rent_changes WHERE 1=1";
+        $params = [];
+        if ($cid > 0) {
+            $sql .= " AND contracts_id=?";
+            $params[] = $cid;
+        }
+        $sql .= " ORDER BY effective_from ASC";
+        $s = db()->prepare($sql);
+        $s->execute($params);
+        jsonOk($s->fetchAll());
+    }
+
     if ($table === 'payments') {
         $cid = isset($_GET['contracts_id']) ? (int)$_GET['contracts_id'] : 0;
         $sql = "
@@ -94,7 +111,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         $sql .= " ORDER BY pay.period_year DESC, pay.period_month DESC";
         $s = db()->prepare($sql); $s->execute($params);
-        jsonOk($s->fetchAll());
+        $rows = $s->fetchAll();
+        $rentChangesRaw = db()->query("SELECT * FROM contract_rent_changes ORDER BY contracts_id, effective_from ASC")->fetchAll();
+        $rentChangesByContract = [];
+        foreach ($rentChangesRaw as $rc) {
+            $cid2 = (int)$rc['contracts_id'];
+            if (!isset($rentChangesByContract[$cid2])) $rentChangesByContract[$cid2] = [];
+            $rentChangesByContract[$cid2][] = $rc;
+        }
+        foreach ($rows as &$row) {
+            $baseRent = (float)$row['monthly_rent'];
+            $row['monthly_rent'] = getRentForMonth($baseRent, (int)$row['contracts_id'], (int)$row['period_year'], (int)$row['period_month'], $rentChangesByContract);
+        }
+        unset($row);
+        jsonOk($rows);
     }
 
     // Default plain list
@@ -123,6 +153,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $e = validateDateField($data['contract_end'] ?? null, 'Konec smlouvy');
         if ($e) jsonErr($e);
     }
+    if ($table === 'contract_rent_changes' && isset($data['effective_from']) && $data['effective_from'] !== '') {
+        $e = validateDateField($data['effective_from'], 'Platné od');
+        if ($e) jsonErr($e);
+    }
     if ($table === 'properties' && isset($data['purchase_date']) && $data['purchase_date'] !== '') {
         $e = validateDateField($data['purchase_date'], 'Datum koupě');
         if ($e) jsonErr($e);
@@ -136,6 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $POSITIVE_ID_FIELDS = [
         'contracts' => ['property_id', 'tenant_id'],
         'payments'  => ['contracts_id'],
+        'contract_rent_changes' => ['contracts_id'],
     ];
 
     if ($action === 'add') {
@@ -187,6 +222,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (++$m > 12) { $m = 1; $y++; }
             }
             jsonOk(['ids' => $ids, 'count' => count($ids)], 201);
+        } elseif ($table === 'contract_rent_changes') {
+            $stmt = db()->prepare("INSERT INTO contract_rent_changes (contracts_id, amount, effective_from) VALUES (?, ?, ?)");
+            $stmt->execute([
+                (int)$data['contracts_id'],
+                (float)$data['amount'],
+                $data['effective_from'],
+            ]);
+            $newId = (int) db()->lastInsertId();
+            jsonOk(db()->query("SELECT * FROM contract_rent_changes WHERE id=$newId")->fetch(), 201);
         } elseif ($table === 'bank_accounts') {
             if (isset($data['is_primary']) && (int)$data['is_primary'] === 1) {
                 db()->prepare("UPDATE bank_accounts SET is_primary=0 WHERE valid_to IS NULL")->execute();
@@ -242,6 +286,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $newId = softUpdate($table, $id, $data);
             jsonOk(findActive($table, $newId));
+        } elseif ($table === 'contract_rent_changes') {
+            $stmt = db()->prepare("UPDATE contract_rent_changes SET amount=?, effective_from=? WHERE id=?");
+            $stmt->execute([(float)$data['amount'], $data['effective_from'], $id]);
+            jsonOk(db()->query("SELECT * FROM contract_rent_changes WHERE id=$id")->fetch());
         } else {
             $newId = softUpdate($table, $id, $data);
             jsonOk(findActive($table, $newId));
@@ -264,7 +312,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete') {
         $id = (int)($b['id'] ?? 0);
         if (!$id) jsonErr('Chybí ID.');
-        if ($table === 'bank_accounts') {
+        if ($table === 'contract_rent_changes') {
+            db()->prepare("DELETE FROM contract_rent_changes WHERE id=?")->execute([$id]);
+        } elseif ($table === 'bank_accounts') {
             softDelete($table, $id);
         } else {
             softDelete($table, $id);

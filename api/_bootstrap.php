@@ -162,6 +162,19 @@ function findAllActive(string $tbl, string $order = 'id ASC'): array {
     return $s->fetchAll();
 }
 
+/** Vrátí nájemné pro daný měsíc – zohledňuje změny k datu (contract_rent_changes). */
+function getRentForMonth(float $baseRent, int $contractsId, int $y, int $m, array $rentChangesByContract): float {
+    $firstOfMonth = sprintf('%04d-%02d-01', $y, $m);
+    $changes = $rentChangesByContract[$contractsId] ?? [];
+    $applicable = null;
+    foreach ($changes as $ch) {
+        if ($ch['effective_from'] <= $firstOfMonth) {
+            $applicable = (float)$ch['amount'];
+        }
+    }
+    return $applicable !== null ? $applicable : $baseRent;
+}
+
 /** Vyhledá aktivní řádek podle logického ID (users_id, properties_id, …). */
 function findActiveByLogicalId(string $tbl, int $logicalId): ?array {
     $lidCol = _logicalIdCol($tbl);

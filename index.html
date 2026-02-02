@@ -182,6 +182,16 @@
             <div class="fg"><label>Měsíční nájemné (Kč) *</label><input type="number" id="con-rent" step="0.01" min="0"></div>
           </div>
           <div class="fg"><label>Nájemní smlouva (odkaz na PDF)</label><input type="url" id="con-contract-url" placeholder="https://drive.google.com/..."></div>
+          <div id="con-rent-changes-wrap" class="fg" style="display:none">
+            <label>Změny výše nájemného</label>
+            <p class="text-muted" style="font-size:.8rem;margin-bottom:8px">Platné od data – nové nájemné se použije od prvního dne uvedeného měsíce.</p>
+            <div id="con-rent-changes-list"></div>
+            <div id="con-rent-change-add" class="form-row" style="margin-top:10px">
+              <div class="fg"><label>Platné od *</label><input type="date" id="con-rc-effective"></div>
+              <div class="fg"><label>Nové nájemné (Kč) *</label><input type="number" id="con-rc-amount" step="0.01" min="0"></div>
+              <div class="fg" style="align-self:flex-end"><button type="button" class="btn btn-ghost btn-sm" id="btn-con-rc-add">+ Přidat</button></div>
+            </div>
+          </div>
           <div class="fg"><label>Poznámka</label><textarea id="con-note" rows="2"></textarea></div>
           <div class="form-actions">
             <button class="btn btn-pri" id="btn-con-save" data-save-btn>Přidat smlouvu</button>
