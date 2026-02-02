@@ -33,7 +33,7 @@ WHERE @contracts_id IS NOT NULL
 
 -- Nájemné/energie: platby
 INSERT INTO payments
-  (payments_id, contracts_id, period_year, period_month, amount, payment_date, note, payment_method, account_number)
+  (payments_id, contracts_id, period_year, period_month, amount, payment_date, note, payment_method)
 SELECT
   NULL,
   @contracts_id,
@@ -42,8 +42,7 @@ SELECT
   d.amount,
   d.payment_date,
   d.note,
-  'account',
-  NULL
+  'account'
 FROM (
   -- Duben 2025 (poměrné nájemné za část měsíce) – dvě příchozí platby
   SELECT 2025 AS period_year, 4 AS period_month, 4667.00 AS amount, DATE('2025-04-18') AS payment_date, 'Poměrné nájemné (od 18.4.2025) – platba 1' AS note UNION ALL

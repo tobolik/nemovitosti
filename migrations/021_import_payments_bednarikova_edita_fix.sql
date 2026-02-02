@@ -21,7 +21,7 @@ SET @contracts_id := (
 );
 
 INSERT INTO payments
-  (payments_id, contracts_id, period_year, period_month, amount, payment_date, note, payment_method, account_number)
+  (payments_id, contracts_id, period_year, period_month, amount, payment_date, note, payment_method)
 SELECT
   NULL,
   @contracts_id,
@@ -30,8 +30,7 @@ SELECT
   d.amount,
   d.payment_date,
   d.note,
-  'account',
-  NULL
+  'account'
 FROM (
   -- 2023
   SELECT 2023 AS period_year,  2 AS period_month, 10175.00 AS amount, DATE('2023-02-01') AS payment_date, NULL AS note UNION ALL
