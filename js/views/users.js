@@ -63,8 +63,8 @@ const UsersView = (() => {
         UI.renderTable('usr-table',
             [
                 { label: 'Jméno' },
-                { label: 'E-mail' },
-                { label: 'Rolle' },
+                { label: 'E-mail', hideMobile: true },
+                { label: 'Role' },
                 { label: 'Akce', act: true },
             ],
             data,
@@ -74,7 +74,7 @@ const UsersView = (() => {
                     '<td><strong>' + UI.esc(u.name) + '</strong> ' +
                         (isSelf ? '<span class="badge badge-info">vy</span>' : '') +
                     '</td>' +
-                    '<td>' + UI.esc(u.email) + '</td>' +
+                    '<td class="col-hide-mobile">' + UI.esc(u.email) + '</td>' +
                     '<td><span class="badge ' + (u.role === 'admin' ? 'badge-admin' : 'badge-user') + '">' +
                         (u.role === 'admin' ? 'Admin' : 'Uživatel') +
                     '</span></td>' +

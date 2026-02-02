@@ -70,12 +70,12 @@ const PropertiesView = (() => {
             [
                 { label: 'Název' },
                 { label: 'Typ' },
-                { label: 'Adresa' },
-                { label: 'Výměra' },
-                { label: 'Kupní cena' },
-                { label: 'Datum koupě' },
-                { label: 'Kupní smlouva' },
-                { label: 'Poznámka' },
+                { label: 'Adresa', hideMobile: true },
+                { label: 'Výměra', hideMobile: true },
+                { label: 'Kupní cena', hideMobile: true },
+                { label: 'Datum koupě', hideMobile: true },
+                { label: 'Smlouva', hideMobile: true },
+                { label: 'Poznámka', hideMobile: true },
                 { label: 'Akce', act: true },
             ],
             data,
@@ -86,12 +86,12 @@ const PropertiesView = (() => {
                 return (
                     '<td><strong>' + UI.esc(p.name) + '</strong></td>' +
                     '<td>' + UI.esc(TYPE_LABELS[p.type] || p.type) + '</td>' +
-                    '<td>' + UI.esc(p.address) + '</td>' +
-                    '<td>' + (p.size_m2 ? UI.fmt(p.size_m2) + ' m²' : '—') + '</td>' +
-                    '<td>' + (p.purchase_price ? UI.fmt(p.purchase_price) + ' Kč' : '—') + '</td>' +
-                    '<td>' + (p.purchase_date ? UI.fmtDate(p.purchase_date) : '—') + '</td>' +
-                    '<td>' + contractLink + '</td>' +
-                    '<td>' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
+                    '<td class="col-hide-mobile">' + UI.esc(p.address) + '</td>' +
+                    '<td class="col-hide-mobile">' + (p.size_m2 ? UI.fmt(p.size_m2) + ' m²' : '—') + '</td>' +
+                    '<td class="col-hide-mobile">' + (p.purchase_price ? UI.fmt(p.purchase_price) + ' Kč' : '—') + '</td>' +
+                    '<td class="col-hide-mobile">' + (p.purchase_date ? UI.fmtDate(p.purchase_date) : '—') + '</td>' +
+                    '<td class="col-hide-mobile">' + contractLink + '</td>' +
+                    '<td class="col-hide-mobile">' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +
                         '<button class="btn btn-ghost btn-sm" onclick="PropertiesView.edit(' + p.id + ')">Úprava</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="PropertiesView.del(' + p.id + ')">Smazat</button>' +
