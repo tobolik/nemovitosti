@@ -237,14 +237,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             jsonOk(['ids' => $ids, 'count' => count($ids)], 201);
         } elseif ($table === 'contract_rent_changes') {
-            $stmt = db()->prepare("INSERT INTO contract_rent_changes (contracts_id, amount, effective_from) VALUES (?, ?, ?)");
-            $stmt->execute([
-                (int)$data['contracts_id'],
-                (float)$data['amount'],
-                $data['effective_from'],
+            $newId = softInsert($table, [
+                'contracts_id'   => (int)$data['contracts_id'],
+                'amount'         => (float)$data['amount'],
+                'effective_from'=> $data['effective_from'],
             ]);
-            $newId = (int) db()->lastInsertId();
-            jsonOk(db()->query("SELECT * FROM contract_rent_changes WHERE id=$newId")->fetch(), 201);
+            jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'bank_accounts') {
             if (isset($data['is_primary']) && (int)$data['is_primary'] === 1) {
                 db()->prepare("UPDATE bank_accounts SET is_primary=0 WHERE valid_to IS NULL")->execute();
