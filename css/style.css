@@ -532,6 +532,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .heatmap-cell { min-height: 50px; min-width: 70px; padding: 6px; border-radius: var(--r); cursor: pointer; transition: opacity .15s; text-align: center; }
 .heatmap-cell:hover { opacity: .85; }
 .heatmap-cell.empty { background: rgba(100,100,100,.3); color: var(--txt3); font-size: .7rem; }
+.heatmap-cell.heatmap-cell-before-purchase { cursor: default; pointer-events: none; background: transparent; }
 .heatmap-cell.exact { background: var(--green-600); color: #fff; font-weight: 600; }
 .heatmap-cell.overpaid { background: var(--orange-600); color: #fff; font-weight: 600; }
 .heatmap-cell.unpaid, .heatmap-cell.overdue { background: var(--red-600); color: #fff; font-weight: 600; }
@@ -555,6 +556,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .heatmap-cell.exact .cell-check, .heatmap-cell.overpaid .cell-check, .heatmap-cell.paid-advance .cell-check { color: #fff; }
 .heatmap-cell.unpaid .cell-cross,
 .heatmap-cell.overdue .cell-cross { color: #fff; }
+.heatmap-total-col { min-width: 90px; }
+.heatmap-total-cell { text-align: center; font-size: .75rem; font-weight: 600; color: var(--txt2); padding: 6px 8px; white-space: nowrap; }
+.heatmap-sum-row { background: var(--bg2); border-top: 2px solid var(--glass-border); }
+.heatmap-sum-row td { padding: 8px 4px; }
+.heatmap-sum-label { font-weight: 600; color: var(--txt); }
+.heatmap-sum-cell { color: var(--txt2); }
+.heatmap-sum-total { font-weight: 700; color: var(--txt); }
 .pay-modal-partial, .pay-modal-full { margin-top: 8px; padding: 8px; background: var(--bg2); border-radius: var(--r); font-size: .9rem; }
 .pay-modal-full { color: var(--green-600); }
 .pay-modal-full.pay-modal-overpaid { color: var(--orange-600); }

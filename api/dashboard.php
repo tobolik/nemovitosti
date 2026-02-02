@@ -403,6 +403,33 @@ if ($extended) {
     $monthlyChart = array_reverse($monthlyChart);
 }
 
+// Součty za jednotlivé měsíce roku (pro řádek pod heatmapou) + celkový součet roku
+$monthlyTotals = [];
+$yearTotalExpected = 0;
+$yearTotalActual = 0;
+for ($m = 1; $m <= 12; $m++) {
+    $monthKey = $year . '-' . str_pad((string)$m, 2, '0', STR_PAD_LEFT);
+    $firstOfMonth = $monthKey . '-01';
+    $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
+    $expected = 0;
+    $actual = 0;
+    foreach ($contractsForView as $c) {
+        if ($c['contract_start'] <= $lastDayOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth)) {
+            $expected += getExpectedRentForMonth($c, $year, $m, $rentChangesByContract);
+            $entityId = $c['contracts_id'] ?? $c['id'];
+            $paid = $paymentsByContract[$entityId][$monthKey] ?? null;
+            if ($paid && !empty($paid['payment_date'])) {
+                $actual += (float)($paid['amount_rent'] ?? $paid['amount'] ?? 0);
+            }
+        }
+    }
+    $monthlyTotals[] = ['month' => $m, 'expected' => round($expected, 2), 'actual' => round($actual, 2)];
+    $yearTotalExpected += $expected;
+    $yearTotalActual += $actual;
+}
+$yearTotalExpected = round($yearTotalExpected, 2);
+$yearTotalActual = round($yearTotalActual, 2);
+
 $payload = [
     'contracts'   => $out,
     'properties' => $properties,
@@ -411,6 +438,9 @@ $payload = [
     'yearMin'    => $yearMin,
     'yearMax'    => $yearMax,
     'monthNames' => $monthNames,
+    'monthlyTotals' => $monthlyTotals,
+    'yearTotalExpected' => $yearTotalExpected,
+    'yearTotalActual'   => $yearTotalActual,
     'stats'      => [
         'occupancyRate'  => $occupancyRate,
         'monthlyIncome'  => $monthlyIncome,

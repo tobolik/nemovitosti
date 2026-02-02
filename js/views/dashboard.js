@@ -18,7 +18,7 @@ async function loadDashboard(year) {
     try { data = await Api.dashboardLoad(y, showEnded, extended); }
     catch (e) { return; }
 
-    const { contracts, properties, heatmap, stats, monthNames, yearMin, yearMax, extendedStats, monthlyChart } = data;
+    const { contracts, properties, heatmap, stats, monthNames, yearMin, yearMax, extendedStats, monthlyChart, monthlyTotals, yearTotalExpected, yearTotalActual } = data;
     const months = monthNames || MONTH_NAMES;
 
     // ── Režim: jen Rozšířený režim („Zobrazit skončené“ je u tabulky) ────
@@ -134,9 +134,12 @@ async function loadDashboard(year) {
             const label = months[m - 1] ? (months[m - 1] + '\n' + m) : m;
             ths += '<th>' + label.replace('\n', '<br>') + '</th>';
         }
+        ths += '<th class="heatmap-total-col">Celkem</th>';
 
         let rows = '';
         properties.forEach(prop => {
+            let propYearExpected = 0;
+            let propYearActual = 0;
             rows += '<tr><td class="heatmap-property">' + UI.esc(prop.name) + '</td>';
             for (let m = 1; m <= 12; m++) {
                 const monthKey = y + '-' + String(m).padStart(2, '0');
@@ -147,6 +150,10 @@ async function loadDashboard(year) {
                 const paymentCount = cell.payment_count ?? (cell.payment && cell.payment.count ? cell.payment.count : 0);
                 const remaining = cell.remaining ?? (cell.amount ? Math.max(0, cell.amount - paidAmt) : 0);
                 const isPaid = cell.type === 'exact' || cell.type === 'overpaid';
+                if (cell.type !== 'empty') {
+                    propYearExpected += cell.amount || 0;
+                    propYearActual += paidAmt;
+                }
                 const isFuture = cell.isPast === false;
                 const now = new Date();
                 const isCurrentMonth = y === now.getFullYear() && m === now.getMonth() + 1;
@@ -160,8 +167,15 @@ async function loadDashboard(year) {
                 }
 
                 let content = '';
+                let isBeforePurchase = false;
                 if (cell.type === 'empty') {
-                    content = 'Volno';
+                    // Volno jen od měsíce koupě nemovitosti; předtím buňka prázdná
+                    const purchaseDate = prop.purchase_date || '';
+                    const purchaseYear = purchaseDate ? parseInt(purchaseDate.substring(0, 4), 10) : null;
+                    const purchaseMonth = purchaseDate ? parseInt(purchaseDate.substring(5, 7), 10) : null;
+                    isBeforePurchase = purchaseYear != null && purchaseMonth != null &&
+                        (y < purchaseYear || (y === purchaseYear && m < purchaseMonth));
+                    content = isBeforePurchase ? '' : 'Volno';
                 } else if (isFuture && (cell.type === 'unpaid' || cell.type === 'overdue')) {
                     if (paidAmt > 0 && remaining > 0) {
                         const partialLabel = paymentCount > 1 ? UI.fmt(paidAmt) + ' (' + paymentCount + ' platby) / ' : UI.fmt(paidAmt) + ' / ';
@@ -181,6 +195,8 @@ async function loadDashboard(year) {
                     content = '<span class="cell-amount">' + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-icon cell-cross">✗</span>';
                 }
 
+                if (cell.type === 'empty' && isBeforePurchase) cls += ' heatmap-cell-before-purchase';
+
                 const dataAttrs = cell.type !== 'empty'
                     ? ' data-contract-id="' + cell.contract.id + '" data-contracts-id="' + (cell.contract.contracts_id ?? cell.contract.id) + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (cell.contract.tenant_name || '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"'
                     : ' data-property-id="' + prop.id + '" data-month-key="' + monthKey + '"';
@@ -197,15 +213,31 @@ async function loadDashboard(year) {
                 }
 
                 const onClick = cell.type === 'empty'
-                    ? 'DashboardView.openNewContract(this)'
+                    ? (isBeforePurchase ? '' : 'DashboardView.openNewContract(this)')
                     : 'DashboardView.openPaymentModal(this)';
 
-                rows += '<td><div class="' + cls + '"' + dataAttrs + titleAttr + ' onclick="' + onClick + '">' + content + '</div></td>';
+                rows += '<td><div class="' + cls + '"' + dataAttrs + titleAttr + (onClick ? ' onclick="' + onClick + '"' : '') + '>' + content + '</div></td>';
             }
+            rows += '<td class="heatmap-total-cell">' + (propYearExpected > 0 ? UI.fmt(propYearActual) + ' / ' + UI.fmt(propYearExpected) : '—') + '</td>';
             rows += '</tr>';
         });
 
-        heatmapEl.innerHTML = '<table class="heatmap-table"><thead><tr>' + ths + '</tr></thead><tbody>' + rows + '</tbody></table>';
+        // Řádek součtů za měsíce + celkový součet roku
+        let sumRow = '<tr class="heatmap-sum-row"><td class="heatmap-property heatmap-sum-label">Součet</td>';
+        if (monthlyTotals && monthlyTotals.length === 12) {
+            monthlyTotals.forEach(function (t) {
+                const label = t.expected > 0 ? UI.fmt(t.actual) + ' / ' + UI.fmt(t.expected) : '—';
+                sumRow += '<td class="heatmap-total-cell heatmap-sum-cell" title="Přiteklo / mělo přitéct">' + label + '</td>';
+            });
+        } else {
+            for (let m = 1; m <= 12; m++) sumRow += '<td class="heatmap-total-cell">—</td>';
+        }
+        const yearLabel = (yearTotalExpected != null && yearTotalExpected > 0)
+            ? UI.fmt(yearTotalActual ?? 0) + ' / ' + UI.fmt(yearTotalExpected)
+            : '—';
+        sumRow += '<td class="heatmap-total-cell heatmap-sum-total" title="Celkem za rok ' + y + ' – přiteklo / mělo přitéct">' + yearLabel + '</td></tr>';
+
+        heatmapEl.innerHTML = '<table class="heatmap-table"><thead><tr>' + ths + '</tr></thead><tbody>' + rows + '</tbody><tfoot>' + sumRow + '</tfoot></table>';
     } else if (heatmapEl) {
         heatmapEl.innerHTML = '<div class="empty">Žádné nemovitosti. Přidejte nemovitost v sekci <a href="#properties">Nemovitosti</a>.</div>';
     }
