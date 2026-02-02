@@ -84,7 +84,8 @@ const PaymentsView = (() => {
                     const batchData = {
                         payment_date: values.payment_date,
                         payment_method: values.payment_method || 'account',
-                        account_number: values.account_number || null,
+                        bank_accounts_id: values.bank_accounts_id || null,
+                        payment_type: values.payment_type || 'rent',
                     };
                     const origAmt = row ? parseFloat(row.amount) : 0;
                     const newAmt = parseFloat(values.amount) || 0;
@@ -183,6 +184,29 @@ const PaymentsView = (() => {
         return new Date().toISOString().slice(0, 10);
     }
 
+    // ── year dropdowns – rozsah podle smlouvy (min. od contract_start) ─────
+    function updateYearSelects() {
+        const now = new Date().getFullYear();
+        const c = contractsCache.find(x => (x.contracts_id ?? x.id) === Number(document.getElementById('pay-contract').value));
+        const startYear = c && c.contract_start ? parseInt(c.contract_start.slice(0, 4), 10) : now - 10;
+        const minY = Math.min(startYear, now - 2);
+        const maxY = now + 2;
+        const opts = [];
+        for (let y = minY; y <= maxY; y++) {
+            opts.push('<option value="' + y + '"' + (y === now ? ' selected' : '') + '>' + y + '</option>');
+        }
+        const optsStr = opts.join('');
+        document.getElementById('pay-year').innerHTML = optsStr;
+        document.getElementById('pay-year-from').innerHTML = optsStr;
+        document.getElementById('pay-year-to').innerHTML = optsStr;
+        const curYear = document.getElementById('pay-year').value;
+        if (!curYear || curYear < minY || curYear > maxY) {
+            document.getElementById('pay-year').value = now;
+            document.getElementById('pay-year-from').value = now;
+            document.getElementById('pay-year-to').value = now;
+        }
+    }
+
     // ── fill bank account select ───────────────────────────────────────
     function fillBankAccountSelect(selId) {
         const sel = document.getElementById(selId);
@@ -238,6 +262,7 @@ const PaymentsView = (() => {
         // cache pro edit()
         _payCache = data;
 
+        const rowsWithClass = data.map(p => ({ ...p, _rowClass: 'pay-type-' + (p.payment_type || 'rent') }));
         UI.renderTable('pay-table',
             [
                 { label: 'Smlouva' },
@@ -250,7 +275,7 @@ const PaymentsView = (() => {
                 { label: 'Poznámka', hideMobile: true },
                 { label: 'Akce', act: true },
             ],
-            data,
+            rowsWithClass,
             (p) => {
                 const rent = Number(p.monthly_rent);
                 const amt  = Number(p.amount);
