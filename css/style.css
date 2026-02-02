@@ -234,12 +234,14 @@ button, select, input, textarea { font-family: var(--font-ui); }
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 .main {
   flex: 1;
   padding: 28px 24px;
+  overflow-x: visible;
 }
-.container { max-width: 1200px; margin: 0 auto; width: 100%; }
+.container { max-width: 1200px; margin: 0 auto; width: 100%; overflow-x: visible; }
 
 .page-title {
   font-size: 1.5rem; font-weight: 700;
@@ -744,7 +746,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
     pointer-events: none;
   }
 
-  .main-wrap { margin-left: 0; }
+  .main-wrap { margin-left: 0; overflow-x: hidden; }
   .hamburger { 
     display: block;
     transition: opacity .2s;
@@ -767,30 +769,39 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   
   /* Full width content on mobile */
   .container, .main { 
-    padding-left: 8px; 
-    padding-right: 8px; 
+    padding-left: 10px; 
+    padding-right: 10px; 
   }
   .stats { grid-template-columns: 1fr; }
   
   /* Responsive tables - horizontal scroll */
   .tbl-wrap {
-    border-radius: var(--r);
-    margin-left: -8px;
-    margin-right: -8px;
-    width: calc(100% + 16px);
+    border-radius: 0;
+    margin-left: -10px;
+    margin-right: -10px;
+    width: calc(100% + 20px);
     border-left: none;
     border-right: none;
-    border-radius: 0;
+    overflow-x: scroll;
+    -webkit-overflow-scrolling: touch;
   }
   table.tbl {
-    min-width: 500px;
+    width: max-content;
+    min-width: 100%;
   }
   .tbl th, .tbl td { 
-    padding: 10px 8px; 
-    font-size: .78rem; 
+    padding: 10px 10px; 
+    font-size: .8rem;
+    white-space: nowrap;
   }
   .tbl th {
-    font-size: .65rem;
+    font-size: .68rem;
+  }
+  /* First column can wrap */
+  .tbl td:first-child {
+    white-space: normal;
+    min-width: 90px;
+    max-width: 130px;
   }
   
   /* Hide less important columns on mobile */
@@ -798,18 +809,15 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
     display: none;
   }
   
-  /* Make action buttons more compact on mobile */
+  /* Action buttons inline on mobile */
   .td-act {
-    flex-direction: column;
-    gap: 4px;
-    align-items: stretch;
-    min-width: 70px;
+    flex-direction: row;
+    gap: 6px;
+    white-space: nowrap;
   }
   .td-act .btn {
-    width: 100%;
-    justify-content: center;
-    padding: 6px 8px;
-    font-size: .72rem;
+    padding: 8px 12px;
+    font-size: .75rem;
   }
   
   /* Improve footer on mobile */
@@ -820,19 +828,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
     font-size: .7rem;
   }
   
-  /* Improve cards on mobile - full width */
+  /* Cards on mobile - margin top to clear hamburger */
   .card {
-    padding: 14px;
+    padding: 16px;
     margin-bottom: 16px;
+    margin-top: 40px;
     border-radius: var(--r);
-    margin-left: -8px;
-    margin-right: -8px;
-    width: calc(100% + 16px);
-  }
-  
-  /* Card title without extra padding when form visible */
-  .card .card-title {
-    padding-left: 0;
   }
   
   /* Modal improvements for mobile */
@@ -851,16 +852,31 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
     min-width: 100px;
   }
   
-  /* Heatmap scroll hint */
-  .heatmap-wrap {
-    margin-left: -8px;
-    margin-right: -8px;
+  /* Select with button - stack on mobile */
+  .select-with-btn {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .select-with-btn select {
+    width: 100%;
+  }
+  .select-with-btn .btn {
+    width: 100%;
   }
   
-  /* Filter bar full width */
+  /* Heatmap scroll */
+  .heatmap-wrap {
+    margin-left: -10px;
+    margin-right: -10px;
+    overflow-x: scroll;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Filter bar */
   .filter-bar {
     padding-left: 0;
-    margin-left: 52px;
+    margin-left: 42px;
+    margin-right: 0;
   }
 }
 
@@ -887,33 +903,30 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   
   /* Full width on small screens */
   .container, .main { 
-    padding-left: 6px; 
-    padding-right: 6px; 
+    padding-left: 8px; 
+    padding-right: 8px; 
   }
   
-  /* Cards full width */
+  /* Cards */
   .card {
-    padding: 12px;
-    margin-left: -6px;
-    margin-right: -6px;
-    width: calc(100% + 12px);
+    padding: 14px;
+    margin-top: 36px;
   }
   
   /* Tables edge to edge */
   .tbl-wrap {
-    margin-left: -6px;
-    margin-right: -6px;
-    width: calc(100% + 12px);
+    margin-left: -8px;
+    margin-right: -8px;
+    width: calc(100% + 16px);
   }
   
-  /* Even smaller table cells */
+  /* Table cells */
   .tbl th, .tbl td { 
-    padding: 8px 6px; 
-    font-size: .72rem; 
+    padding: 8px 8px; 
+    font-size: .75rem; 
   }
   .tbl th {
-    font-size: .58rem;
-    letter-spacing: .02em;
+    font-size: .62rem;
   }
   
   /* Compact buttons */
@@ -922,14 +935,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
     font-size: .78rem;
   }
   .btn-sm {
-    padding: 4px 6px;
-    font-size: .68rem;
+    padding: 5px 8px;
+    font-size: .7rem;
   }
   
-  /* Action buttons even more compact */
+  /* Action buttons */
   .td-act .btn {
-    padding: 5px 6px;
-    font-size: .68rem;
+    padding: 6px 10px;
+    font-size: .7rem;
   }
   
   /* Filter bar on mobile */
@@ -937,7 +950,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
-    margin-left: 46px;
+    margin-left: 38px;
   }
   .filter-bar select {
     max-width: none;
@@ -970,7 +983,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   
   /* Heatmap full width */
   .heatmap-wrap {
-    margin-left: -6px;
-    margin-right: -6px;
+    margin-left: -8px;
+    margin-right: -8px;
   }
 }
