@@ -96,8 +96,13 @@ const Api = (() => {
     // ════════════════════════════════════════════════════════════════════
     // DASHBOARD
     // ════════════════════════════════════════════════════════════════════
-    function dashboardLoad(year) {
-        const url = year ? '/api/dashboard.php?year=' + year : '/api/dashboard.php';
+    function dashboardLoad(year, showEnded, extended) {
+        let url = '/api/dashboard.php';
+        const params = [];
+        if (year) params.push('year=' + year);
+        if (showEnded) params.push('show_ended=1');
+        if (extended) params.push('extended=1');
+        if (params.length) url += '?' + params.join('&');
         return get(url);
     }
 

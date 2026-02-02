@@ -8,6 +8,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') jsonErr('Metoda nepodporovaná.', 405)
 $nowY = (int)date('Y');
 $nowM = (int)date('n');
 $year = isset($_GET['year']) ? (int)$_GET['year'] : $nowY;
+$showEnded = isset($_GET['show_ended']) && $_GET['show_ended'] !== '0' && $_GET['show_ended'] !== '';
+$extended = isset($_GET['extended']) && $_GET['extended'] !== '0' && $_GET['extended'] !== '';
 
 // Properties
 $properties = db()->query("SELECT * FROM properties WHERE valid_to IS NULL ORDER BY name ASC")->fetchAll();
@@ -99,6 +101,12 @@ foreach ($contracts as $c) {
     }
 }
 
+// Jen aktivní smlouvy (contract_end IS NULL nebo >= dnes), pokud nechceme skončené
+$today = date('Y-m-d');
+$contractsForView = $showEnded ? $contracts : array_values(array_filter($contracts, function ($c) use ($today) {
+    return empty($c['contract_end']) || $c['contract_end'] >= $today;
+}));
+
 // Contract overview (pro tabulku)
 $out = [];
 $totalInvestment = 0;
@@ -109,7 +117,7 @@ foreach ($properties as $p) {
 $yearIncome = 0;
 $expectedYearIncome = 0;
 
-foreach ($contracts as $c) {
+foreach ($contractsForView as $c) {
     $entityId = $c['contracts_id'] ?? $c['id'];
     $sY   = (int)date('Y', strtotime($c['contract_start']));
     $sM   = (int)date('n', strtotime($c['contract_start']));
@@ -200,7 +208,7 @@ foreach ($properties as $p) {
 
         $contract = null;
         $propEntityId = $p['properties_id'] ?? $p['id'];
-        foreach ($contracts as $c) {
+        foreach ($contractsForView as $c) {
             $cPropMatch = ($c['properties_id'] == $propEntityId);
             $hasDayInMonth = $c['contract_start'] <= $lastDayOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth);
             if ($cPropMatch && $hasDayInMonth) {
@@ -251,13 +259,13 @@ foreach ($properties as $p) {
     }
 }
 
-// Stats podle spec
-$activeCount = count(array_unique(array_column($contracts, 'properties_id')));
+// Stats podle spec (jen zobrazené smlouvy = aktivní nebo včetně skončených)
+$activeCount = count(array_unique(array_column($contractsForView, 'properties_id')));
 $occupancyRate = count($properties) > 0 ? round($activeCount / count($properties) * 100, 1) : 0;
 
 $currentMonthKey = $nowY . '-' . str_pad((string)$nowM, 2, '0', STR_PAD_LEFT);
 $monthlyIncome = 0;
-foreach ($contracts as $c) {
+foreach ($contractsForView as $c) {
     $entityId = $c['contracts_id'] ?? $c['id'];
     $firstOfMonth = $currentMonthKey . '-01';
     if ($c['contract_start'] <= $firstOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth)) {
@@ -274,7 +282,7 @@ $collectionRate = $expectedYearIncome > 0 ? round($yearIncome / $expectedYearInc
 // Rozsah let pro tlačítka – podle nejstarší smlouvy a plateb
 $yearMin = $nowY - 2;
 $yearMax = $nowY + 1;
-foreach ($contracts as $c) {
+foreach ($contractsForView as $c) {
     $sy = (int)date('Y', strtotime($c['contract_start']));
     if ($sy < $yearMin) $yearMin = $sy;
     if (!empty($c['contract_end'])) {
@@ -289,7 +297,94 @@ foreach ($paymentsByContract as $rows) {
     }
 }
 
-jsonOk([
+// Rozšířené statistiky a data pro graf (jen když extended=1)
+$extendedStats = null;
+$monthlyChart = null;
+if ($extended) {
+    $today = date('Y-m-d');
+    $threeMonthsLater = date('Y-m-d', strtotime('+3 months'));
+
+    $expectedCurrentMonth = 0;
+    foreach ($contractsForView as $c) {
+        $firstOfMonth = $currentMonthKey . '-01';
+        if ($c['contract_start'] <= $firstOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth)) {
+            $expectedCurrentMonth += getExpectedRentForMonth($c, $nowY, $nowM, $rentChangesByContract);
+        }
+    }
+
+    $totalArrears = 0;
+    $tenantsWithArrearsCount = 0;
+    $depositsTotal = 0;
+    $depositsToReturn = 0;
+    $contractsEndingSoon = [];
+    foreach ($out as $row) {
+        if ($row['balance'] > 0) {
+            $totalArrears += $row['balance'];
+            $tenantsWithArrearsCount++;
+        }
+        $contractEnd = $row['contract_end'] ?? null;
+        if ($contractEnd && $contractEnd >= $today && $contractEnd <= $threeMonthsLater) {
+            $contractsEndingSoon[] = [
+                'id' => $row['id'],
+                'tenant_name' => $row['tenant_name'],
+                'property_name' => $row['property_name'],
+                'contract_end' => $contractEnd,
+            ];
+        }
+        if (!$contractEnd || $contractEnd >= $today) {
+            $depositsTotal += (float)($row['deposit_amount'] ?? 0);
+        }
+        if (!empty($row['deposit_to_return'])) {
+            $depositsToReturn += (float)($row['deposit_amount'] ?? 0);
+        }
+    }
+
+    $extendedStats = [
+        'expected_current_month' => round($expectedCurrentMonth, 2),
+        'total_arrears' => round($totalArrears, 2),
+        'tenants_with_arrears_count' => $tenantsWithArrearsCount,
+        'contracts_ending_soon' => $contractsEndingSoon,
+        'deposits_total' => round($depositsTotal, 2),
+        'deposits_to_return' => round($depositsToReturn, 2),
+    ];
+
+    // Graf: posledních 12 měsíců – očekávaný vs. skutečný nájem
+    $monthlyChart = [];
+    $chartY = $nowY;
+    $chartM = $nowM;
+    for ($i = 0; $i < 12; $i++) {
+        $key = $chartY . '-' . str_pad((string)$chartM, 2, '0', STR_PAD_LEFT);
+        $firstOfMonth = $key . '-01';
+        $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
+        $expected = 0;
+        $actual = 0;
+        foreach ($contractsForView as $c) {
+            if ($c['contract_start'] <= $lastDayOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth)) {
+                $expected += getExpectedRentForMonth($c, $chartY, $chartM, $rentChangesByContract);
+                $entityId = $c['contracts_id'] ?? $c['id'];
+                $paid = $paymentsByContract[$entityId][$key] ?? null;
+                if ($paid && !empty($paid['payment_date'])) {
+                    $actual += (float)($paid['amount_rent'] ?? $paid['amount'] ?? 0);
+                }
+            }
+        }
+        $monthLabel = $monthNames[$chartM - 1] ?? $chartM;
+        $monthlyChart[] = [
+            'month_key' => $key,
+            'label' => $monthLabel . ' ' . $chartY,
+            'expected' => round($expected, 2),
+            'actual' => round($actual, 2),
+        ];
+        $chartM--;
+        if ($chartM < 1) {
+            $chartM = 12;
+            $chartY--;
+        }
+    }
+    $monthlyChart = array_reverse($monthlyChart);
+}
+
+$payload = [
     'contracts'   => $out,
     'properties' => $properties,
     'heatmap'    => $heatmap,
@@ -306,4 +401,11 @@ jsonOk([
         'yearIncome'     => $yearIncome,
         'expectedYearIncome' => $expectedYearIncome,
     ],
-]);
+];
+if ($extendedStats !== null) {
+    $payload['extendedStats'] = $extendedStats;
+}
+if ($monthlyChart !== null) {
+    $payload['monthlyChart'] = $monthlyChart;
+}
+jsonOk($payload);

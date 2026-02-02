@@ -2,19 +2,40 @@
 
 const MONTH_NAMES = ['leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
 
+const DASHBOARD_SHOW_ENDED_KEY = 'dashboard-show-ended';
+const DASHBOARD_EXTENDED_KEY = 'dashboard-extended';
+
 async function loadDashboard(year) {
     const yearSelect = document.getElementById('dash-year');
     const currentYear = new Date().getFullYear();
     const activeBtn = yearSelect && yearSelect.querySelector('.heatmap-year-btn.active');
     const fromSelect = activeBtn ? parseInt(activeBtn.dataset.year, 10) : NaN;
     const y = (year != null && !isNaN(year)) ? year : (!isNaN(fromSelect) ? fromSelect : currentYear);
+    const showEnded = sessionStorage.getItem(DASHBOARD_SHOW_ENDED_KEY) === '1';
+    const extended = sessionStorage.getItem(DASHBOARD_EXTENDED_KEY) === '1';
 
     let data;
-    try { data = await Api.dashboardLoad(y); }
+    try { data = await Api.dashboardLoad(y, showEnded, extended); }
     catch (e) { return; }
 
-    const { contracts, properties, heatmap, stats, monthNames, yearMin, yearMax } = data;
+    const { contracts, properties, heatmap, stats, monthNames, yearMin, yearMax, extendedStats, monthlyChart } = data;
     const months = monthNames || MONTH_NAMES;
+
+    // ── Režim: Zobrazit skončené + Rozšířený režim ──────────────────────
+    const modeBar = document.getElementById('dash-mode-bar');
+    if (modeBar) {
+        modeBar.innerHTML =
+            '<label class="dash-toggle"><input type="checkbox" id="dash-show-ended"' + (showEnded ? ' checked' : '') + '> Zobrazit skončené smlouvy</label>' +
+            '<label class="dash-toggle"><input type="checkbox" id="dash-extended"' + (extended ? ' checked' : '') + '> Rozšířený režim (statistiky a grafy)</label>';
+        modeBar.querySelector('#dash-show-ended').addEventListener('change', function () {
+            sessionStorage.setItem(DASHBOARD_SHOW_ENDED_KEY, this.checked ? '1' : '0');
+            loadDashboard(y);
+        });
+        modeBar.querySelector('#dash-extended').addEventListener('change', function () {
+            sessionStorage.setItem(DASHBOARD_EXTENDED_KEY, this.checked ? '1' : '0');
+            loadDashboard(y);
+        });
+    }
 
     // ── Stats (Obsazenost, Měsíční výnos, ROI, Míra inkasa) ─────────────
     document.getElementById('dash-stats').innerHTML =
@@ -38,6 +59,58 @@ async function loadDashboard(year) {
             '<div class="stat-val">' + (stats.collectionRate ?? 100) + '%</div>' +
             '<div class="stat-label">Míra inkasa</div>' +
         '</div>';
+
+    // ── Rozšířené statistiky a graf ────────────────────────────────────
+    const extendedWrap = document.getElementById('dash-extended-wrap');
+    if (extendedWrap) {
+        if (extended && extendedStats && monthlyChart) {
+            extendedWrap.style.display = '';
+            const es = extendedStats;
+            let endingSoonHtml = '';
+            if (es.contracts_ending_soon && es.contracts_ending_soon.length) {
+                endingSoonHtml = es.contracts_ending_soon.map(function (x) {
+                    return '<a href="#" class="dash-link" onclick="DashboardView.openEdit(\'contracts\',' + x.id + '); return false;">' + UI.esc(x.tenant_name) + ' – ' + UI.esc(x.property_name) + ' (do ' + (x.contract_end ? UI.fmtDate(x.contract_end) : '') + ')</a>';
+                }).join('<br>');
+            } else {
+                endingSoonHtml = '<span style="color:var(--txt3)">Žádné</span>';
+            }
+            const maxChartVal = Math.max(1, ...monthlyChart.map(function (m) { return Math.max(m.expected || 0, m.actual || 0); }));
+            let chartBars = '';
+            monthlyChart.forEach(function (m) {
+                const pctExpected = maxChartVal > 0 ? (m.expected / maxChartVal) * 100 : 0;
+                const pctActual = maxChartVal > 0 ? (m.actual / maxChartVal) * 100 : 0;
+                chartBars += '<div class="dash-chart-bar-wrap" title="' + UI.esc(m.label) + ': očekáváno ' + UI.fmt(m.expected) + ' Kč, vybráno ' + UI.fmt(m.actual) + ' Kč">' +
+                    '<div class="dash-chart-bar-bg" style="height:' + Math.max(2, pctExpected) + '%"></div>' +
+                    '<div class="dash-chart-bar-fill" style="height:' + Math.max(2, pctActual) + '%"></div>' +
+                    '<span class="dash-chart-label">' + (m.label.length > 12 ? m.label.replace(/^(\w+)\s/, '$1 ') : m.label) + '</span>' +
+                    '</div>';
+            });
+            extendedWrap.innerHTML =
+                '<div class="dash-extended-stats">' +
+                    '<div class="stat"><div class="stat-icon green">$</div><div class="stat-val">' + UI.fmt(es.expected_current_month || 0) + ' Kč</div><div class="stat-label">Očekávaný nájem (tento měsíc)</div></div>' +
+                    '<div class="stat' + (es.total_arrears > 0 ? ' stat-warn' : '') + '"><div class="stat-icon">!</div><div class="stat-val">' + UI.fmt(es.total_arrears || 0) + ' Kč</div><div class="stat-label">Celkové nedoplatky</div></div>' +
+                    '<div class="stat"><div class="stat-val">' + (es.tenants_with_arrears_count || 0) + '</div><div class="stat-label">Nájemníků s nedoplatkem</div></div>' +
+                    '<div class="stat"><div class="stat-val">' + (es.contracts_ending_soon ? es.contracts_ending_soon.length : 0) + '</div><div class="stat-label">Smlouvy končící do 3 měsíců</div></div>' +
+                    '<div class="stat"><div class="stat-val">' + UI.fmt(es.deposits_total || 0) + ' Kč</div><div class="stat-label">Kauce celkem</div></div>' +
+                    '<div class="stat' + (es.deposits_to_return > 0 ? ' stat-info' : '') + '"><div class="stat-val">' + UI.fmt(es.deposits_to_return || 0) + ' Kč</div><div class="stat-label">Kauce k vrácení</div></div>' +
+                '</div>' +
+                '<div class="dash-extended-ending">' +
+                    '<strong>Končící smlouvy:</strong><div class="dash-ending-list">' + endingSoonHtml + '</div>' +
+                '</div>' +
+                '<div class="dash-chart-section">' +
+                    '<h4 class="dash-chart-title">Vývoj výnosu (posledních 12 měsíců)</h4>' +
+                    '<div class="dash-chart-legend"><span class="dash-chart-legend-expected">očekáváno</span> <span class="dash-chart-legend-actual">vybráno</span></div>' +
+                    '<div class="dash-chart">' + chartBars + '</div>' +
+                '</div>';
+        } else {
+            extendedWrap.style.display = 'none';
+            extendedWrap.innerHTML = '';
+        }
+    }
+
+    // ── Přepínač „Zobrazit skončené“ nad tabulkou (zachován pro umístění) ─
+    const dashTableBar = document.getElementById('dash-table-bar');
+    if (dashTableBar) dashTableBar.innerHTML = '';
 
     // ── Year selector (tlačítka) ─────────────────────────────────────────
     if (yearSelect) {
@@ -138,10 +211,20 @@ async function loadDashboard(year) {
         heatmapEl.innerHTML = '<div class="empty">Žádné nemovitosti. Přidejte nemovitost v sekci <a href="#properties">Nemovitosti</a>.</div>';
     }
 
+    // ── Přepínač „Zobrazit skončené smlouvy“ ─────────────────────────────
+    const dashTableBar = document.getElementById('dash-table-bar');
+    if (dashTableBar) {
+        dashTableBar.innerHTML = '<label class="dash-show-ended"><input type="checkbox" id="dash-show-ended"' + (showEnded ? ' checked' : '') + '> Zobrazit skončené smlouvy</label>';
+        dashTableBar.querySelector('#dash-show-ended').addEventListener('change', function () {
+            sessionStorage.setItem(DASHBOARD_SHOW_ENDED_KEY, this.checked ? '1' : '0');
+            loadDashboard(y);
+        });
+    }
+
     // ── Table (přehled smluv) ───────────────────────────────────────────
     if (!contracts || !contracts.length) {
         document.getElementById('dash-table').innerHTML =
-            '<div class="empty">Žádné aktivní smlouvy.<br>Začněte přidáním nemovitosti a nájemníka, nebo klikněte na "Volno" v kalendáři.</div>';
+            '<div class="empty">' + (showEnded ? 'Žádné smlouvy.' : 'Žádné aktivní smlouvy.<br>Začněte přidáním nemovitosti a nájemníka, nebo klikněte na "Volno" v kalendáři.') + '</div>';
         return;
     }
 
@@ -160,13 +243,14 @@ async function loadDashboard(year) {
         ],
         contracts,
         (d) => {
-            const pct = d.expected_total > 0 ? Math.min(100, (d.total_paid / d.expected_total) * 100) : 100;
+            let pct = d.expected_total > 0 ? Math.min(100, (d.total_paid / d.expected_total) * 100) : 100;
             const hasDbt = d.balance > 0;
             const now = new Date();
             const currentY = now.getFullYear();
             const currentM = now.getMonth() + 1;
             const hasHistoricalArrear = (d.unpaid_months || []).some(u => u.year < currentY || (u.year === currentY && u.month < currentM));
             const progClass = hasDbt ? (hasHistoricalArrear ? 'bad' : 'current-debt') : 'ok';
+            if (hasDbt && pct < 2) pct = 2;
             const depAmt = d.deposit_amount || 0;
             const hoverInfo = [];
             if (depAmt > 0) hoverInfo.push('Kauce: ' + UI.fmt(depAmt) + ' Kč' + (d.deposit_to_return ? ' (k vrácení)' : ''));

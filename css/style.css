@@ -17,6 +17,7 @@
   /* Semantic */
   --green-600: #16a34a;
   --green-700: #15803d;
+  --orange-500: #f97316;
   --orange-600: #ea580c;
   --orange-700: #c2410c;
   --red-600: #dc2626;
@@ -474,8 +475,36 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .stat.stat-danger { border-color: rgba(220,38,38,.3); }
 .stat.stat-ok { border-color: rgba(22,163,74,.25); }
 
+/* DASHBOARD MODE BAR & EXTENDED */
+.dash-mode-bar { display: flex; flex-wrap: wrap; gap: 16px 24px; margin-bottom: 16px; align-items: center; }
+.dash-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--txt2); cursor: pointer; }
+.dash-toggle input { width: 18px; height: 18px; accent-color: var(--purple-600); cursor: pointer; }
+.dash-show-ended { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--txt2); cursor: pointer; }
+.dash-show-ended input { width: 18px; height: 18px; accent-color: var(--purple-600); cursor: pointer; }
+
+.dash-extended-wrap { margin-bottom: 24px; padding: 20px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--r); }
+.dash-extended-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.dash-extended-stats .stat { min-width: 0; }
+.dash-extended-stats .stat-warn .stat-val { color: var(--red-600); }
+.dash-extended-stats .stat-info .stat-val { color: var(--orange-500); }
+.dash-extended-ending { margin-bottom: 20px; font-size: .9rem; }
+.dash-ending-list { margin-top: 8px; line-height: 1.6; }
+.dash-ending-list .dash-link { display: inline-block; margin-bottom: 4px; }
+.dash-chart-section { margin-top: 24px; }
+.dash-chart-title { font-size: 1rem; font-weight: 600; margin-bottom: 8px; color: var(--txt); }
+.dash-chart-legend { font-size: .8rem; color: var(--txt2); margin-bottom: 12px; }
+.dash-chart-legend-expected { margin-right: 16px; }
+.dash-chart-legend-expected::before { content: ''; display: inline-block; width: 12px; height: 12px; background: rgba(255,255,255,.2); border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.dash-chart-legend-actual::before { content: ''; display: inline-block; width: 12px; height: 12px; background: var(--green-600); border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.dash-chart { display: flex; gap: 4px; align-items: flex-end; height: 140px; padding: 0 4px; }
+.dash-chart-bar-wrap { flex: 1; height: 100%; display: flex; flex-direction: column-reverse; align-items: center; min-width: 0; position: relative; }
+.dash-chart-bar-bg { width: 80%; max-width: 32px; min-height: 2px; flex-shrink: 0; background: rgba(255,255,255,.15); border-radius: 2px 2px 0 0; }
+.dash-chart-bar-fill { width: 80%; max-width: 32px; min-height: 2px; flex-shrink: 0; background: var(--green-600); border-radius: 2px 2px 0 0; margin-bottom: 2px; }
+.dash-chart-label { font-size: .65rem; color: var(--txt3); margin-top: 4px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
 /* HEATMAP */
 .heatmap-section { margin-bottom: 24px; }
+.dash-table-bar { margin-bottom: 12px; }
 .heatmap-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .heatmap-header h3 { font-size: 1rem; font-weight: 600; color: var(--txt); }
 .heatmap-year-btns { display: flex; gap: 4px; }
