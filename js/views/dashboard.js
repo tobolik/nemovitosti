@@ -142,19 +142,17 @@ async function loadDashboard(year) {
             { label: 'Nemovitost' },
             { label: 'Nájemné / měs.' },
             { label: 'Uhrazeno / Očekáváno' },
-            { label: 'Stav' },
-            { label: 'Kauce', hideMobile: true },
             { label: 'Neuhrazené měsíce' },
-            { label: 'Akce', act: true },
         ],
         contracts,
         (d) => {
             const pct = d.expected_total > 0 ? Math.min(100, (d.total_paid / d.expected_total) * 100) : 100;
             const hasDbt = d.balance > 0;
             const depAmt = d.deposit_amount || 0;
-            const depCell = depAmt > 0
-                ? (d.deposit_to_return ? UI.fmt(depAmt) + ' Kč <span class="badge badge-danger">k vrácení</span>' : UI.fmt(depAmt) + ' Kč')
-                : '<span style="color:var(--txt3)">—</span>';
+            const hoverInfo = [];
+            if (depAmt > 0) hoverInfo.push('Kauce: ' + UI.fmt(depAmt) + ' Kč' + (d.deposit_to_return ? ' (k vrácení)' : ''));
+            hoverInfo.push(hasDbt ? 'Stav: Má dluh' : 'Stav: V pořádku');
+            const progTitle = hoverInfo.length ? hoverInfo.join(' | ') : '';
 
             let tags = '';
             (d.unpaid_months || []).forEach(u => {
@@ -164,17 +162,23 @@ async function loadDashboard(year) {
                 tags += '<span class="tag">' + u.month + '/' + u.year +
                     ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-year="' + u.year + '" data-month="' + u.month + '" data-rent="' + rent + '" data-tenant="' + tenant + '" data-property="' + prop + '" title="Přidat platbu">+</span></span>';
             });
+            const tagsHtml = tags ? '<span class="tags dash-unpaid-tags">' + tags + '</span>' : '<span style="color:var(--txt3)">—</span>';
+
+            const tenantId = d.tenant_row_id || d.tenants_id;
+            const propId = d.property_row_id || d.properties_id;
+            const tenantLink = tenantId ? ' onclick="App.navigate(\'tenants\'); setTimeout(() => TenantsView.edit(' + tenantId + '), 50)" class="dash-link" title="Upravit nájemníka"' : '';
+            const propLink = propId ? ' onclick="App.navigate(\'properties\'); setTimeout(() => PropertiesView.edit(' + propId + '), 50)" class="dash-link" title="Upravit nemovitost"' : '';
+            const contractLink = d.id ? ' onclick="App.navigate(\'contracts\'); setTimeout(() => ContractsView.edit(' + d.id + '), 50)" class="dash-link" title="Upravit smlouvu"' : '';
+            const paymentsTitle = progTitle || 'Klikni pro platby';
+            const paymentsLink = ' onclick="PaymentsView.navigateWithFilter(' + d.contracts_id + ')" class="dash-link" title="' + UI.esc(paymentsTitle) + '"';
 
             return (
-                '<td><strong>' + UI.esc(d.tenant_name) + '</strong></td>' +
-                '<td>' + UI.esc(d.property_name) + '</td>' +
-                '<td>' + UI.fmt(d.monthly_rent) + ' Kč</td>' +
-                '<td><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill ' + (hasDbt ? 'bad' : 'ok') + '" style="width:' + Math.round(pct) + '%"></div></div>' +
+                '<td><strong' + tenantLink + '>' + UI.esc(d.tenant_name) + '</strong></td>' +
+                '<td' + propLink + '>' + UI.esc(d.property_name) + '</td>' +
+                '<td' + contractLink + '>' + UI.fmt(d.monthly_rent) + ' Kč</td>' +
+                '<td' + paymentsLink + '><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill ' + (hasDbt ? 'bad' : 'ok') + '" style="width:' + Math.round(pct) + '%"></div></div>' +
                 '<span class="prog-lbl">' + UI.fmt(d.total_paid) + ' / ' + UI.fmt(d.expected_total) + ' Kč</span></div></td>' +
-                '<td><span class="badge ' + (hasDbt ? 'badge-danger' : 'badge-ok') + '">' + (hasDbt ? 'Má dluh' : 'V pořádku') + '</span></td>' +
-                '<td class="col-hide-mobile">' + depCell + '</td>' +
-                '<td>' + (tags || '<span style="color:var(--txt3)">—</span>') + '</td>' +
-                '<td class="td-act"><button class="btn btn-ghost btn-sm" onclick="PaymentsView.navigateWithFilter(' + d.contracts_id + ')">Platby</button></td>'
+                '<td class="dash-unpaid-cell">' + tagsHtml + '</td>'
             );
         },
         { emptyMsg: 'Žádné aktivní smlouvy.' }

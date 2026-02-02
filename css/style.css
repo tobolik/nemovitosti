@@ -602,6 +602,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .badge-user { background: var(--glass-hover); color: var(--txt2); }
 
 .tags { display: flex; flex-wrap: wrap; gap: 4px; max-width: 250px; }
+.dash-unpaid-tags { max-width: 100%; }
+.dash-unpaid-cell { white-space: normal; }
+.dash-link { cursor: pointer; }
+.dash-link:hover { text-decoration: underline; }
+#dash-table .tbl-wrap { overflow-x: visible; }
+#dash-table .tbl { min-width: 0; width: 100%; }
 .tag {
   display: inline-flex;
   align-items: center;

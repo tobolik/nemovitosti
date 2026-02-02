@@ -15,7 +15,7 @@ $properties = db()->query("SELECT * FROM properties WHERE valid_to IS NULL ORDER
 // Contracts with payments
 // properties_id, tenants_id = odkazy na entity_id (vždy jen entity_id)
 $contracts = db()->query("
-    SELECT c.*, p.name AS property_name, t.name AS tenant_name
+    SELECT c.*, p.id AS property_row_id, p.name AS property_name, t.id AS tenant_row_id, t.name AS tenant_name
     FROM contracts c
     JOIN properties p ON p.properties_id = c.properties_id AND p.valid_to IS NULL
     JOIN tenants   t ON t.tenants_id = c.tenants_id   AND t.valid_to IS NULL
@@ -114,9 +114,12 @@ foreach ($contracts as $c) {
     $contractEnded = !empty($c['contract_end']) && $c['contract_end'] <= date('Y-m-d');
     $depositToReturn = $depositAmt > 0 && !$depositReturned && $contractEnded;
     $out[] = [
+        'id'             => $c['id'],
         'contracts_id'   => $entityId,
         'properties_id'  => $c['properties_id'],
         'tenants_id'     => $c['tenants_id'],
+        'property_row_id'=> $c['property_row_id'] ?? null,
+        'tenant_row_id'  => $c['tenant_row_id'] ?? null,
         'property_name'  => $c['property_name'],
         'tenant_name'    => $c['tenant_name'],
         'monthly_rent'   => $currentRent,
