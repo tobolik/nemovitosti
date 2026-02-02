@@ -225,6 +225,15 @@
           <input type="hidden" id="pay-edit-id">
           <div class="fg"><label>Smlouva *</label><select id="pay-contract"></select></div>
           <div class="fg">
+            <label>Typ platby</label>
+            <select id="pay-type">
+              <option value="rent" selected>Nájem</option>
+              <option value="deposit">Kauce</option>
+              <option value="energy">Doplatek energie</option>
+              <option value="other">Jiné</option>
+            </select>
+          </div>
+          <div class="fg">
             <label class="checkbox-label">
               <input type="checkbox" id="pay-bulk">
               <span>Platba za více měsíců (např. roční platba jednou)</span>

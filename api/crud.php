@@ -12,7 +12,7 @@ $FIELDS = [
     'properties' => ['name','address','size_m2','purchase_price','purchase_date','purchase_contract_url','type','note'],
     'tenants'    => ['name','type','birth_date','email','phone','address','ic','dic','note'],
     'contracts'  => ['properties_id','tenants_id','contract_start','contract_end','monthly_rent','contract_url','deposit_amount','deposit_paid_date','deposit_return_date','note'],
-    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','payment_batch_id','payment_method','bank_accounts_id'],
+    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','payment_batch_id','payment_method','bank_accounts_id','payment_type'],
     'bank_accounts' => ['name','account_number','is_primary','sort_order'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
 ];
@@ -32,7 +32,7 @@ $FIELD_LABELS = [
     'properties' => ['name'=>'Název','address'=>'Adresa'],
     'tenants'    => ['name'=>'Jméno / Název','birth_date'=>'Datum narození'],
     'contracts'  => ['properties_id'=>'Nemovitost','tenants_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','deposit_amount'=>'Kauce','deposit_paid_date'=>'Datum přijetí kauce','deposit_return_date'=>'Datum vrácení kauce','note'=>'Poznámka'],
-    'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','payment_method'=>'Způsob platby','account_number'=>'Číslo účtu'],
+    'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','payment_method'=>'Způsob platby','bank_accounts_id'=>'Bankovní účet','payment_type'=>'Typ platby'],
     'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu'],
     'contract_rent_changes' => ['contracts_id'=>'Smlouva','amount'=>'Částka','effective_from'=>'Platné od'],
 ];
@@ -251,6 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $baId = isset($data['bank_accounts_id']) ? (int)$data['bank_accounts_id'] : 0;
             if ($pm === 'account' && ($baId <= 0)) jsonErr('Vyberte bankovní účet.');
             $data['bank_accounts_id'] = $pm === 'account' ? $baId : null;
+            $data['payment_type'] = in_array($data['payment_type'] ?? 'rent', ['rent','deposit','energy','other']) ? $data['payment_type'] : 'rent';
             $newId = softInsert($table, $data);
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'bank_accounts') {
@@ -283,7 +284,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $s = db()->prepare("SELECT id FROM payments WHERE payment_batch_id=? AND valid_to IS NULL");
         $s->execute([$batchId]);
         $ids = array_column($s->fetchAll(), 'id');
-        $baseData = ['payment_date' => $paymentDate, 'payment_method' => $paymentMethod, 'bank_accounts_id' => $bankAccountsId];
+        $paymentType = in_array($b['payment_type'] ?? 'rent', ['rent','deposit','energy','other']) ? $b['payment_type'] : 'rent';
+        $baseData = ['payment_date' => $paymentDate, 'payment_method' => $paymentMethod, 'bank_accounts_id' => $bankAccountsId, 'payment_type' => $paymentType];
         foreach ($ids as $pid) {
             $updateData = $baseData;
             if ($amountOverrideId > 0 && (int)$pid === $amountOverrideId && $amountOverrideValue !== null) {

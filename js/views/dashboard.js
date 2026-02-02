@@ -409,6 +409,7 @@ async function openPaymentModal(el) {
                         payment_date: dateInput.value,
                         payment_method: method,
                         bank_accounts_id: accountId || null,
+                        payment_type: 'rent',
                     };
                     const origAmt = parseFloat(editIdEl.dataset.originalAmount || 0);
                     if (amt !== origAmt) {
@@ -425,6 +426,7 @@ async function openPaymentModal(el) {
                         payment_date: dateInput.value,
                         payment_method: method,
                         bank_accounts_id: accountId || null,
+                        payment_type: 'rent',
                     };
                     await Api.crudEdit('payments', parseInt(editId, 10), payData);
                 } else {
@@ -435,6 +437,7 @@ async function openPaymentModal(el) {
                         payment_date: dateInput.value,
                         payment_method: method,
                         bank_accounts_id: accountId || null,
+                        payment_type: 'rent',
                     };
                     if (bulk) {
                         const yFrom = parseInt(yearFromEl.value, 10);

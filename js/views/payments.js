@@ -48,6 +48,7 @@ const PaymentsView = (() => {
                     note:         document.getElementById('pay-note').value.trim(),
                     payment_method: method,
                     bank_accounts_id: accId || null,
+                    payment_type: document.getElementById('pay-type').value || 'rent',
                 };
                 if (bulk) {
                     base.period_year  = Number(document.getElementById('pay-year-from').value);
@@ -62,6 +63,7 @@ const PaymentsView = (() => {
             },
             fillForm(row) {
                 document.getElementById('pay-contract').value = row.contracts_id || '';
+                document.getElementById('pay-type').value    = row.payment_type || 'rent';
                 document.getElementById('pay-year').value     = row.period_year  || '';
                 document.getElementById('pay-month').value    = row.period_month || '';
                 document.getElementById('pay-amount').value   = row.amount       || '';
@@ -103,6 +105,7 @@ const PaymentsView = (() => {
                 document.getElementById('pay-note').value     = '';
                 document.getElementById('pay-date').value     = todayISO();
                 document.getElementById('pay-method').value   = 'account';
+                document.getElementById('pay-type').value     = 'rent';
                 const primary = bankAccountsCache.find(b => b.is_primary);
                 document.getElementById('pay-account').value = primary ? (primary.bank_accounts_id ?? primary.id) : '';
                 document.getElementById('pay-bulk').checked   = false;
@@ -113,10 +116,11 @@ const PaymentsView = (() => {
             onSaved: renderPayments,
         });
 
-        // Auto-fill amount when contract selection changes
+        // Auto-fill amount + aktualizace roku podle smlouvy
         document.getElementById('pay-contract').addEventListener('change', function () {
             const val = Number(this.value);
             const c   = contractsCache.find(x => (x.contracts_id ?? x.id) === val);
+            updateYearSelects();
             if (c) {
                 const bulk = document.getElementById('pay-bulk').checked;
                 const amtEl = document.getElementById('pay-amount');
@@ -221,6 +225,7 @@ const PaymentsView = (() => {
                 '</option>'
             ).join('');
         document.getElementById('pay-filter-contract').innerHTML = fOpts;
+        updateYearSelects();
     }
 
     // ── render payments table ───────────────────────────────────────────
@@ -237,6 +242,7 @@ const PaymentsView = (() => {
             [
                 { label: 'Smlouva' },
                 { label: 'Období' },
+                { label: 'Typ', hideMobile: true },
                 { label: 'Částka' },
                 { label: 'Datum', hideMobile: true },
                 { label: 'Způsob', hideMobile: true },
@@ -248,18 +254,26 @@ const PaymentsView = (() => {
             (p) => {
                 const rent = Number(p.monthly_rent);
                 const amt  = Number(p.amount);
-                const diff = amt - rent;
+                const typeLabels = { rent: 'Nájem', deposit: 'Kauce', energy: 'Doplatek energie', other: 'Jiné' };
+                const typeLabel = typeLabels[p.payment_type] || 'Nájem';
+                const isRent = p.payment_type === 'rent';
+                const diff = isRent ? amt - rent : null;
 
                 let diffHtml;
-                if      (diff < 0)  diffHtml = '<span style="color:var(--red)">−' + UI.fmt(Math.abs(diff)) + ' Kč</span>';
-                else if (diff > 0)  diffHtml = '<span style="color:var(--green)">+' + UI.fmt(diff) + ' Kč</span>';
-                else                diffHtml = '<span style="color:var(--green)">✓ přesně</span>';
+                if (diff !== null) {
+                    if      (diff < 0)  diffHtml = '<span style="color:var(--red)">−' + UI.fmt(Math.abs(diff)) + ' Kč</span>';
+                    else if (diff > 0)  diffHtml = '<span style="color:var(--green)">+' + UI.fmt(diff) + ' Kč</span>';
+                    else                diffHtml = '<span style="color:var(--green)">✓ přesně</span>';
+                } else {
+                    diffHtml = '<span style="color:var(--txt3)">—</span>';
+                }
 
                 const methodLabel = p.payment_method === 'cash' ? 'Hotovost' : (p.account_number ? 'Účet ' + UI.esc(p.account_number) : 'Na účet');
                 const batchHint = p.payment_batch_id ? '<br><span class="tag tag-batch" title="Součást jedné platby">dávka</span>' : '';
                 return (
                     '<td><strong>' + UI.esc(p.tenant_name) + '</strong><br><span style="color:var(--txt3);font-size:.8em">' + UI.esc(p.property_name) + '</span></td>' +
                     '<td>' + UI.MONTHS[p.period_month] + ' ' + p.period_year + batchHint + '</td>' +
+                    '<td class="col-hide-mobile">' + UI.esc(typeLabel) + '</td>' +
                     '<td>' + UI.fmt(amt) + ' Kč</td>' +
                     '<td class="col-hide-mobile">' + UI.esc(p.payment_date) + '</td>' +
                     '<td class="col-hide-mobile">' + UI.esc(methodLabel) + '</td>' +
