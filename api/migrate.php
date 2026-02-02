@@ -84,6 +84,9 @@ try {
                     || strpos($msg, 'Duplicate key name') !== false
                     || strpos($msg, 'already exists') !== false
                     || strpos($msg, 'Unknown column') !== false
+                    // MySQL/MariaDB: sloupec už neexistuje (např. DROP COLUMN už proběhl ručně / dřív)
+                    || strpos($msg, "Can't DROP COLUMN") !== false
+                    || strpos($msg, "Can't DROP") !== false
                     || in_array($e->getCode(), [1060, 1061, 1054, '42S21', '42S22'], true);
                 if (!$isAlreadyApplied) {
                     $fileOk = false;
