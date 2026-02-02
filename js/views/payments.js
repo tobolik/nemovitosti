@@ -238,6 +238,7 @@ const PaymentsView = (() => {
         // cache pro edit()
         _payCache = data;
 
+        const rowsWithClass = data.map(p => ({ ...p, _rowClass: 'pay-type-' + (p.payment_type || 'rent') }));
         UI.renderTable('pay-table',
             [
                 { label: 'Smlouva' },
@@ -250,7 +251,7 @@ const PaymentsView = (() => {
                 { label: 'Poznámka', hideMobile: true },
                 { label: 'Akce', act: true },
             ],
-            data,
+            rowsWithClass,
             (p) => {
                 const rent = Number(p.monthly_rent);
                 const amt  = Number(p.amount);

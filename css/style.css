@@ -408,6 +408,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .tbl tbody tr:hover { background: var(--glass-hover); }
 .tbl tr.row-warn { background: rgba(220,38,38,.08); }
 .tbl tr.row-deposit-return { border-left: 3px solid var(--orange-600); }
+/* Typ platby – decentní barevné odlišení */
+.tbl tr.pay-type-rent { border-left: 3px solid transparent; }
+.tbl tr.pay-type-deposit { border-left: 3px solid rgba(59, 130, 246, .6); }
+.tbl tr.pay-type-energy { border-left: 3px solid rgba(34, 197, 94, .5); }
+.tbl tr.pay-type-other { border-left: 3px solid rgba(148, 163, 184, .5); }
 .td-act { display: flex; gap: 5px; justify-content: flex-end; white-space: nowrap; }
 .th-act { text-align: right; }
 
