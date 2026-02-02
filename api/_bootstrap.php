@@ -90,8 +90,8 @@ function body(): array {
 }
 
 // ── Soft-record helpers ─────────────────────────────────────────────────────
-// Logická ID sloupce: users_id, properties_id, tenants_id, contracts_id, payments_id
-function _logicalIdCol(string $tbl): string {
+// Entity_id sloupce: users_id, properties_id, tenants_id, contracts_id, payments_id
+function _entityIdCol(string $tbl): string {
     return $tbl . '_id';
 }
 
@@ -105,34 +105,34 @@ function softInsert(string $tbl, array $data): int {
     $ph   = implode(', ', array_fill(0, count($data), '?'));
     db()->prepare("INSERT INTO `$tbl` ($cols) VALUES ($ph)")->execute(array_values($data));
     $newId = (int) db()->lastInsertId();
-    $lidCol = _logicalIdCol($tbl);
-    db()->prepare("UPDATE `$tbl` SET `$lidCol`=? WHERE id=? AND `$lidCol` IS NULL")
+    $eidCol = _entityIdCol($tbl);
+    db()->prepare("UPDATE `$tbl` SET `$eidCol`=? WHERE id=? AND `$eidCol` IS NULL")
         ->execute([$newId, $newId]);
     return $newId;
 }
 
 function softUpdate(string $tbl, int $id, array $new): int {
     $now = date('Y-m-d H:i:s');
-    $lidCol = _logicalIdCol($tbl);
+    $eidCol = _entityIdCol($tbl);
 
     $s = db()->prepare("SELECT * FROM `$tbl` WHERE id=? AND valid_to IS NULL");
     $s->execute([$id]);
     $cur = $s->fetch();
     if (!$cur) jsonErr("Záznam #$id neexistuje.", 404);
 
-    $logicalId = $cur[$lidCol] ?? $cur['id'];
-    if ($logicalId === null) $logicalId = $cur['id'];
+    $entityId = $cur[$eidCol] ?? $cur['id'];
+    if ($entityId === null) $entityId = $cur['id'];
 
     $uid = $_SESSION['uid'] ?? null;
 
-    // zavři všechny aktivní verze tohoto logického záznamu (včetně řádku s bank_accounts_id=NULL)
-    db()->prepare("UPDATE `$tbl` SET valid_to=?, valid_user_to=? WHERE (`$lidCol`=? OR (id=? AND `$lidCol` IS NULL)) AND valid_to IS NULL")
-        ->execute([$now, $uid, $logicalId, $id]);
+    // zavři všechny aktivní verze této entity (včetně řádku s bank_accounts_id=NULL)
+    db()->prepare("UPDATE `$tbl` SET valid_to=?, valid_user_to=? WHERE (`$eidCol`=? OR (id=? AND `$eidCol` IS NULL)) AND valid_to IS NULL")
+        ->execute([$now, $uid, $entityId, $id]);
 
-    // vloží nový řádek se stejným logickým ID
+    // vloží nový řádek se stejným entity_id
     unset($cur['id'], $cur['valid_from'], $cur['valid_to'], $cur['valid_user_from'], $cur['valid_user_to']);
     $merged = array_merge($cur, $new);
-    $merged[$lidCol]         = $logicalId;
+    $merged[$eidCol]         = $entityId;
     $merged['valid_from']   = $now;
     $merged['valid_to']      = null;
     $merged['valid_user_from'] = $uid;
@@ -176,10 +176,10 @@ function getRentForMonth(float $baseRent, int $contractsId, int $y, int $m, arra
     return $applicable !== null ? $applicable : $baseRent;
 }
 
-/** Vyhledá aktivní řádek podle logického ID (users_id, properties_id, …). */
-function findActiveByLogicalId(string $tbl, int $logicalId): ?array {
-    $lidCol = _logicalIdCol($tbl);
-    $s = db()->prepare("SELECT * FROM `$tbl` WHERE `$lidCol`=? AND valid_to IS NULL");
-    $s->execute([$logicalId]);
+/** Vyhledá aktivní řádek podle entity_id (users_id, properties_id, …). */
+function findActiveByEntityId(string $tbl, int $entityId): ?array {
+    $eidCol = _entityIdCol($tbl);
+    $s = db()->prepare("SELECT * FROM `$tbl` WHERE `$eidCol`=? AND valid_to IS NULL");
+    $s->execute([$entityId]);
     return $s->fetch() ?: null;
 }

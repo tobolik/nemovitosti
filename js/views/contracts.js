@@ -186,8 +186,8 @@ const ContractsView = (() => {
             successAddMsg: 'Smlouva byla úspěšně přidána.',
             successEditMsg: 'Smlouva byla úspěšně aktualizována.',
             validate(values) {
-                if (!values.property_id || values.property_id <= 0) return 'Vyberte nemovitost.';
-                if (!values.tenant_id || values.tenant_id <= 0) return 'Vyberte nájemníka.';
+                if (!values.properties_id || values.properties_id <= 0) return 'Vyberte nemovitost.';
+                if (!values.tenants_id || values.tenants_id <= 0) return 'Vyberte nájemníka.';
                 if (!values.contract_start) return 'Vyplňte začátek smlouvy.';
                 if (!UI.isDateValid(values.contract_start)) return 'Začátek smlouvy: zadejte platné datum (např. únor má max. 29 dní).';
                 if (values.contract_end && !UI.isDateValid(values.contract_end)) return 'Konec smlouvy: zadejte platné datum (např. únor má max. 29 dní).';
@@ -196,8 +196,8 @@ const ContractsView = (() => {
             getValues() {
                 const depAmt = document.getElementById('con-deposit-amount').value.trim();
                 return {
-                    property_id:    Number(document.getElementById('con-property').value),
-                    tenant_id:      Number(document.getElementById('con-tenant').value),
+                    properties_id: Number(document.getElementById('con-property').value),
+                    tenants_id:    Number(document.getElementById('con-tenant').value),
                     contract_start: document.getElementById('con-start').value,
                     contract_end:   document.getElementById('con-end').value || '',
                     monthly_rent:   document.getElementById('con-rent').value,
@@ -209,8 +209,8 @@ const ContractsView = (() => {
                 };
             },
             fillForm(row) {
-                document.getElementById('con-property').value = row.property_id || '';
-                document.getElementById('con-tenant').value   = row.tenant_id   || '';
+                document.getElementById('con-property').value = row.properties_id || '';
+                document.getElementById('con-tenant').value   = row.tenants_id   || '';
                 document.getElementById('con-start').value    = row.contract_start || '';
                 document.getElementById('con-end').value      = row.contract_end   || '';
                 document.getElementById('con-rent').value     = row.monthly_rent   || '';
@@ -239,16 +239,18 @@ const ContractsView = (() => {
             Api.crudList('tenants'),
         ]);
 
+        // Použijeme properties_id (entity_id) pro stabilitu při soft-update nemovitosti
         document.getElementById('con-property').innerHTML =
             '<option value="">— Vyberte nemovitost —</option>' +
             props.map(p =>
-                '<option value="' + p.id + '">' + UI.esc(p.name) + ' – ' + UI.esc(p.address) + '</option>'
+                '<option value="' + (p.properties_id ?? p.id) + '">' + UI.esc(p.name) + ' – ' + UI.esc(p.address) + '</option>'
             ).join('');
 
+        // Použijeme tenants_id (entity_id) pro stabilitu při soft-update nájemníka
         document.getElementById('con-tenant').innerHTML =
             '<option value="">— Vyberte nájemníka —</option>' +
             tens.map(t =>
-                '<option value="' + t.id + '">' + UI.esc(t.name) + '</option>'
+                '<option value="' + (t.tenants_id ?? t.id) + '">' + UI.esc(t.name) + '</option>'
             ).join('');
     }
 

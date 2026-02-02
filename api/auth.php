@@ -37,7 +37,7 @@ if ($method === 'POST') {
         if (function_exists('session_regenerate_id')) {
             session_regenerate_id(true);
         }
-        // uid = users_id (logické ID), aby session přežila soft-update
+        // uid = users_id (entity_id), aby session přežila soft-update
         $_SESSION['uid']   = $u['users_id'] ?? $u['id'];
         $_SESSION['name']  = $u['name'];
         $_SESSION['email'] = $u['email'];

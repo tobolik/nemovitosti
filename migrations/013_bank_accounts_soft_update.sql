@@ -1,4 +1,4 @@
--- bank_accounts: soft-update logika (valid_*, bank_accounts_id) – stejně jako ostatní tabulky
+-- bank_accounts: soft-update logika (valid_*, bank_accounts_id = entity_id) – stejně jako ostatní tabulky
 -- Pokud 012 neproběhla, vytvoříme tabulku nejdřív
 CREATE TABLE IF NOT EXISTS bank_accounts (
     id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

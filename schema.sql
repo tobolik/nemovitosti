@@ -64,12 +64,12 @@ CREATE TABLE IF NOT EXISTS tenants (
     INDEX idx_tenants_id (tenants_id, valid_to)
 ) ENGINE=InnoDB;
 
--- 4) Nájemní smlouvy
+-- 4) Nájemní smlouvy (properties_id, tenants_id = odkazy na entity_id)
 CREATE TABLE IF NOT EXISTS contracts (
     id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     contracts_id   INT UNSIGNED NULL,
-    property_id    INT UNSIGNED NOT NULL,
-    tenant_id      INT UNSIGNED NOT NULL,
+    properties_id  INT UNSIGNED NOT NULL,
+    tenants_id     INT UNSIGNED NOT NULL,
     contract_start DATE         NOT NULL,
     contract_end   DATE         NULL,         -- NULL = neurčitá doba
     monthly_rent   DECIMAL(12,2) NOT NULL,
@@ -79,13 +79,13 @@ CREATE TABLE IF NOT EXISTS contracts (
     valid_to        DATETIME NULL DEFAULT NULL,
     valid_user_from INT UNSIGNED NULL,
     valid_user_to   INT UNSIGNED NULL,
-    INDEX idx_p (property_id, valid_to),
-    INDEX idx_t (tenant_id, valid_to),
+    INDEX idx_properties_id (properties_id, valid_to),
+    INDEX idx_tenants_id (tenants_id, valid_to),
     INDEX idx_v (valid_to),
     INDEX idx_contracts_id (contracts_id, valid_to)
 ) ENGINE=InnoDB;
 
--- 5) Platby (contracts_id = logické ID smlouvy, contracts.contracts_id)
+-- 5) Platby (contracts_id = entity_id smlouvy, contracts.contracts_id)
 CREATE TABLE IF NOT EXISTS payments (
     id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     payments_id   INT UNSIGNED NULL,

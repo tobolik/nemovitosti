@@ -1,4 +1,4 @@
--- Doplnění logických ID pro existující data
+-- Doplnění entity_id pro existující data
 UPDATE users SET users_id = id WHERE users_id IS NULL;
 UPDATE properties SET properties_id = id WHERE properties_id IS NULL;
 UPDATE tenants SET tenants_id = id WHERE tenants_id IS NULL;

@@ -1,4 +1,4 @@
--- Indexy pro logická ID
+-- Indexy pro entity_id
 CREATE INDEX idx_users_id ON users (users_id, valid_to);
 CREATE INDEX idx_properties_id ON properties (properties_id, valid_to);
 CREATE INDEX idx_tenants_id ON tenants (tenants_id, valid_to);

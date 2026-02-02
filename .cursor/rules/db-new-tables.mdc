@@ -1,5 +1,5 @@
 ---
-description: Standardní logika pro nové DB tabulky – soft-update, valid_*, logické ID
+description: Standardní logika pro nové DB tabulky – soft-update, valid_*, entity_id
 globs: migrations/*.sql, schema*.sql, api/crud.php
 alwaysApply: false
 ---
@@ -20,7 +20,7 @@ Přímý INSERT bez softInsert = chybí bank_accounts_id, valid_user_from, valid
 
 ## Sloupce v každé nové tabulce
 
-1. **`{tabulka}_id`** (např. `bank_accounts_id`) – logické ID pro provázání verzí, INT UNSIGNED NULL, hned za `id`
+1. **`{tabulka}_id`** (např. `bank_accounts_id`) – entity_id pro provázání verzí, INT UNSIGNED NULL, hned za `id`
 2. **`valid_from`** – DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 3. **`valid_to`** – DATETIME NULL DEFAULT NULL
 4. **`valid_user_from`** – INT UNSIGNED NULL

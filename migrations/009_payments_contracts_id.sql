@@ -1,5 +1,5 @@
 -- Platby: přejmenovat contract_id na contracts_id
--- 1) Převést contract_id (řádkové id) na logické
+-- 1) Převést contract_id (řádkové id) na entity_id
 UPDATE payments p
 JOIN contracts c ON c.id = p.contract_id
 SET p.contract_id = COALESCE(c.contracts_id, c.id)
