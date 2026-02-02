@@ -1,6 +1,10 @@
 -- Migrace: rozšíření podle funcioncionality.md
 -- RUČNÍ JEDNORÁZOVÝ UPGRADE existující DB: mysql -u user -p tobolikcz01 < schema_migration.sql
 -- Při automatickém deployi se používají inkrementální migrace ze složky migrations/ (api/migrate.php).
+--
+-- COLLATION: utf8mb4_czech_ci (databáze i tabulky)
+-- ALTER DATABASE `tobolikcz01` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_czech_ci;
+-- Viz migrations/024_collation_utf8mb4_czech_ci.sql
 
 USE tobolikcz01;
 

@@ -1,4 +1,5 @@
 -- Platby: odkaz na bank_accounts místo přímého account_number
+-- COLLATE: srovnání account_number vyžaduje stejnou kolaci (utf8mb4_czech_ci)
 -- 1) Přidat sloupec bank_accounts_id
 ALTER TABLE payments ADD COLUMN bank_accounts_id INT UNSIGNED NULL AFTER account_number;
 
@@ -11,13 +12,13 @@ WHERE p.valid_to IS NULL
   AND p.account_number != ''
   AND NOT EXISTS (
     SELECT 1 FROM bank_accounts ba
-    WHERE ba.account_number = p.account_number AND ba.valid_to IS NULL
+    WHERE ba.account_number COLLATE utf8mb4_czech_ci = p.account_number COLLATE utf8mb4_czech_ci AND ba.valid_to IS NULL
   );
 UPDATE bank_accounts SET bank_accounts_id = id WHERE bank_accounts_id IS NULL;
 
 -- 3) Doplnit bank_accounts_id podle account_number
 UPDATE payments p
-JOIN bank_accounts ba ON ba.account_number = p.account_number AND ba.valid_to IS NULL
+JOIN bank_accounts ba ON ba.account_number COLLATE utf8mb4_czech_ci = p.account_number COLLATE utf8mb4_czech_ci AND ba.valid_to IS NULL
 SET p.bank_accounts_id = ba.bank_accounts_id
 WHERE p.valid_to IS NULL AND p.account_number IS NOT NULL AND p.account_number != '';
 
