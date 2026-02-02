@@ -748,6 +748,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   box-shadow: 0 0 0 3px rgba(147,51,234,.2);
 }
 
+/* Modal Platba – na notebooku širší, více místa pro číslo účtu */
+#modal-payment .modal-box { max-width: 520px; }
+#pay-modal-method-wrap .fg:first-child { flex: 0 0 auto; max-width: 170px; }
+#pay-modal-method-wrap .fg:first-child select { width: 100%; }
+#pay-modal-method-wrap .fg#pay-modal-account-wrap { flex: 1 1 0; min-width: 0; }
+
 /* ============================================================
    SPINNER
    ============================================================ */

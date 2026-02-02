@@ -57,6 +57,7 @@ function getExpectedRentForMonth(array $c, int $year, int $m, array $rentChanges
 // paidRent: jen platby typu rent (pro očekávaný nájem, neuhrazené měsíce)
 // paidTotal: všechny platby (pro součet v sekci Nájemník)
 $paymentsByContract = [];
+$paymentsListByContract = [];
 $s = db()->prepare("
     SELECT p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type
     FROM payments p
@@ -67,6 +68,7 @@ foreach ($contracts as $c) {
     $entityId = $c['contracts_id'] ?? $c['id'];
     $s->execute([$entityId]);
     $paymentsByContract[$entityId] = [];
+    $paymentsListByContract[$entityId] = [];
     foreach ($s->fetchAll() as $row) {
         $key = $row['period_year'] . '-' . str_pad((string)$row['period_month'], 2, '0', STR_PAD_LEFT);
         if (!isset($paymentsByContract[$entityId][$key])) {
@@ -81,6 +83,13 @@ foreach ($contracts as $c) {
         if (empty($paymentsByContract[$entityId][$key]['payment_date']) && !empty($row['payment_date'])) {
             $paymentsByContract[$entityId][$key]['payment_date'] = $row['payment_date'];
         }
+        if (!isset($paymentsListByContract[$entityId][$key])) {
+            $paymentsListByContract[$entityId][$key] = [];
+        }
+        $paymentsListByContract[$entityId][$key][] = [
+            'amount' => $amt,
+            'payment_date' => !empty($row['payment_date']) ? $row['payment_date'] : null,
+        ];
     }
 }
 
@@ -204,13 +213,15 @@ foreach ($properties as $p) {
             $hasPaymentDate = $paid && !empty($paid['payment_date']);
             $isPast = ($year < $nowY) || ($year == $nowY && $m < $nowM);
 
+            $isPartialMonth = ($contract['contract_start'] > $firstOfMonth)
+                || (!empty($contract['contract_end']) && $contract['contract_end'] < $lastDayOfMonth);
             if ($hasPaymentDate && $paidAmt >= $expectedRent) {
-                $isPartialMonth = $expectedRent < $fullMonthRent;
-                $type = ($isPartialMonth || $paidAmt <= $fullMonthRent) ? 'exact' : 'overpaid';
+                $type = $isPartialMonth ? 'exact' : ($paidAmt > $fullMonthRent ? 'overpaid' : 'exact');
             } else {
                 $type = $isPast ? 'overdue' : 'unpaid';
             }
 
+            $paymentDetails = $paymentsListByContract[$entityId][$monthKey] ?? [];
             $heatmap[$propId . '_' . $monthKey] = [
                 'type'          => $type,
                 'isPast'        => $isPast,
@@ -222,6 +233,7 @@ foreach ($properties as $p) {
                 'paid_amount'    => $paidAmt,
                 'payment_count'  => $paymentCount,
                 'remaining'      => max(0, $expectedRent - $paidAmt),
+                'payment_details' => $paymentDetails,
             ];
         }
     }

@@ -112,11 +112,22 @@ async function loadDashboard(year) {
                     ? ' data-contract-id="' + cell.contract.id + '" data-contracts-id="' + (cell.contract.contracts_id ?? cell.contract.id) + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (cell.contract.tenant_name || '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"'
                     : ' data-property-id="' + prop.id + '" data-month-key="' + monthKey + '"';
 
+                let titleAttr = '';
+                if (cell.type !== 'empty' && cell.payment_details && cell.payment_details.length > 0) {
+                    const titleLines = cell.payment_details.map(function(p) {
+                        const dt = p.payment_date ? UI.fmtDate(p.payment_date) : '—';
+                        return UI.fmt(p.amount) + ' Kč (' + dt + ')';
+                    });
+                    titleAttr = ' title="' + UI.esc(titleLines.join('\n')) + '"';
+                } else if (cell.type !== 'empty' && cell.payment && cell.payment.date) {
+                    titleAttr = ' title="' + UI.esc(UI.fmtDate(cell.payment.date)) + '"';
+                }
+
                 const onClick = cell.type === 'empty'
                     ? 'DashboardView.openNewContract(this)'
                     : 'DashboardView.openPaymentModal(this)';
 
-                rows += '<td><div class="' + cls + '"' + dataAttrs + ' onclick="' + onClick + '">' + content + '</div></td>';
+                rows += '<td><div class="' + cls + '"' + dataAttrs + titleAttr + ' onclick="' + onClick + '">' + content + '</div></td>';
             }
             rows += '</tr>';
         });
