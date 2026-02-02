@@ -322,6 +322,15 @@ footer .footer-version { opacity: .8; }
   background: var(--slate-900);
   color: var(--txt);
 }
+/* Selecty s dlouhým obsahem (smlouvy, nemovitosti, nájemníci, účty) – čitelnost */
+.fg select#pay-contract,
+.fg select#con-property,
+.fg select#con-tenant,
+.fg select#pay-account,
+.fg select#pay-modal-account,
+.select-with-btn select#con-tenant {
+  min-width: 260px;
+}
 .form-actions { margin-top: 18px; display: flex; gap: 9px; align-items: center; }
 .select-with-btn, .input-with-btn {
   display: flex;
@@ -665,7 +674,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
 .filter-bar label { color: var(--txt3); font-size: .78rem; font-weight: 500; }
 .filter-bar select {
-  width: auto; max-width: 300px;
+  min-width: 300px; max-width: min(100%, 480px);
   padding: 6px 26px 6px 11px;
   background: rgba(0,0,0,.2);
   border: 1px solid var(--glass-border);
