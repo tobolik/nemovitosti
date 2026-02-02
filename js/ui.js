@@ -116,7 +116,11 @@ const UI = (() => {
         function showForm() {
             if (formCard) {
                 formCard.style.display = '';
-                formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // On mobile, scroll to show form but keep page title visible
+                // Use 'nearest' to avoid unnecessary scrolling
+                setTimeout(() => {
+                    formCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 50);
             }
             if (addBtn) addBtn.style.display = 'none';
         }

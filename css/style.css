@@ -736,8 +736,18 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
   .sidebar.open { transform: translateX(0); }
   .sidebar.collapsed { transform: translateX(-100%) !important; }
 
+  /* When sidebar is open, hide hamburger */
+  .sidebar.open ~ .hamburger,
+  body:has(.sidebar.open) .hamburger {
+    opacity: 0;
+    pointer-events: none;
+  }
+
   .main-wrap { margin-left: 0; }
-  .hamburger { display: block; }
+  .hamburger { 
+    display: block;
+    transition: opacity .2s;
+  }
 
   /* Fix page title overlap with hamburger menu */
   .page-title {
@@ -749,17 +759,23 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
   }
   .list-actions {
     padding-left: 52px;
+    margin-bottom: 12px;
   }
 
   .form-row { flex-direction: column; gap: 0; }
-  .container, .main { padding-left: 16px; padding-right: 16px; }
+  
+  /* Full width content on mobile */
+  .container, .main { 
+    padding-left: 12px; 
+    padding-right: 12px; 
+  }
   .stats { grid-template-columns: 1fr; }
   
-  /* Responsive tables - improve mobile display */
+  /* Responsive tables - full width */
   .tbl-wrap {
     border-radius: var(--r);
-    margin-left: -8px;
-    margin-right: -8px;
+    margin-left: 0;
+    margin-right: 0;
   }
   .tbl th, .tbl td { 
     padding: 10px 8px; 
@@ -795,13 +811,18 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
     font-size: .7rem;
   }
   
-  /* Improve cards on mobile */
+  /* Improve cards on mobile - full width */
   .card {
     padding: 16px;
     margin-bottom: 16px;
     border-radius: var(--r);
-    margin-left: -8px;
-    margin-right: -8px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  /* Card title without extra padding when form visible */
+  .card .card-title {
+    padding-left: 0;
   }
   
   /* Modal improvements for mobile */
@@ -822,9 +843,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
   
   /* Heatmap scroll hint */
   .heatmap-wrap {
-    margin-left: -8px;
-    margin-right: -8px;
-    padding: 0 8px;
+    margin-left: 0;
+    margin-right: 0;
   }
 }
 
@@ -847,6 +867,18 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
     left: 12px;
     padding: 10px;
     font-size: 1.1rem;
+  }
+  
+  /* Full width on small screens */
+  .container, .main { 
+    padding-left: 10px; 
+    padding-right: 10px; 
+  }
+  
+  /* Cards full width */
+  .card {
+    padding: 14px;
+    border-radius: var(--r);
   }
   
   /* Even smaller table cells */
