@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=1.0.33">
+<link rel="stylesheet" href="css/style.css?v=1.0.34">
 </head>
 <body>
 
@@ -79,8 +79,10 @@
           </div>
           <div class="heatmap-wrap" id="dash-heatmap"></div>
         </div>
-        <div id="dash-table-bar" class="dash-table-bar"></div>
-        <div id="dash-table"></div>
+        <div id="dash-table-section">
+          <div id="dash-table-bar" class="dash-table-bar"></div>
+          <div id="dash-table"></div>
+        </div>
       </div>
 
       <!-- ═══ PROPERTIES ═══ -->
@@ -364,7 +366,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v1.0.33</span>
+    <span class="footer-version">v1.0.34</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -512,16 +514,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=1.0.33"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=1.0.33"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=1.0.33"></script>
-<script src="js/app.js?v=1.0.33"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=1.0.33"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=1.0.33"></script>
-<script src="js/views/tenants.js?v=1.0.33"></script>
-<script src="js/views/contracts.js?v=1.0.33"></script>
-<script src="js/views/payments.js?v=1.0.33"></script>
-<script src="js/views/bank_accounts.js?v=1.0.33"></script>
-<script src="js/views/users.js?v=1.0.33"></script>
+<script src="js/api.js?v=1.0.34"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=1.0.34"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=1.0.34"></script>
+<script src="js/app.js?v=1.0.34"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=1.0.34"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=1.0.34"></script>
+<script src="js/views/tenants.js?v=1.0.34"></script>
+<script src="js/views/contracts.js?v=1.0.34"></script>
+<script src="js/views/payments.js?v=1.0.34"></script>
+<script src="js/views/bank_accounts.js?v=1.0.34"></script>
+<script src="js/views/users.js?v=1.0.34"></script>
 </body>
 </html>

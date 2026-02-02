@@ -21,20 +21,21 @@ async function loadDashboard(year) {
     const { contracts, properties, heatmap, stats, monthNames, yearMin, yearMax, extendedStats, monthlyChart } = data;
     const months = monthNames || MONTH_NAMES;
 
-    // ── Režim: Zobrazit skončené + Rozšířený režim ──────────────────────
+    // ── Režim: jen Rozšířený režim („Zobrazit skončené“ je u tabulky) ────
     const modeBar = document.getElementById('dash-mode-bar');
     if (modeBar) {
         modeBar.innerHTML =
-            '<label class="dash-toggle"><input type="checkbox" id="dash-show-ended"' + (showEnded ? ' checked' : '') + '> Zobrazit skončené smlouvy</label>' +
             '<label class="dash-toggle"><input type="checkbox" id="dash-extended"' + (extended ? ' checked' : '') + '> Rozšířený režim (statistiky a grafy)</label>';
-        modeBar.querySelector('#dash-show-ended').addEventListener('change', function () {
-            sessionStorage.setItem(DASHBOARD_SHOW_ENDED_KEY, this.checked ? '1' : '0');
-            loadDashboard(y);
-        });
-        modeBar.querySelector('#dash-extended').addEventListener('change', function () {
-            sessionStorage.setItem(DASHBOARD_EXTENDED_KEY, this.checked ? '1' : '0');
-            loadDashboard(y);
-        });
+    }
+
+    // ── Záhlaví sekce smluv + Zobrazit skončené smlouvy ───────────────────
+    const dashTableBar = document.getElementById('dash-table-bar');
+    if (dashTableBar) {
+        dashTableBar.innerHTML =
+            '<div class="dash-table-header">' +
+            '<h3 class="dash-table-title">Přehled smluv</h3>' +
+            '<label class="dash-toggle"><input type="checkbox" id="dash-show-ended"' + (showEnded ? ' checked' : '') + '> Zobrazit skončené smlouvy</label>' +
+            '</div>';
     }
 
     // ── Stats (Obsazenost, Měsíční výnos, ROI, Míra inkasa) ─────────────
@@ -107,10 +108,6 @@ async function loadDashboard(year) {
             extendedWrap.innerHTML = '';
         }
     }
-
-    // ── Přepínač „Zobrazit skončené“ nad tabulkou (zachován pro umístění) ─
-    const dashTableBar = document.getElementById('dash-table-bar');
-    if (dashTableBar) dashTableBar.innerHTML = '';
 
     // ── Year selector (tlačítka) ─────────────────────────────────────────
     if (yearSelect) {
@@ -278,7 +275,28 @@ async function loadDashboard(year) {
     );
 }
 
-App.registerView('dashboard', () => { loadDashboard(); initQuickPayDelegation(); initPayModalShortcut(); });
+// Delegace změn přepínačů (funguje i po překreslení obsahu)
+function initDashboardCheckboxDelegation() {
+    const view = document.getElementById('view-dashboard');
+    if (!view || view.dataset.dashboardCheckboxBound) return;
+    view.dataset.dashboardCheckboxBound = '1';
+    view.addEventListener('change', function (e) {
+        const id = e.target && e.target.id;
+        if (id === 'dash-show-ended') {
+            sessionStorage.setItem(DASHBOARD_SHOW_ENDED_KEY, e.target.checked ? '1' : '0');
+            const yearBtn = document.querySelector('#dash-year .heatmap-year-btn.active');
+            const y = yearBtn ? parseInt(yearBtn.dataset.year, 10) : new Date().getFullYear();
+            loadDashboard(y);
+        } else if (id === 'dash-extended') {
+            sessionStorage.setItem(DASHBOARD_EXTENDED_KEY, e.target.checked ? '1' : '0');
+            const yearBtn = document.querySelector('#dash-year .heatmap-year-btn.active');
+            const y = yearBtn ? parseInt(yearBtn.dataset.year, 10) : new Date().getFullYear();
+            loadDashboard(y);
+        }
+    });
+}
+
+App.registerView('dashboard', () => { loadDashboard(); initDashboardCheckboxDelegation(); initQuickPayDelegation(); initPayModalShortcut(); });
 
 // ── PaymentModal ─────────────────────────────────────────────────────────
 async function openPaymentModal(el) {

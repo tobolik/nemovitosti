@@ -505,6 +505,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 /* HEATMAP */
 .heatmap-section { margin-bottom: 24px; }
 .dash-table-bar { margin-bottom: 12px; }
+.dash-table-header { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 12px; }
+.dash-table-title { font-size: 1rem; font-weight: 600; color: var(--txt); margin: 0; }
 .heatmap-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .heatmap-header h3 { font-size: 1rem; font-weight: 600; color: var(--txt); }
 .heatmap-year-btns { display: flex; gap: 4px; }
