@@ -211,16 +211,6 @@ async function loadDashboard(year) {
         heatmapEl.innerHTML = '<div class="empty">Žádné nemovitosti. Přidejte nemovitost v sekci <a href="#properties">Nemovitosti</a>.</div>';
     }
 
-    // ── Přepínač „Zobrazit skončené smlouvy“ ─────────────────────────────
-    const dashTableBar = document.getElementById('dash-table-bar');
-    if (dashTableBar) {
-        dashTableBar.innerHTML = '<label class="dash-show-ended"><input type="checkbox" id="dash-show-ended"' + (showEnded ? ' checked' : '') + '> Zobrazit skončené smlouvy</label>';
-        dashTableBar.querySelector('#dash-show-ended').addEventListener('change', function () {
-            sessionStorage.setItem(DASHBOARD_SHOW_ENDED_KEY, this.checked ? '1' : '0');
-            loadDashboard(y);
-        });
-    }
-
     // ── Table (přehled smluv) ───────────────────────────────────────────
     if (!contracts || !contracts.length) {
         document.getElementById('dash-table').innerHTML =
