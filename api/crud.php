@@ -12,7 +12,7 @@ $FIELDS = [
     'properties' => ['name','address','size_m2','purchase_price','purchase_date','purchase_contract_url','type','note'],
     'tenants'    => ['name','type','birth_date','email','phone','address','ic','dic','note'],
     'contracts'  => ['properties_id','tenants_id','contract_start','contract_end','monthly_rent','contract_url','deposit_amount','deposit_paid_date','deposit_return_date','note'],
-    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','payment_batch_id','payment_method','account_number'],
+    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','payment_batch_id','payment_method','bank_accounts_id'],
     'bank_accounts' => ['name','account_number','is_primary','sort_order'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
 ];
@@ -98,13 +98,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     if ($table === 'payments') {
         $cid = isset($_GET['contracts_id']) ? (int)$_GET['contracts_id'] : 0;
-        // properties_id, tenants_id = odkazy na entity_id
+        // properties_id, tenants_id = odkazy na entity_id; bank_accounts_id → account_number pro zobrazení
         $sql = "
-            SELECT pay.*, c.monthly_rent, p.name AS property_name, t.name AS tenant_name
+            SELECT pay.*, c.monthly_rent, p.name AS property_name, t.name AS tenant_name,
+                   ba.account_number AS account_number
             FROM payments pay
             JOIN contracts  c ON c.contracts_id = pay.contracts_id AND c.valid_to IS NULL
             JOIN properties p ON p.properties_id = c.properties_id AND p.valid_to IS NULL
             JOIN tenants    t ON t.tenants_id = c.tenants_id   AND t.valid_to IS NULL
+            LEFT JOIN bank_accounts ba ON ba.bank_accounts_id = pay.bank_accounts_id AND ba.valid_to IS NULL
             WHERE pay.valid_to IS NULL";
         $params = [];
         if ($cid > 0) {
@@ -218,19 +220,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($e) jsonErr($e);
             $batchId = bin2hex(random_bytes(16));
             $paymentMethod = in_array($data['payment_method'] ?? '', ['account','cash']) ? $data['payment_method'] : null;
-            $accountNumber = trim($data['account_number'] ?? '') ?: null;
+            $bankAccountsId = ($paymentMethod === 'account' && isset($data['bank_accounts_id'])) ? (int)$data['bank_accounts_id'] : null;
+            if ($paymentMethod === 'account' && (!$bankAccountsId || $bankAccountsId <= 0)) jsonErr('Vyberte bankovní účet.');
             $ids = [];
             for ($y = $yFrom, $m = $mFrom; $y < $yTo || ($y === $yTo && $m <= $mTo); ) {
                 $row = [
-                    'contracts_id'     => $data['contracts_id'],
+                    'contracts_id'      => $data['contracts_id'],
                     'period_year'      => $y,
                     'period_month'     => $m,
                     'amount'           => $amtPerMonth,
                     'payment_date'     => $paymentDate,
                     'note'             => $data['note'] ?? null,
-                    'payment_batch_id' => $batchId,
+                    'payment_batch_id'  => $batchId,
                     'payment_method'   => $paymentMethod,
-                    'account_number'   => $accountNumber,
+                    'bank_accounts_id' => $bankAccountsId,
                 ];
                 $ids[] = softInsert($table, $row);
                 if (++$m > 12) { $m = 1; $y++; }
@@ -242,6 +245,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'amount'         => (float)$data['amount'],
                 'effective_from'=> $data['effective_from'],
             ]);
+            jsonOk(findActive($table, $newId), 201);
+        } elseif ($table === 'payments') {
+            $pm = in_array($data['payment_method'] ?? '', ['account','cash']) ? $data['payment_method'] : 'account';
+            $baId = isset($data['bank_accounts_id']) ? (int)$data['bank_accounts_id'] : 0;
+            if ($pm === 'account' && ($baId <= 0)) jsonErr('Vyberte bankovní účet.');
+            $data['bank_accounts_id'] = $pm === 'account' ? $baId : null;
+            $newId = softInsert($table, $data);
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'bank_accounts') {
             if (isset($data['is_primary']) && (int)$data['is_primary'] === 1) {
@@ -265,14 +275,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $e = validateDateField($paymentDate, 'Datum platby');
         if ($e) jsonErr($e);
         $paymentMethod = in_array($b['payment_method'] ?? '', ['account','cash']) ? $b['payment_method'] : null;
-        $accountNumber = isset($b['account_number']) ? (trim($b['account_number']) ?: null) : null;
+        $bankAccountsId = ($paymentMethod === 'account' && isset($b['bank_accounts_id'])) ? (int)$b['bank_accounts_id'] : null;
+        if ($paymentMethod === 'account' && (!$bankAccountsId || $bankAccountsId <= 0)) jsonErr('Vyberte bankovní účet.');
         $amountOverrideId = isset($b['amount_override_id']) ? (int)$b['amount_override_id'] : 0;
         $amountOverrideValue = isset($b['amount_override_value']) ? (float)$b['amount_override_value'] : null;
 
         $s = db()->prepare("SELECT id FROM payments WHERE payment_batch_id=? AND valid_to IS NULL");
         $s->execute([$batchId]);
         $ids = array_column($s->fetchAll(), 'id');
-        $baseData = ['payment_date' => $paymentDate, 'payment_method' => $paymentMethod, 'account_number' => $accountNumber];
+        $baseData = ['payment_date' => $paymentDate, 'payment_method' => $paymentMethod, 'bank_accounts_id' => $bankAccountsId];
         foreach ($ids as $pid) {
             $updateData = $baseData;
             if ($amountOverrideId > 0 && (int)$pid === $amountOverrideId && $amountOverrideValue !== null) {

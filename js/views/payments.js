@@ -26,6 +26,7 @@ const PaymentsView = (() => {
                 if (!values.contracts_id || values.contracts_id <= 0) return 'Vyberte smlouvu.';
                 if (!values.payment_date) return 'Vyplňte datum platby.';
                 if (!UI.isDateValid(values.payment_date)) return 'Datum platby: zadejte platné datum (např. únor má max. 29 dní).';
+                if (values.payment_method === 'account' && (!values.bank_accounts_id || values.bank_accounts_id <= 0)) return 'Vyberte bankovní účet.';
                 if (values.period_year_to != null) {
                     const tsFrom = values.period_year * 12 + values.period_month;
                     const tsTo = values.period_year_to * 12 + values.period_month_to;
@@ -39,14 +40,14 @@ const PaymentsView = (() => {
                 const methodEl = document.getElementById('pay-method');
                 const accountEl = document.getElementById('pay-account');
                 const method = methodEl.value === 'account' || methodEl.value === 'cash' ? methodEl.value : 'account';
-                const accVal = method === 'account' ? (accountEl.value || '').trim() : null;
+                const accId = method === 'account' ? Number(accountEl.value || 0) : null;
                 const base = {
                     contracts_id: Number(document.getElementById('pay-contract').value),
                     amount:       document.getElementById('pay-amount').value,
                     payment_date: document.getElementById('pay-date').value,
                     note:         document.getElementById('pay-note').value.trim(),
                     payment_method: method,
-                    account_number: accVal || null,
+                    bank_accounts_id: accId || null,
                 };
                 if (bulk) {
                     base.period_year  = Number(document.getElementById('pay-year-from').value);
@@ -67,11 +68,8 @@ const PaymentsView = (() => {
                 document.getElementById('pay-date').value     = row.payment_date || '';
                 document.getElementById('pay-method').value  = row.payment_method === 'cash' ? 'cash' : 'account';
                 const accSel = document.getElementById('pay-account');
-                const accNum = row.account_number || '';
-                if (accNum && !bankAccountsCache.some(b => b.account_number === accNum)) {
-                    accSel.appendChild(new Option(accNum, accNum));
-                }
-                accSel.value = accNum;
+                const accId = row.bank_accounts_id || '';
+                accSel.value = accId;
                 document.getElementById('pay-note').value     = row.note         || '';
                 const accWrap = document.getElementById('pay-account-wrap');
                 accWrap.style.display = row.payment_method === 'cash' ? 'none' : 'block';
@@ -106,7 +104,7 @@ const PaymentsView = (() => {
                 document.getElementById('pay-date').value     = todayISO();
                 document.getElementById('pay-method').value   = 'account';
                 const primary = bankAccountsCache.find(b => b.is_primary);
-                document.getElementById('pay-account').value = primary ? primary.account_number : '';
+                document.getElementById('pay-account').value = primary ? (primary.bank_accounts_id ?? primary.id) : '';
                 document.getElementById('pay-bulk').checked   = false;
                 document.getElementById('pay-single-row').style.display = '';
                 document.getElementById('pay-range-row').style.display = 'none';
@@ -186,13 +184,14 @@ const PaymentsView = (() => {
         const sel = document.getElementById(selId);
         if (!sel) return;
         const primary = bankAccountsCache.find(b => b.is_primary);
-        const defaultVal = primary ? primary.account_number : '';
+        const defaultId = primary ? (primary.bank_accounts_id ?? primary.id) : '';
         sel.innerHTML = '<option value="">— Vyberte účet —</option>' +
-            bankAccountsCache.map(b =>
-                '<option value="' + UI.esc(b.account_number) + '"' + (b.account_number === defaultVal ? ' selected' : '') + '>' +
+            bankAccountsCache.map(b => {
+                const bid = b.bank_accounts_id ?? b.id;
+                return '<option value="' + bid + '"' + (bid == defaultId ? ' selected' : '') + '>' +
                     UI.esc(b.name) + (b.account_number ? ' – ' + UI.esc(b.account_number) : '') +
-                '</option>'
-            ).join('');
+                '</option>';
+            }).join('');
     }
 
     // ── fill contract dropdowns (form + filter) ────────────────────────

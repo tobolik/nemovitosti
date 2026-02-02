@@ -225,13 +225,14 @@ async function openPaymentModal(el) {
 
     const bankAccounts = await Api.crudList('bank_accounts');
     const primaryAccount = bankAccounts.find(b => b.is_primary);
-    const defaultAccNum = primaryAccount ? primaryAccount.account_number : '';
+    const defaultAccId = primaryAccount ? (primaryAccount.bank_accounts_id ?? primaryAccount.id) : '';
     accountSelect.innerHTML = '<option value="">— Vyberte účet —</option>' +
-        bankAccounts.map(b =>
-            '<option value="' + UI.esc(b.account_number || '') + '"' + (b.account_number === defaultAccNum ? ' selected' : '') + '>' +
+        bankAccounts.map(b => {
+            const bid = b.bank_accounts_id ?? b.id;
+            return '<option value="' + bid + '"' + (bid == defaultAccId ? ' selected' : '') + '>' +
                 UI.esc(b.name) + (b.account_number ? ' – ' + UI.esc(b.account_number) : '') +
-            '</option>'
-        ).join('');
+            '</option>';
+        }).join('');
 
     document.getElementById('pay-modal-contract-id').value = contractId;
     document.getElementById('pay-modal-month-key').value = monthKey;
@@ -282,11 +283,11 @@ async function openPaymentModal(el) {
             const amt = UI.fmt(p.amount ?? 0);
             const dt = p.payment_date ? UI.fmtDate(p.payment_date) : '—';
             const method = p.payment_method || 'account';
-            const acc = (p.account_number || '').replace(/"/g, '&quot;');
+            const accId = p.bank_accounts_id ?? '';
             const batchTag = p.payment_batch_id ? ' <span class="tag tag-batch" title="Součást jedné platby za více měsíců">dávka</span>' : '';
             html += '<li class="pay-modal-existing-item">' +
                 '<span>' + amt + ' Kč (' + dt + ')' + batchTag + '</span> ' +
-                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + p.id + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + acc + '" data-batch-id="' + (p.payment_batch_id || '') + '">Upravit</button> ' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + p.id + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-batch-id="' + (p.payment_batch_id || '') + '">Upravit</button> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + p.id + '" data-batch-id="' + (p.payment_batch_id || '') + '">Smazat</button>' +
                 '</li>';
         });
@@ -304,7 +305,7 @@ async function openPaymentModal(el) {
         amount.value = p.amount ?? '';
         dateInput.value = p.payment_date ? p.payment_date.slice(0, 10) : new Date().toISOString().slice(0, 10);
         methodSelect.value = method === 'cash' ? 'cash' : 'account';
-        accountSelect.value = p.account_number || '';
+        accountSelect.value = p.bank_accounts_id || '';
         accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
         paid.checked = true;
         dateWrap.style.display = 'block';
@@ -398,12 +399,16 @@ async function openPaymentModal(el) {
                     return;
                 }
                 const method = methodSelect.value === 'account' || methodSelect.value === 'cash' ? methodSelect.value : 'account';
-                const accountNum = method === 'account' ? (accountSelect.value || '').trim() : null;
+                const accountId = method === 'account' ? Number(accountSelect.value || 0) : null;
+                if (method === 'account' && (!accountId || accountId <= 0)) {
+                    alert('Vyberte bankovní účet.');
+                    return;
+                }
                 if (editId && batchId) {
                     const batchData = {
                         payment_date: dateInput.value,
                         payment_method: method,
-                        account_number: accountNum || null,
+                        bank_accounts_id: accountId || null,
                     };
                     const origAmt = parseFloat(editIdEl.dataset.originalAmount || 0);
                     if (amt !== origAmt) {
@@ -419,7 +424,7 @@ async function openPaymentModal(el) {
                         amount: amt,
                         payment_date: dateInput.value,
                         payment_method: method,
-                        account_number: accountNum || null,
+                        bank_accounts_id: accountId || null,
                     };
                     await Api.crudEdit('payments', parseInt(editId, 10), payData);
                 } else {
@@ -429,7 +434,7 @@ async function openPaymentModal(el) {
                         amount: amt,
                         payment_date: dateInput.value,
                         payment_method: method,
-                        account_number: accountNum || null,
+                        bank_accounts_id: accountId || null,
                     };
                     if (bulk) {
                         const yFrom = parseInt(yearFromEl.value, 10);
