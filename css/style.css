@@ -755,8 +755,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   /* Page title next to hamburger menu */
   .page-title {
     padding-left: 56px;
-    margin-top: -34px;
-    margin-bottom: 20px;
+    margin-top: 0;
+    margin-bottom: 16px;
     line-height: 1.2;
   }
   .text-muted {
@@ -776,21 +776,22 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   }
   .stats { grid-template-columns: 1fr; }
   
-  /* Tables - no horizontal scroll needed if columns hidden properly */
+  /* Tables - fit content properly */
   .tbl-wrap {
     border-radius: var(--r);
-    overflow-x: visible;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   table.tbl {
     width: 100%;
     table-layout: auto;
   }
   .tbl th, .tbl td { 
-    padding: 12px 10px; 
-    font-size: .82rem;
+    padding: 10px 8px; 
+    font-size: .78rem;
   }
   .tbl th {
-    font-size: .7rem;
+    font-size: .68rem;
   }
   
   /* Hide less important columns on mobile */
@@ -801,12 +802,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   /* Action buttons inline on mobile */
   .td-act {
     flex-direction: row;
-    gap: 6px;
+    gap: 4px;
     white-space: nowrap;
   }
   .td-act .btn {
-    padding: 8px 12px;
-    font-size: .78rem;
+    padding: 6px 8px;
+    font-size: .72rem;
   }
   
   /* Improve footer on mobile */
@@ -878,7 +879,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   .page-title { 
     font-size: 1.1rem;
     padding-left: 52px;
-    margin-top: -32px;
+    margin-top: 0;
   }
   .text-muted {
     padding-left: 52px;
@@ -934,8 +935,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   
   /* Action buttons */
   .td-act .btn {
-    padding: 7px 10px;
-    font-size: .72rem;
+    padding: 5px 7px;
+    font-size: .68rem;
   }
   
   /* Filter bar on mobile */
