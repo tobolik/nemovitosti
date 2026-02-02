@@ -507,6 +507,9 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .dash-table-bar { margin-bottom: 12px; }
 .dash-table-header { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 12px; }
 .dash-table-title { font-size: 1rem; font-weight: 600; color: var(--txt); margin: 0; }
+.dash-add-request { font-size: .85rem; color: var(--purple-300); text-decoration: none; }
+.dash-add-request:hover { text-decoration: underline; }
+.dash-unpaid-tags .tag-request { background: rgba(249, 115, 22, .2); color: var(--orange-500); }
 .heatmap-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .heatmap-header h3 { font-size: 1rem; font-weight: 600; color: var(--txt); }
 .heatmap-year-btns { display: flex; gap: 4px; }

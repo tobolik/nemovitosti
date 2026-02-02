@@ -195,6 +195,25 @@ foreach ($contractsForView as $c) {
     ];
 }
 
+// Požadované platby (nezaplacené) – seskupeno podle contracts_id
+$paymentRequestsRaw = db()->query("
+    SELECT * FROM payment_requests
+    WHERE valid_to IS NULL AND paid_at IS NULL
+    ORDER BY contracts_id, id ASC
+")->fetchAll();
+$paymentRequestsByContract = [];
+foreach ($paymentRequestsRaw as $pr) {
+    $cid = (int)$pr['contracts_id'];
+    if (!isset($paymentRequestsByContract[$cid])) {
+        $paymentRequestsByContract[$cid] = [];
+    }
+    $paymentRequestsByContract[$cid][] = $pr;
+}
+foreach ($out as &$row) {
+    $row['payment_requests'] = $paymentRequestsByContract[(int)$row['contracts_id']] ?? [];
+}
+unset($row);
+
 // Heatmap: pro každou nemovitost, pro každý měsíc roku
 $heatmap = [];
 $monthNames = ['leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];

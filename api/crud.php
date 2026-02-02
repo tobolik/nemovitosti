@@ -15,6 +15,7 @@ $FIELDS = [
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','payment_batch_id','payment_method','bank_accounts_id','payment_type'],
     'bank_accounts' => ['name','account_number','is_primary','sort_order'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
+    'payment_requests' => ['contracts_id','amount','type','note','due_date'],
 ];
 
 // Povinná pole při přidávání
@@ -25,6 +26,7 @@ $REQUIRED = [
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date'],
     'bank_accounts' => ['name','account_number'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
+    'payment_requests' => ['contracts_id','amount','type','note','due_date'],
 ];
 
 // Lidsky čitelné názvy polí pro chybové hlášky
@@ -35,6 +37,7 @@ $FIELD_LABELS = [
     'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','payment_method'=>'Způsob platby','bank_accounts_id'=>'Bankovní účet','payment_type'=>'Typ platby'],
     'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu'],
     'contract_rent_changes' => ['contracts_id'=>'Smlouva','amount'=>'Částka','effective_from'=>'Platné od'],
+    'payment_requests' => ['contracts_id'=>'Smlouva','amount'=>'Částka','type'=>'Typ','note'=>'Poznámka','due_date'=>'Splatnost'],
 ];
 
 $table = $_GET['table'] ?? body()['table'] ?? '';
@@ -91,6 +94,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $params[] = $cid;
         }
         $sql .= " ORDER BY effective_from ASC";
+        $s = db()->prepare($sql);
+        $s->execute($params);
+        jsonOk($s->fetchAll());
+    }
+
+    if ($table === 'payment_requests') {
+        $cid = isset($_GET['contracts_id']) ? (int)$_GET['contracts_id'] : 0;
+        $unpaidOnly = isset($_GET['unpaid']) && $_GET['unpaid'] !== '0' && $_GET['unpaid'] !== '';
+        $sql = "SELECT * FROM payment_requests WHERE valid_to IS NULL";
+        $params = [];
+        if ($cid > 0) {
+            $sql .= " AND contracts_id=?";
+            $params[] = $cid;
+        }
+        if ($unpaidOnly) {
+            $sql .= " AND paid_at IS NULL";
+        }
+        $sql .= " ORDER BY id ASC";
         $s = db()->prepare($sql);
         $s->execute($params);
         jsonOk($s->fetchAll());
@@ -182,12 +203,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $e = validateDateField($data['payment_date'], 'Datum platby');
         if ($e) jsonErr($e);
     }
+    if ($table === 'payment_requests' && isset($data['type'])) {
+        if (!in_array($data['type'], ['energy', 'settlement', 'other'], true)) {
+            $data['type'] = 'energy';
+        }
+    }
+    if ($table === 'payment_requests') {
+        if (isset($data['due_date']) && $data['due_date'] === '') $data['due_date'] = null;
+        if (isset($data['due_date']) && $data['due_date'] !== null) {
+            $e = validateDateField($data['due_date'], 'Splatnost');
+            if ($e) jsonErr($e);
+        }
+    }
 
     // Pole, která musí být kladné ID (> 0) – 0 znamená „nevybráno“
     $POSITIVE_ID_FIELDS = [
         'contracts' => ['properties_id', 'tenants_id'],
         'payments'  => ['contracts_id'],
         'contract_rent_changes' => ['contracts_id'],
+        'payment_requests' => ['contracts_id'],
     ];
 
     if ($action === 'add') {
@@ -253,6 +287,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($pm === 'account' && ($baId <= 0)) jsonErr('Vyberte bankovní účet.');
             $data['bank_accounts_id'] = $pm === 'account' ? $baId : null;
             $data['payment_type'] = in_array($data['payment_type'] ?? 'rent', ['rent','deposit','energy','other']) ? $data['payment_type'] : 'rent';
+            $paymentRequestId = isset($b['payment_request_id']) ? (int)$b['payment_request_id'] : 0;
+            $newId = softInsert($table, $data);
+            if ($paymentRequestId > 0) {
+                db()->prepare("UPDATE payment_requests SET paid_at = CURDATE(), payment_id = ? WHERE id = ? AND valid_to IS NULL")
+                    ->execute([$newId, $paymentRequestId]);
+            }
+            jsonOk(findActive($table, $newId), 201);
+        } elseif ($table === 'payment_requests') {
+            $data['type'] = in_array($data['type'] ?? 'energy', ['energy', 'settlement', 'other']) ? $data['type'] : 'energy';
+            $data['amount'] = (float)($data['amount'] ?? 0);
+            if ($data['amount'] <= 0) jsonErr('Zadejte kladnou částku.');
             $newId = softInsert($table, $data);
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'bank_accounts') {
