@@ -14,8 +14,13 @@ const TenantsView = (() => {
         function toggleAresButton() {
             wrapAres.style.display = typeEl.value === 'company' ? 'block' : 'none';
         }
-        typeEl.addEventListener('change', toggleAresButton);
+        const birthDateWrap = document.getElementById('ten-birth-date-wrap');
+        function toggleBirthDate() {
+            if (birthDateWrap) birthDateWrap.style.display = typeEl.value === 'person' ? 'block' : 'none';
+        }
+        typeEl.addEventListener('change', () => { toggleAresButton(); toggleBirthDate(); });
         toggleAresButton();
+        toggleBirthDate();
 
         btnAres.addEventListener('click', async () => {
             const ic = document.getElementById('ten-ic').value.replace(/\D/g, '');
@@ -58,9 +63,11 @@ const TenantsView = (() => {
             successAddMsg: 'Nájemník byl úspěšně přidán.',
             successEditMsg: 'Nájemník byl úspěšně aktualizován.',
             getValues() {
+                const type = document.getElementById('ten-type').value;
                 return {
                     name:    document.getElementById('ten-name').value.trim(),
-                    type:    document.getElementById('ten-type').value,
+                    type,
+                    birth_date: type === 'person' ? (document.getElementById('ten-birth-date').value || null) : null,
                     email:   document.getElementById('ten-email').value.trim(),
                     phone:   document.getElementById('ten-phone').value.trim(),
                     address: document.getElementById('ten-address').value.trim(),
@@ -72,6 +79,7 @@ const TenantsView = (() => {
             fillForm(row) {
                 document.getElementById('ten-name').value    = row.name    || '';
                 document.getElementById('ten-type').value     = row.type    || 'person';
+                document.getElementById('ten-birth-date').value = row.birth_date ? row.birth_date.slice(0, 10) : '';
                 document.getElementById('ten-email').value   = row.email   || '';
                 document.getElementById('ten-phone').value   = row.phone   || '';
                 document.getElementById('ten-address').value = row.address || '';
@@ -80,14 +88,19 @@ const TenantsView = (() => {
                 document.getElementById('ten-note').value    = row.note    || '';
                 const wrap = document.getElementById('ten-ares-wrap');
                 if (wrap) wrap.style.display = (row.type === 'company') ? 'block' : 'none';
+                const birthWrap = document.getElementById('ten-birth-date-wrap');
+                if (birthWrap) birthWrap.style.display = (row.type === 'person') ? 'block' : 'none';
             },
             resetForm() {
-                ['ten-name','ten-email','ten-phone','ten-address','ten-ic','ten-dic','ten-note'].forEach(id =>
-                    document.getElementById(id).value = ''
-                );
+                ['ten-name','ten-birth-date','ten-email','ten-phone','ten-address','ten-ic','ten-dic','ten-note'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
                 document.getElementById('ten-type').value = 'person';
                 const wrap = document.getElementById('ten-ares-wrap');
                 if (wrap) wrap.style.display = 'none';
+                const birthWrap = document.getElementById('ten-birth-date-wrap');
+                if (birthWrap) birthWrap.style.display = 'block';
             },
             onSaved: loadList,
         });
@@ -102,6 +115,7 @@ const TenantsView = (() => {
             [
                 { label: 'Jméno / Název' },
                 { label: 'Typ' },
+                { label: 'Datum narození', hideMobile: true },
                 { label: 'E-mail', hideMobile: true },
                 { label: 'Telefon' },
                 { label: 'IČO', hideMobile: true },
@@ -109,9 +123,12 @@ const TenantsView = (() => {
                 { label: 'Akce', act: true },
             ],
             data,
-            (t) => (
+            (t) => {
+                const birthDate = t.type === 'person' && t.birth_date ? UI.fmtDate(t.birth_date) : '—';
+                return (
                 '<td><strong>' + UI.esc(t.name) + '</strong></td>' +
                 '<td>' + (t.type === 'company' ? 'PO' : 'FO') + '</td>' +
+                '<td class="col-hide-mobile">' + birthDate + '</td>' +
                 '<td class="col-hide-mobile">' + (t.email ? '<a href="mailto:' + UI.esc(t.email) + '">' + UI.esc(t.email) + '</a>' : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td>' + (t.phone ? '<a href="tel:' + UI.esc(t.phone) + '">' + UI.esc(t.phone) + '</a>' : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td class="col-hide-mobile">' + (t.ic ? UI.esc(t.ic) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
@@ -120,7 +137,8 @@ const TenantsView = (() => {
                     '<button class="btn btn-ghost btn-sm" onclick="TenantsView.edit(' + t.id + ')">Úprava</button>' +
                     '<button class="btn btn-danger btn-sm" onclick="TenantsView.del(' + t.id + ')">Smazat</button>' +
                 '</td>'
-            ),
+            );
+            },
             { emptyMsg: 'Žádní nájemníci. Přidejte první výše.' }
         );
     }

@@ -5,7 +5,7 @@ const Api = (() => {
     let _csrf = '';
 
     // ── core fetch ──────────────────────────────────────────────────────
-    async function request(url, opts = {}) {
+    async function request(url, opts = {}, retried = false) {
         const headers = { 'Content-Type': 'application/json' };
         if (_csrf && opts.method && opts.method !== 'GET') {
             headers['X-Csrf-Token'] = _csrf;
@@ -20,6 +20,17 @@ const Api = (() => {
                 ? ' Zkontrolujte, zda existuje config.php a databáze je dostupná.'
                 : '';
             throw new Error('Server vrátil neplatnou odpověď.' + hint);
+        }
+        // 403 CSRF – obnovit token a zkusit znovu (1×)
+        if (!json.ok && res.status === 403 && (json.error || '').includes('CSRF') && !retried && opts.method && opts.method !== 'GET') {
+            try {
+                const authRes = await fetch('/api/auth.php');
+                const authJson = await authRes.json();
+                if (authJson.ok && authJson.data && authJson.data.csrf) {
+                    _csrf = authJson.data.csrf;
+                    return request(url, opts, true);
+                }
+            } catch (e) { /* ignorovat */ }
         }
         if (!json.ok) throw new Error(json.error || 'Chyba serveru');
         return json.data;

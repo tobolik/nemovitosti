@@ -32,6 +32,7 @@ function db(): PDO {
 // ── Session ─────────────────────────────────────────────────────────────────
 (function(){
     if (session_status() !== PHP_SESSION_NONE) return;
+    ini_set('session.gc_maxlifetime', (string)SESSION_LIFE);
     session_set_cookie_params([
         'lifetime' => SESSION_LIFE,
         'path'     => '/',

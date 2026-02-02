@@ -10,7 +10,7 @@ requireLogin();
 // Whitelist: tabulka → povolená pole
 $FIELDS = [
     'properties' => ['name','address','size_m2','purchase_price','purchase_date','purchase_contract_url','type','note'],
-    'tenants'    => ['name','type','email','phone','address','ic','dic','note'],
+    'tenants'    => ['name','type','birth_date','email','phone','address','ic','dic','note'],
     'contracts'  => ['property_id','tenant_id','contract_start','contract_end','monthly_rent','contract_url','note'],
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','payment_batch_id','payment_method','account_number'],
     'bank_accounts' => ['name','account_number','is_primary','sort_order'],
@@ -30,7 +30,7 @@ $REQUIRED = [
 // Lidsky čitelné názvy polí pro chybové hlášky
 $FIELD_LABELS = [
     'properties' => ['name'=>'Název','address'=>'Adresa'],
-    'tenants'    => ['name'=>'Jméno / Název'],
+    'tenants'    => ['name'=>'Jméno / Název','birth_date'=>'Datum narození'],
     'contracts'  => ['property_id'=>'Nemovitost','tenant_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','note'=>'Poznámka'],
     'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','payment_method'=>'Způsob platby','account_number'=>'Číslo účtu'],
     'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu'],
@@ -145,6 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // contract_end & note mohou být prázdné → null
     if ($table === 'contracts' && ($data['contract_end']??'') === '') $data['contract_end'] = null;
+    if ($table === 'tenants' && ($data['birth_date']??'') === '') $data['birth_date'] = null;
 
     // Validace dat – neplatné datum nesmí být tiše převedeno na null
     if ($table === 'contracts') {
@@ -159,6 +160,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($table === 'properties' && isset($data['purchase_date']) && $data['purchase_date'] !== '') {
         $e = validateDateField($data['purchase_date'], 'Datum koupě');
+        if ($e) jsonErr($e);
+    }
+    if ($table === 'tenants' && isset($data['birth_date']) && $data['birth_date'] !== '') {
+        $e = validateDateField($data['birth_date'], 'Datum narození');
         if ($e) jsonErr($e);
     }
     if ($table === 'payments' && isset($data['payment_date']) && $data['payment_date'] !== '') {

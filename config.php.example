@@ -11,7 +11,8 @@ define('DB_USER', 'YOUR_USER');   // ← změňte
 define('DB_PASS', 'YOUR_PASS');   // ← změňte
 
 define('SESSION_NAME', 'nemov');
-define('SESSION_LIFE',  3600);
+// Platnost session v sekundách (3600 = 1 h, 2592000 = 30 dní). Pro trvalé přihlášení použijte např. 30 dní.
+define('SESSION_LIFE',  2592000);  // 30 dní
 
 // Pro ladění 500 chyb: nastavte true, uvidíte skutečnou chybu v API odpovědi
 define('DEBUG', false);
