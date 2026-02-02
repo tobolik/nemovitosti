@@ -257,7 +257,7 @@ const PaymentsView = (() => {
                 else                diffHtml = '<span style="color:var(--green)">✓ přesně</span>';
 
                 const methodLabel = p.payment_method === 'cash' ? 'Hotovost' : (p.account_number ? 'Účet ' + UI.esc(p.account_number) : 'Na účet');
-                const batchHint = p.payment_batch_id ? ' <span class="tag tag-batch" title="Součást jedné platby">dávka</span>' : '';
+                const batchHint = p.payment_batch_id ? '<br><span class="tag tag-batch" title="Součást jedné platby">dávka</span>' : '';
                 return (
                     '<td><strong>' + UI.esc(p.tenant_name) + '</strong><br><span style="color:var(--txt3);font-size:.8em">' + UI.esc(p.property_name) + '</span></td>' +
                     '<td>' + UI.MONTHS[p.period_month] + ' ' + p.period_year + batchHint + '</td>' +

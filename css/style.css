@@ -754,15 +754,16 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 
   /* Page title next to hamburger menu */
   .page-title {
-    padding-left: 52px;
-    margin-top: 4px;
-    margin-bottom: 16px;
+    padding-left: 56px;
+    margin-top: -34px;
+    margin-bottom: 20px;
+    line-height: 1.2;
   }
   .text-muted {
-    padding-left: 52px;
+    padding-left: 56px;
   }
   .list-actions {
-    padding-left: 52px;
+    padding-left: 56px;
     margin-bottom: 16px;
   }
 
@@ -868,7 +869,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   /* Filter bar - align with title */
   .filter-bar {
     padding-left: 0;
-    margin-left: 52px;
+    margin-left: 56px;
     margin-right: 0;
   }
 }
@@ -876,14 +877,15 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 @media (max-width: 480px) {
   .page-title { 
     font-size: 1.1rem;
-    padding-left: 50px;
+    padding-left: 52px;
+    margin-top: -32px;
   }
   .text-muted {
-    padding-left: 50px;
+    padding-left: 52px;
     font-size: .78rem;
   }
   .list-actions {
-    padding-left: 50px;
+    padding-left: 52px;
   }
   
   /* Hamburger adjustment */
@@ -941,7 +943,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
-    margin-left: 50px;
+    margin-left: 52px;
   }
   .filter-bar select {
     max-width: none;
