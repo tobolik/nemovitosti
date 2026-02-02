@@ -173,7 +173,7 @@ const ContractsView = (() => {
             [
                 { label: 'Nemovitost' },
                 { label: 'Nájemník' },
-                { label: 'Od' },
+                { label: 'Od', hideMobile: true },
                 { label: 'Do', hideMobile: true },
                 { label: 'Nájemné' },
                 { label: 'Smlouva', hideMobile: true },
@@ -188,7 +188,7 @@ const ContractsView = (() => {
                 return (
                     '<td>' + UI.esc(c.property_name) + '</td>' +
                     '<td><strong>' + UI.esc(c.tenant_name) + '</strong></td>' +
-                    '<td>' + UI.esc(c.contract_start) + '</td>' +
+                    '<td class="col-hide-mobile">' + UI.esc(c.contract_start) + '</td>' +
                     '<td class="col-hide-mobile">' + (c.contract_end ? UI.esc(c.contract_end) : '<span style="color:var(--txt3)">neurčitá</span>') + '</td>' +
                     '<td>' + UI.fmt(c.monthly_rent) + ' Kč</td>' +
                     '<td class="col-hide-mobile">' + contractLink + '</td>' +

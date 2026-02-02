@@ -51,7 +51,7 @@ const BankAccountsView = (() => {
         UI.renderTable('bank-table',
             [
                 { label: 'Název' },
-                { label: 'Číslo účtu' },
+                { label: 'Číslo účtu', hideMobile: true },
                 { label: 'Primární' },
                 { label: 'Pořadí', hideMobile: true },
                 { label: 'Akce', act: true },
@@ -59,7 +59,7 @@ const BankAccountsView = (() => {
             data,
             (b) => (
                 '<td><strong>' + UI.esc(b.name) + '</strong></td>' +
-                '<td>' + UI.esc(b.account_number || '—') + '</td>' +
+                '<td class="col-hide-mobile">' + UI.esc(b.account_number || '—') + '</td>' +
                 '<td>' + (b.is_primary ? '<span class="badge badge-ok">ANO</span>' : '—') + '</td>' +
                 '<td class="col-hide-mobile">' + (b.sort_order ?? 0) + '</td>' +
                 '<td class="td-act">' +
