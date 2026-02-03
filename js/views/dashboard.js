@@ -178,7 +178,8 @@ async function loadDashboard(year) {
                         (y < purchaseYear || (y === purchaseYear && m < purchaseMonth));
                     content = isBeforePurchase ? '' : 'Volno';
                 } else {
-                    content = remaining > 0 ? '<span class="heatmap-cell-icon cell-cross">✗</span>' : '<span class="heatmap-cell-icon cell-check">✓</span>';
+                    content = '<span class="heatmap-cell-amount">' + UI.fmt(prescribedTotal) + ' Kč</span><br>' +
+                        (remaining > 0 ? '<span class="heatmap-cell-icon cell-cross">✗</span>' : '<span class="heatmap-cell-icon cell-check">✓</span>');
                     content = '<div class="heatmap-cell-fill" style="width:' + Math.round(pctPaid) + '%"></div><div class="heatmap-cell-content">' + content + '</div>';
                 }
 
@@ -270,19 +271,39 @@ async function loadDashboard(year) {
             const depAmt = d.deposit_amount || 0;
             const balanceAll = (d.expected_total != null && d.total_paid != null) ? (d.expected_total - d.total_paid) : 0;
             const unpaidMonths = d.unpaid_months || [];
-            const unpaidMonthsStr = unpaidMonths.length ? unpaidMonths.map(u => u.month + '/' + u.year).join(', ') : '';
+            const today = now.toISOString().slice(0, 10);
+            const contractEnded = !!(d.contract_end && String(d.contract_end).slice(0, 10) <= today);
+            const depositReturned = depAmt > 0 && !d.deposit_to_return;
+
+            const isOnlyCurrentMonth = !hasHistoricalArrear && hasDbt && unpaidMonths.length === 1 &&
+                unpaidMonths[0].year === currentY && unpaidMonths[0].month === currentM;
+            const unpaidMonthsFiltered = (hasDbt && !hasHistoricalArrear && unpaidMonths.length > 0)
+                ? unpaidMonths.filter(u => !(u.year === currentY && u.month === currentM))
+                : unpaidMonths;
+            const unpaidMonthsStr = unpaidMonthsFiltered.length ? unpaidMonthsFiltered.map(u => u.month + '/' + u.year).join(', ') : '';
+
             let progTitle = '';
             if (balanceAll < 0) {
                 progTitle = 'Přeplaceno o ' + UI.fmt(-balanceAll) + ' Kč.';
             } else if (balanceAll === 0 || (Math.abs(balanceAll) < 0.01)) {
-                progTitle = 'Vše v pořádku.';
+                if (contractEnded && depAmt > 0 && depositReturned) {
+                    progTitle = 'Smlouva ukončena. Kauce ' + UI.fmt(depAmt) + ' Kč byla vrácena, všechny závazky vyrovnány.';
+                } else if (contractEnded) {
+                    progTitle = 'Smlouva ukončena. Vše vyrovnáno.';
+                } else {
+                    progTitle = 'Vše v pořádku.';
+                }
             } else {
-                progTitle = 'Chybí doplatit ' + UI.fmt(balanceAll) + ' Kč.';
-                if (unpaidMonthsStr) progTitle += ' Neuhrazené měsíce: ' + unpaidMonthsStr + '.';
-                if (hasHistoricalArrear) progTitle += ' Včetně historického nedoplatku.';
-                else if (hasDbt) progTitle += ' Aktuální měsíc neuhrazen.';
+                if (isOnlyCurrentMonth) {
+                    progTitle = 'Chybí doplatit ' + UI.fmt(balanceAll) + ' Kč za aktuální měsíc.';
+                } else {
+                    progTitle = 'Chybí doplatit ' + UI.fmt(balanceAll) + ' Kč.';
+                    if (unpaidMonthsStr) progTitle += ' Neuhrazené měsíce: ' + unpaidMonthsStr + '.';
+                }
             }
-            if (depAmt > 0) progTitle += (progTitle ? ' ' : '') + 'Kauce: ' + UI.fmt(depAmt) + ' Kč' + (d.deposit_to_return ? ' (k vrácení)' : '') + '.';
+            if (depAmt > 0 && !(contractEnded && depositReturned)) {
+                progTitle += (progTitle ? ' ' : '') + 'Kauce: ' + UI.fmt(depAmt) + ' Kč' + (d.deposit_to_return ? ' (k vrácení)' : '') + '.';
+            }
 
             let tags = '';
             const requestTypeLabels = { energy: 'Energie', settlement: 'Vyúčt.', deposit: 'Kauce', deposit_return: 'Vrác. kauce', other: 'Jiné' };
