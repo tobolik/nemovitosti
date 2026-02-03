@@ -558,7 +558,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .heatmap-sum-row td { overflow: hidden; white-space: normal; word-wrap: break-word; }
 .heatmap-cell { height: 46px; min-height: 46px; min-width: 0; width: 100%; max-width: 100%; padding: 4px 3px; border-radius: var(--r); cursor: pointer; transition: opacity .15s; text-align: center; box-sizing: border-box; font-size: .84rem; display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1.25; }
 .heatmap-cell:hover { opacity: .85; }
-.heatmap-cell.empty { background: rgba(100,100,100,.3); color: var(--txt3); font-size: .84rem; }
+.heatmap-cell.empty { background: rgba(100,100,100,.3); color: var(--txt3); font-size: .84rem; padding: 4px 3px; }
 .heatmap-cell.heatmap-cell-before-purchase { cursor: default; pointer-events: none; background: transparent; }
 .heatmap-cell.exact { background: var(--green-600); color: #fff; font-weight: 600; }
 .heatmap-cell.overpaid { background: var(--orange-600); color: #fff; font-weight: 600; }
