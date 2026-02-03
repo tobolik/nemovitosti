@@ -93,6 +93,49 @@ const ContractsView = (() => {
     }
 
     let _rentChangesContractsId = null;
+    let _paymentRequestsContractsId = null;
+
+    const PAYMENT_REQUEST_TYPE_LABELS = { energy: 'Doplatek energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
+
+    async function loadPaymentRequests(contractsId) {
+        _paymentRequestsContractsId = contractsId;
+        const listEl = document.getElementById('con-payment-requests-list');
+        const wrapEl = document.getElementById('con-payment-requests-wrap');
+        if (!listEl || !wrapEl) return;
+        try {
+            const data = await Api.crudList('payment_requests', { contracts_id: contractsId });
+            if (!data || !data.length) {
+                listEl.innerHTML = '<div class="text-muted" style="font-size:.85rem;padding:8px 0">Žádné požadavky na platbu.</div>';
+                wrapEl.style.display = 'block';
+                return;
+            }
+            let html = '<table class="tbl tbl-sm" style="margin-bottom:0"><thead><tr><th>Typ</th><th>Částka</th><th>Splatnost</th><th>Poznámka</th><th class="th-act"></th></tr></thead><tbody>';
+            data.forEach(pr => {
+                const typeLabel = PAYMENT_REQUEST_TYPE_LABELS[pr.type] || pr.type;
+                const amt = UI.fmt(pr.amount ?? 0);
+                const due = pr.due_date ? UI.fmtDate(pr.due_date) : '—';
+                const note = (pr.note || '').trim() ? UI.esc(pr.note) : '—';
+                const prId = pr.payment_requests_id ?? pr.id;
+                const paid = pr.paid_at ? ' <span class="badge badge-ok">uhrazeno</span>' : '';
+                html += '<tr><td>' + UI.esc(typeLabel) + paid + '</td><td>' + amt + ' Kč</td><td>' + due + '</td><td class="col-note">' + note + '</td><td class="td-act">' +
+                    '<button type="button" class="btn btn-ghost btn-sm btn-edit-pay-req" data-pr-id="' + prId + '">Upravit</button></td></tr>';
+            });
+            html += '</tbody></table>';
+            listEl.innerHTML = html;
+            listEl.querySelectorAll('.btn-edit-pay-req').forEach(btn => {
+                btn.onclick = () => {
+                    const prId = parseInt(btn.dataset.prId, 10);
+                    if (typeof window.openPaymentRequestEdit === 'function') {
+                        window.openPaymentRequestEdit(prId, () => loadPaymentRequests(_paymentRequestsContractsId));
+                    }
+                };
+            });
+            wrapEl.style.display = 'block';
+        } catch (e) {
+            listEl.innerHTML = '<div class="alert alert-err show">' + UI.esc(e.message || 'Chyba při načítání.') + '</div>';
+            wrapEl.style.display = 'block';
+        }
+    }
 
     async function loadRentChanges(contractsId) {
         _rentChangesContractsId = contractsId;
@@ -235,6 +278,7 @@ const ContractsView = (() => {
                 toggleFirstMonthRentVisibility();
                 const contractsId = row.contracts_id ?? row.id;
                 loadRentChanges(contractsId);
+                loadPaymentRequests(contractsId);
                 document.getElementById('con-rent-changes-wrap').style.display = 'block';
             },
             resetForm() {
@@ -242,6 +286,8 @@ const ContractsView = (() => {
                     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
                 document.getElementById('con-first-month-wrap').style.display = 'none';
                 document.getElementById('con-rent-changes-wrap').style.display = 'none';
+                const prWrap = document.getElementById('con-payment-requests-wrap');
+                if (prWrap) prWrap.style.display = 'none';
             },
             onSaved: loadList,
         });

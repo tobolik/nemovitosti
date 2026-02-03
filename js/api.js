@@ -69,8 +69,12 @@ const Api = (() => {
     // ════════════════════════════════════════════════════════════════════
     function crudList(table, params = {}) {
         let url = '/api/crud.php?table=' + table;
-        Object.keys(params).forEach(k => { url += '&' + k + '=' + params[k]; });
+        Object.keys(params).forEach(k => { url += '&' + k + '=' + encodeURIComponent(params[k]); });
         return get(url);
+    }
+
+    function crudGet(table, id) {
+        return get('/api/crud.php?table=' + encodeURIComponent(table) + '&id=' + encodeURIComponent(id));
     }
 
     function crudAdd(table, data) {
@@ -138,7 +142,7 @@ const Api = (() => {
     return {
         setCsrf, getCsrf,
         authCheck, authLogin, authLogout,
-        crudList, crudAdd, crudEdit, crudDelete, paymentsEditBatch, paymentsDeleteBatch,
+        crudList, crudGet, crudAdd, crudEdit, crudDelete, paymentsEditBatch, paymentsDeleteBatch,
         dashboardLoad,
         usersList, usersAdd, usersDelete, usersChangePassword,
         aresLookup,

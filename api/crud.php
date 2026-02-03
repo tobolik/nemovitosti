@@ -286,7 +286,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $baId = isset($data['bank_accounts_id']) ? (int)$data['bank_accounts_id'] : 0;
             if ($pm === 'account' && ($baId <= 0)) jsonErr('Vyberte bankovní účet.');
             $data['bank_accounts_id'] = $pm === 'account' ? $baId : null;
-            $data['payment_type'] = in_array($data['payment_type'] ?? 'rent', ['rent','deposit','energy','other']) ? $data['payment_type'] : 'rent';
+            $data['payment_type'] = in_array($data['payment_type'] ?? 'rent', ['rent','deposit','deposit_return','energy','other']) ? $data['payment_type'] : 'rent';
+            $amt = (float)($data['amount'] ?? 0);
+            $isDepositOrReturn = in_array($data['payment_type'], ['deposit', 'deposit_return'], true);
+            if ($amt === 0.0) jsonErr('Zadejte částku platby.');
+            if (!$isDepositOrReturn && $amt < 0) jsonErr('U tohoto typu platby zadejte kladnou částku.');
             $paymentRequestEntityId = isset($b['payment_request_id']) ? (int)$b['payment_request_id'] : 0;
             $newId = softInsert($table, $data);
             if ($paymentRequestEntityId > 0) {
@@ -359,7 +363,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $s = db()->prepare("SELECT id FROM payments WHERE payment_batch_id=? AND valid_to IS NULL");
         $s->execute([$batchId]);
         $ids = array_column($s->fetchAll(), 'id');
-        $paymentType = in_array($b['payment_type'] ?? 'rent', ['rent','deposit','energy','other']) ? $b['payment_type'] : 'rent';
+        $paymentType = in_array($b['payment_type'] ?? 'rent', ['rent','deposit','deposit_return','energy','other']) ? $b['payment_type'] : 'rent';
+        if ($amountOverrideValue !== null && $amountOverrideValue < 0 && !in_array($paymentType, ['deposit', 'deposit_return'], true)) {
+            jsonErr('Záporná částka je povolena jen u typu Kauce / Vrácení kauce.');
+        }
         $baseData = ['payment_date' => $paymentDate, 'payment_method' => $paymentMethod, 'bank_accounts_id' => $bankAccountsId, 'payment_type' => $paymentType];
         foreach ($ids as $pid) {
             $updateData = $baseData;
@@ -440,6 +447,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
+            jsonOk(findActive($table, $newId));
+        } elseif ($table === 'payments') {
+            $data['payment_type'] = in_array($data['payment_type'] ?? 'rent', ['rent','deposit','deposit_return','energy','other']) ? $data['payment_type'] : 'rent';
+            $amt = isset($data['amount']) ? (float)$data['amount'] : null;
+            if ($amt !== null) {
+                $isDepositOrReturn = in_array($data['payment_type'], ['deposit', 'deposit_return'], true);
+                if ($amt === 0.0) jsonErr('Zadejte částku platby.');
+                if (!$isDepositOrReturn && $amt < 0) jsonErr('U tohoto typu platby zadejte kladnou částku.');
+            }
+            $newId = softUpdate($table, $rowId, $data);
             jsonOk(findActive($table, $newId));
         } else {
             $newId = softUpdate($table, $rowId, $data);

@@ -725,6 +725,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   line-height: 1;
 }
 .tag-plus:hover { opacity: 1; transform: scale(1.15); }
+.tag-edit-req {
+  cursor: pointer;
+  opacity: .7;
+  margin-left: 2px;
+  padding: 0 2px;
+}
+.tag-edit-req:hover { opacity: 1; }
 .tag-batch {
   background: rgba(59,130,246,.2);
   color: #93c5fd;

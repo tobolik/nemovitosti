@@ -124,9 +124,10 @@ $contractsForView = $showEnded ? $contracts : array_values(array_filter($contrac
     return empty($c['contract_end']) || $c['contract_end'] >= $today;
 }));
 
-// Součet požadovaných plateb podle smlouvy (všechny aktivní – pro „očekáváno“ = nájem + energie, kauce, vyúčt. atd.)
+// Součet neuhrazených požadavků podle smlouvy – do „očekáváno“ se započítají jen ty, které ještě nejsou zaplaceny
+// (uhrazený požadavek už je zastoupen platbou v total_paid, aby se nic neodečítalo dvakrát)
 $paymentRequestsSumByContract = [];
-$allRequestsStmt = db()->query("SELECT contracts_id, type, amount FROM payment_requests WHERE valid_to IS NULL");
+$allRequestsStmt = db()->query("SELECT contracts_id, type, amount FROM payment_requests WHERE valid_to IS NULL AND paid_at IS NULL");
 foreach ($allRequestsStmt->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
     $amt = (float)$pr['amount'];
@@ -262,23 +263,25 @@ foreach ($out as &$row) {
 }
 unset($row);
 
-// Předpisy s due_date – součet částek podle smlouvy a měsíce (pro očekávané v heatmapě a součtech)
+// Předpisy s due_date (jen neuhrazené) – součet podle smlouvy a měsíce (pro očekávané v heatmapě)
 $paymentRequestsByContractMonth = [];
 $stmtPrMonth = db()->query("
-    SELECT contracts_id, due_date, amount
+    SELECT contracts_id, due_date, amount, type
     FROM payment_requests
-    WHERE valid_to IS NULL AND due_date IS NOT NULL
+    WHERE valid_to IS NULL AND due_date IS NOT NULL AND paid_at IS NULL
 ");
 foreach ($stmtPrMonth->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
     $monthKey = date('Y-m', strtotime($pr['due_date']));
+    $amt = (float)$pr['amount'];
+    if (($pr['type'] ?? '') === 'deposit_return') $amt = -$amt;
     if (!isset($paymentRequestsByContractMonth[$cid])) {
         $paymentRequestsByContractMonth[$cid] = [];
     }
     if (!isset($paymentRequestsByContractMonth[$cid][$monthKey])) {
         $paymentRequestsByContractMonth[$cid][$monthKey] = 0.0;
     }
-    $paymentRequestsByContractMonth[$cid][$monthKey] += (float)$pr['amount'];
+    $paymentRequestsByContractMonth[$cid][$monthKey] += $amt;
 }
 // Index i pod řádkovým id smlouvy (jako u rentChanges)
 foreach ($contracts as $c) {
