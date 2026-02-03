@@ -536,14 +536,18 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .heatmap-table th:nth-child(n+2):nth-child(-n+13) { width: 6%; }
 .heatmap-table th.heatmap-total-col { width: 14%; }
 .heatmap-table td { padding: 4px; vertical-align: middle; }
-.heatmap-table tbody tr { height: 54px !important; max-height: 54px; }
-.heatmap-table tbody td { height: 54px !important; max-height: 54px !important; overflow: hidden; }
+/* Pevná výška jen u měsíčních buněk (2.–13. sloupec), aby Volno a částky měly stejnou výšku */
+.heatmap-table tbody td:nth-child(n+2):nth-child(-n+13) { height: 54px; max-height: 54px; overflow: hidden; }
 .heatmap-table tbody td:first-child,
 .heatmap-table tfoot td:first-child { width: 14%; }
-.heatmap-table tbody td.heatmap-property { line-height: 1.2; max-height: 54px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-clamp: 2; }
+/* První sloupec: celý název nemovitosti, zalamování bez ořezu */
+.heatmap-table tbody td.heatmap-property { overflow: visible; white-space: normal; word-wrap: break-word; line-height: 1.25; }
 .heatmap-table tbody td:not(:first-child):not(.heatmap-total-cell),
 .heatmap-table tfoot td.heatmap-sum-cell { width: 6%; }
 .heatmap-table td:last-child { width: 14%; }
+/* Celkem a Součet: celé částky čitelné */
+.heatmap-table tbody td.heatmap-total-cell,
+.heatmap-sum-row td { overflow: visible; }
 .heatmap-cell { height: 46px; min-height: 46px; min-width: 0; width: 100%; max-width: 100%; padding: 4px 3px; border-radius: var(--r); cursor: pointer; transition: opacity .15s; text-align: center; box-sizing: border-box; font-size: .84rem; display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1.25; }
 .heatmap-cell:hover { opacity: .85; }
 .heatmap-cell.empty { background: rgba(100,100,100,.3); color: var(--txt3); font-size: .84rem; }
@@ -571,7 +575,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .heatmap-cell.exact .cell-check, .heatmap-cell.overpaid .cell-check, .heatmap-cell.paid-advance .cell-check { color: #fff; }
 .heatmap-cell.unpaid .cell-cross,
 .heatmap-cell.overdue .cell-cross { color: #fff; }
-.heatmap-total-cell { text-align: center; font-size: .82rem; font-weight: 600; color: var(--txt2); padding: 4px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.heatmap-total-cell { text-align: center; font-size: .82rem; font-weight: 600; color: var(--txt2); padding: 4px 4px; white-space: normal; word-wrap: break-word; max-width: 100%; }
 .heatmap-sum-row { background: var(--bg2); border-top: 2px solid var(--glass-border); }
 .heatmap-sum-row td { padding: 8px 4px; }
 .heatmap-sum-label { font-weight: 600; color: var(--txt); font-size: .9rem; }
@@ -599,7 +603,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .pay-modal-type-badge.pay-type-deposit { background: rgba(59, 130, 246, .2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, .4); }
 .pay-modal-type-badge.pay-type-energy { background: rgba(34, 197, 94, .2); color: #86efac; border: 1px solid rgba(34, 197, 94, .4); }
 .pay-modal-type-badge.pay-type-other { background: rgba(148, 163, 184, .2); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, .4); }
-.heatmap-property { font-weight: 500; color: var(--txt); white-space: nowrap; padding-right: 12px; font-size: .9rem; }
+.heatmap-property { font-weight: 500; color: var(--txt); padding-right: 12px; font-size: .9rem; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .modal-close { background: none; border: none; font-size: 1.5rem; color: var(--txt3); cursor: pointer; line-height: 1; padding: 4px; }
 .modal-close:hover { color: var(--txt); }
@@ -1064,9 +1068,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
     font-size: .68rem;
   }
   
-  /* Heatmap cells – pevná výška řádku i buněk */
-  .heatmap-table tbody tr { height: 44px; }
-  .heatmap-table tbody td { height: 44px; max-height: 44px; }
+  /* Heatmap – pevná výška jen u měsíčních buněk (2.–13. sloupec) */
+  .heatmap-table tbody td:nth-child(n+2):nth-child(-n+13) { height: 44px; max-height: 44px; overflow: hidden; }
   .heatmap-cell {
     height: 36px;
     min-height: 36px;
