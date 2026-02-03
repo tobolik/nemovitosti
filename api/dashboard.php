@@ -270,8 +270,18 @@ foreach ($out as &$row) {
 }
 unset($row);
 
-// Předpisy s due_date – součet podle smlouvy a měsíce pro heatmapu; všechny předpisy (uhrazené i ne), očekávání za měsíc = nájem + předpisy.
+// Předpisy s due_date – součet podle smlouvy a měsíce (přehled, graf) a podle nemovitosti + měsíc (heatmapa).
+// Heatmapa musí zobrazit nájem + všechny předpisy za nemovitost v daném měsíci, i když se vybere jiná smlouva (řazení).
 $paymentRequestsByContractMonth = [];
+$paymentRequestsByPropertyMonth = []; // [properties_id][monthKey] => sum – pro heatmapu
+$contractToProperty = []; // contracts_id/row id => properties_id
+foreach ($contracts as $c) {
+    $eid = (int)($c['contracts_id'] ?? $c['id']);
+    $rid = (int)$c['id'];
+    $pid = (int)$c['properties_id'];
+    $contractToProperty[$eid] = $pid;
+    if ($eid !== $rid) $contractToProperty[$rid] = $pid;
+}
 $stmtPrMonth = db()->query("
     SELECT contracts_id, due_date, amount, type
     FROM payment_requests
@@ -289,6 +299,16 @@ foreach ($stmtPrMonth->fetchAll() as $pr) {
         $paymentRequestsByContractMonth[$cid][$monthKey] = 0.0;
     }
     $paymentRequestsByContractMonth[$cid][$monthKey] += $amt;
+    $propId = $contractToProperty[$cid] ?? null;
+    if ($propId !== null) {
+        if (!isset($paymentRequestsByPropertyMonth[$propId])) {
+            $paymentRequestsByPropertyMonth[$propId] = [];
+        }
+        if (!isset($paymentRequestsByPropertyMonth[$propId][$monthKey])) {
+            $paymentRequestsByPropertyMonth[$propId][$monthKey] = 0.0;
+        }
+        $paymentRequestsByPropertyMonth[$propId][$monthKey] += $amt;
+    }
 }
 // Index i pod řádkovým id smlouvy a naopak (contracts_id v payment_requests může být entity_id nebo row id)
 foreach ($contracts as $c) {
@@ -315,15 +335,26 @@ foreach ($properties as $p) {
         $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
 
         $contract = null;
-        $propEntityId = $p['properties_id'] ?? $p['id'];
-        // Kalendář vždy zobrazuje všechny smlouvy (včetně skončených) – historicky kompletní
+        $propEntityId = (int)($p['properties_id'] ?? $p['id']);
+        $candidates = [];
         foreach ($contracts as $c) {
-            $cPropMatch = ($c['properties_id'] == $propEntityId);
+            $cPropMatch = ((int)$c['properties_id']) === $propEntityId;
             $hasDayInMonth = $c['contract_start'] <= $lastDayOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth);
             if ($cPropMatch && $hasDayInMonth) {
-                $contract = $c;
-                break;
+                $candidates[] = $c;
             }
+        }
+        // Preferovat aktivní smlouvu (contract_end IS NULL), pak podle data konce sestupně
+        if (count($candidates) > 0) {
+            usort($candidates, function ($a, $b) {
+                $aEnd = $a['contract_end'] ?? '';
+                $bEnd = $b['contract_end'] ?? '';
+                if ($aEnd === '' && $bEnd !== '') return -1;
+                if ($aEnd !== '' && $bEnd === '') return 1;
+                if ($aEnd === '' && $bEnd === '') return 0;
+                return strcmp($bEnd, $aEnd); // novější konec první
+            });
+            $contract = $candidates[0];
         }
 
         if (!$contract) {
@@ -332,7 +363,9 @@ foreach ($properties as $p) {
             $entityId = $contract['contracts_id'] ?? $contract['id'];
             $paid = $paymentsByContract[$entityId][$monthKey] ?? null;
             $expectedRent = getExpectedRentForMonth($contract, $year, $m, $rentChangesByContract);
-            $expectedTotal = getExpectedTotalForMonth($contract, $year, $m, $rentChangesByContract, $paymentRequestsByContractMonth);
+            // Heatmapa: očekáváno = nájem vybrané smlouvy + všechny předpisy za nemovitost v daném měsíci (aby se neztratily např. energie u jiné smlouvy stejné nemovitosti)
+            $requestsForPropertyMonth = $paymentRequestsByPropertyMonth[$propEntityId][$monthKey] ?? 0.0;
+            $expectedTotal = round($expectedRent + $requestsForPropertyMonth, 2);
             $fullMonthRent = getRentForMonth((float)$contract['monthly_rent'], $entityId, $year, $m, $rentChangesByContract);
             $paidRent = $paid ? (float)($paid['amount_rent'] ?? $paid['amount'] ?? 0) : 0;
             $paidTotal = $paid ? (float)($paid['amount'] ?? 0) : 0;
