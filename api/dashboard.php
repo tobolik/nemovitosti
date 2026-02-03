@@ -124,14 +124,18 @@ $contractsForView = $showEnded ? $contracts : array_values(array_filter($contrac
     return empty($c['contract_end']) || $c['contract_end'] >= $today;
 }));
 
-// Součet neuhrazených požadavků podle smlouvy – do „očekáváno“ se započítají jen ty, které ještě nejsou zaplaceny
-// (uhrazený požadavek už je zastoupen platbou v total_paid, aby se nic neodečítalo dvakrát)
+// Očekáváno = nájem + jen neuhrazené požadavky (částka v DB může být kladná i záporná – výdej).
+// Uhrazený požadavek se nezapočítává, jeho vliv je v platbách.
 $paymentRequestsSumByContract = [];
-$allRequestsStmt = db()->query("SELECT contracts_id, type, amount FROM payment_requests WHERE valid_to IS NULL AND paid_at IS NULL");
+$allRequestsStmt = db()->query("
+    SELECT contracts_id, type, amount FROM payment_requests
+    WHERE valid_to IS NULL AND paid_at IS NULL
+");
 foreach ($allRequestsStmt->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
     $amt = (float)$pr['amount'];
-    if (($pr['type'] ?? '') === 'deposit_return') $amt = -$amt;
+    // Zpětná kompatibilita: staré deposit_return měly kladnou částku, v novém modelu je výdej záporný
+    if (($pr['type'] ?? '') === 'deposit_return' && $amt > 0) $amt = -$amt;
     $paymentRequestsSumByContract[$cid] = ($paymentRequestsSumByContract[$cid] ?? 0) + $amt;
 }
 foreach ($contracts as $c) {
@@ -263,7 +267,7 @@ foreach ($out as &$row) {
 }
 unset($row);
 
-// Předpisy s due_date (jen neuhrazené) – součet podle smlouvy a měsíce (pro očekávané v heatmapě)
+// Předpisy s due_date (jen neuhrazené) – součet podle smlouvy a měsíce pro heatmapu.
 $paymentRequestsByContractMonth = [];
 $stmtPrMonth = db()->query("
     SELECT contracts_id, due_date, amount, type
@@ -274,7 +278,7 @@ foreach ($stmtPrMonth->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
     $monthKey = date('Y-m', strtotime($pr['due_date']));
     $amt = (float)$pr['amount'];
-    if (($pr['type'] ?? '') === 'deposit_return') $amt = -$amt;
+    if (($pr['type'] ?? '') === 'deposit_return' && $amt > 0) $amt = -$amt;
     if (!isset($paymentRequestsByContractMonth[$cid])) {
         $paymentRequestsByContractMonth[$cid] = [];
     }

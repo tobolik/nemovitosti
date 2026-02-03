@@ -386,13 +386,13 @@ function initPaymentRequestModal() {
             const editIdEl = document.getElementById('pay-req-edit-id');
             const editId = (editIdEl && editIdEl.value) ? editIdEl.value.trim() : '';
             const cid = parseInt(contractSel.value, 10);
-            const amount = parseFloat(amountEl.value) || 0;
-            if (!cid || cid <= 0) {
-                if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Vyberte smlouvu.'; }
+            const amount = parseFloat(amountEl.value);
+            if (isNaN(amount) || amount === 0) {
+                if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Zadejte částku (kladnou = příjem, zápornou = výdej).'; }
                 return;
             }
-            if (amount <= 0) {
-                if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Zadejte kladnou částku.'; }
+            if (!cid || cid <= 0) {
+                if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Vyberte smlouvu.'; }
                 return;
             }
             const type = ['energy', 'settlement', 'other', 'deposit', 'deposit_return'].includes(typeEl.value) ? typeEl.value : 'energy';
@@ -579,7 +579,8 @@ async function openPaymentModal(el) {
         const payType = (reqType === 'deposit_return') ? 'deposit_return' : (['rent','deposit','energy','other'].includes(reqType) ? reqType : (reqType === 'settlement' ? 'other' : 'rent'));
         typeSelect.value = payType;
         setTypeWrapClass(typeSelect.value);
-        amount.value = reqType === 'deposit_return' ? -(parseFloat(el.dataset.amount) || 0) : (parseFloat(el.dataset.amount) || '');
+        const reqAmt = parseFloat(el.dataset.amount);
+        amount.value = (reqType === 'deposit_return' && reqAmt > 0) ? -reqAmt : (isNaN(reqAmt) ? '' : reqAmt);
     } else {
         typeSelect.value = 'rent';
         setTypeWrapClass('rent');

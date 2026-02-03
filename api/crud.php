@@ -311,7 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($table === 'payment_requests') {
             $data['type'] = in_array($data['type'] ?? 'energy', ['energy', 'settlement', 'other', 'deposit', 'deposit_return']) ? $data['type'] : 'energy';
             $data['amount'] = (float)($data['amount'] ?? 0);
-            if ($data['amount'] <= 0) jsonErr('Zadejte kladnou částku.');
+            if ($data['amount'] === 0.0) jsonErr('Zadejte částku (kladnou = příjem, zápornou = výdej).');
             $newId = softInsert($table, $data);
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'contracts') {
@@ -416,7 +416,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $dueDate = date('Y-m-d', strtotime($contractEnd . ' +14 days'));
                     softInsert('payment_requests', [
                         'contracts_id' => $entityId,
-                        'amount'      => $depositAmount,
+                        'amount'      => -$depositAmount,
                         'type'        => 'deposit_return',
                         'note'        => 'Vrácení kauce',
                         'due_date'    => $dueDate,
