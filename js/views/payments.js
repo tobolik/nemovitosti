@@ -26,8 +26,6 @@ const PaymentsView = (() => {
                 if (!values.contracts_id || values.contracts_id <= 0) return 'Vyberte smlouvu.';
                 const amt = parseFloat(values.amount);
                 if (isNaN(amt) || amt === 0) return 'Zadejte částku.';
-                const isDepositOrReturn = ['deposit', 'deposit_return'].includes(values.payment_type || 'rent');
-                if (!isDepositOrReturn && amt < 0) return 'U tohoto typu platby zadejte kladnou částku.';
                 if (!values.payment_date) return 'Vyplňte datum platby.';
                 if (!UI.isDateValid(values.payment_date)) return 'Datum platby: zadejte platné datum (např. únor má max. 29 dní).';
                 if (values.payment_method === 'account' && (!values.bank_accounts_id || values.bank_accounts_id <= 0)) return 'Vyberte bankovní účet.';

@@ -891,11 +891,6 @@ async function openPaymentModal(el) {
                     return;
                 }
                 const paymentType = ['rent','deposit','deposit_return','energy','other'].includes(typeSelect.value) ? typeSelect.value : 'rent';
-                const isDepositOrReturn = paymentType === 'deposit' || paymentType === 'deposit_return';
-                if (!isDepositOrReturn && amt < 0) {
-                    alert('Záporná částka je povolena jen u typu Kauce / Vrácení kauce.');
-                    return;
-                }
                 const method = methodSelect.value === 'account' || methodSelect.value === 'cash' ? methodSelect.value : 'account';
                 const accountId = method === 'account' ? Number(accountSelect.value || 0) : null;
                 if (method === 'account' && (!accountId || accountId <= 0)) {
