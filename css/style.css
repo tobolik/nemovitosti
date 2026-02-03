@@ -427,6 +427,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .tbl tr.pay-type-deposit { border-left: 3px solid rgba(59, 130, 246, .6); }
 .tbl tr.pay-type-energy { border-left: 3px solid rgba(34, 197, 94, .5); }
 .tbl tr.pay-type-other { border-left: 3px solid rgba(148, 163, 184, .5); }
+.tbl tr.tbl-total-row td { border-top: 2px solid rgba(255,255,255,.12); padding-top: 14px; }
 .td-act { display: flex; gap: 5px; justify-content: flex-end; white-space: nowrap; }
 .th-act { text-align: right; }
 

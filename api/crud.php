@@ -399,18 +399,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newId = softUpdate($table, $rowId, $data);
             $contractEnd = $data['contract_end'] ?? null;
             $depositAmount = isset($data['deposit_amount']) ? (float)$data['deposit_amount'] : 0;
+            $depositReturnDate = isset($data['deposit_return_date']) && $data['deposit_return_date'] !== '' ? trim($data['deposit_return_date']) : null;
+            $hadDepositReturnDate = isset($row['deposit_return_date']) && $row['deposit_return_date'] !== '' && $row['deposit_return_date'] !== null;
+
             if ($contractEnd !== null && $contractEnd !== '' && $depositAmount > 0) {
                 $st = db()->prepare("SELECT id FROM payment_requests WHERE contracts_id = ? AND type = 'deposit_return' AND valid_to IS NULL");
                 $st->execute([$entityId]);
                 if ($st->fetch() === false) {
+                    $dueDate = date('Y-m-d', strtotime($contractEnd . ' +14 days'));
                     softInsert('payment_requests', [
                         'contracts_id' => $entityId,
                         'amount'      => $depositAmount,
                         'type'        => 'deposit_return',
                         'note'        => 'Vrácení kauce',
+                        'due_date'    => $dueDate,
                     ]);
                 }
             }
+
+            // Při vyplnění data vrácení kauce vytvořit platbu (záporná částka, typ Kauce)
+            if ($depositReturnDate !== null && !$hadDepositReturnDate && $depositAmount > 0) {
+                $ym = date_parse($depositReturnDate);
+                $periodYear = $ym['year'] ?? (int)date('Y');
+                $periodMonth = $ym['month'] ?? (int)date('n');
+                if ($periodMonth < 1 || $periodMonth > 12) $periodMonth = (int)date('n');
+                $st = db()->prepare("SELECT id FROM payments WHERE contracts_id = ? AND payment_type = 'deposit' AND amount < 0 AND payment_date = ? AND valid_to IS NULL");
+                $st->execute([$entityId, $depositReturnDate]);
+                if ($st->fetch() === false) {
+                    softInsert('payments', [
+                        'contracts_id'   => $entityId,
+                        'period_year'    => $periodYear,
+                        'period_month'   => $periodMonth,
+                        'amount'         => -$depositAmount,
+                        'payment_date'   => $depositReturnDate,
+                        'payment_type'   => 'deposit',
+                        'note'           => 'Vrácení kauce',
+                        'payment_method' => null,
+                        'bank_accounts_id' => null,
+                    ]);
+                }
+            }
+
             jsonOk(findActive($table, $newId));
         } else {
             $newId = softUpdate($table, $rowId, $data);

@@ -312,6 +312,21 @@ const PaymentsView = (() => {
             },
             { emptyMsg: filterContractId ? 'Žádné platby pro tuto smlouvu.' : 'Žádné platby.' }
         );
+
+        if (data.length > 0) {
+            const sum = data.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+            const table = document.getElementById('pay-table').querySelector('table');
+            if (table) {
+                const tfoot = document.createElement('tfoot');
+                tfoot.innerHTML =
+                    '<tr class="tbl-total-row">' +
+                    '<td colspan="3"><strong>Celkem</strong></td>' +
+                    '<td><strong>' + UI.fmt(sum) + ' Kč</strong></td>' +
+                    '<td colspan="5" class="col-hide-mobile"></td>' +
+                    '</tr>';
+                table.appendChild(tfoot);
+            }
+        }
     }
 
     // ── exposed actions ─────────────────────────────────────────────────
