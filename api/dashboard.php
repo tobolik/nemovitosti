@@ -227,7 +227,8 @@ foreach ($properties as $p) {
 
         $contract = null;
         $propEntityId = $p['properties_id'] ?? $p['id'];
-        foreach ($contractsForView as $c) {
+        // Kalendář vždy zobrazuje všechny smlouvy (včetně skončených) – historicky kompletní
+        foreach ($contracts as $c) {
             $cPropMatch = ($c['properties_id'] == $propEntityId);
             $hasDayInMonth = $c['contract_start'] <= $lastDayOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth);
             if ($cPropMatch && $hasDayInMonth) {
@@ -403,7 +404,7 @@ if ($extended) {
     $monthlyChart = array_reverse($monthlyChart);
 }
 
-// Součty za jednotlivé měsíce roku (pro řádek pod heatmapou) + celkový součet roku
+// Součty za jednotlivé měsíce roku (pro řádek pod heatmapou) + celkový součet roku – vždy všechny smlouvy
 $monthlyTotals = [];
 $yearTotalExpected = 0;
 $yearTotalActual = 0;
@@ -413,7 +414,7 @@ for ($m = 1; $m <= 12; $m++) {
     $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
     $expected = 0;
     $actual = 0;
-    foreach ($contractsForView as $c) {
+    foreach ($contracts as $c) {
         if ($c['contract_start'] <= $lastDayOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth)) {
             $expected += getExpectedRentForMonth($c, $year, $m, $rentChangesByContract);
             $entityId = $c['contracts_id'] ?? $c['id'];
