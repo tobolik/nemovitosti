@@ -116,7 +116,10 @@ const ContractsView = (() => {
                 const due = pr.due_date ? UI.fmtDate(pr.due_date) : '—';
                 const note = (pr.note || '').trim() ? UI.esc(pr.note) : '—';
                 const prId = pr.payment_requests_id ?? pr.id;
-                const paid = pr.paid_at ? ' <span class="badge badge-ok">uhrazeno</span>' : '';
+                const paidAtFormatted = pr.paid_at ? UI.fmtDate(pr.paid_at) : '';
+                const paid = pr.paid_at
+                    ? ' <span class="badge badge-ok" title="Uhrazeno ' + (paidAtFormatted ? paidAtFormatted : '') + '">uhrazeno' + (paidAtFormatted ? ' (' + paidAtFormatted + ')' : '') + '</span>'
+                    : '';
                 html += '<tr><td>' + UI.esc(typeLabel) + paid + '</td><td>' + amt + ' Kč</td><td>' + due + '</td><td class="col-note">' + note + '</td><td class="td-act">' +
                     '<button type="button" class="btn btn-ghost btn-sm btn-edit-pay-req" data-pr-id="' + prId + '">Upravit</button> ' +
                     '<button type="button" class="btn btn-danger btn-sm btn-del-pay-req" data-pr-id="' + prId + '">Smazat</button></td></tr>';
@@ -359,8 +362,9 @@ const ContractsView = (() => {
             ],
             data,
             (c) => {
-                const contractLink = c.contract_url
-                    ? '<a href="' + UI.esc(c.contract_url) + '" target="_blank" rel="noopener" title="Otevřít nájemní smlouvu (PDF)">📄</a>'
+                const contractUrl = c.contract_url;
+                const contractLink = contractUrl
+                    ? '<a href="' + UI.esc(contractUrl) + '" target="_blank" rel="noopener" class="contract-preview-trigger" data-url="' + UI.esc(contractUrl) + '" title="Náhled nájemní smlouvy (najeď myší)">📄</a>'
                     : '<span style="color:var(--txt3)">—</span>';
                 const dep = parseFloat(c.deposit_amount) || 0;
                 const depReturned = c.deposit_return_date;

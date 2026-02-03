@@ -21,6 +21,69 @@ const UI = (() => {
         return d.toLocaleDateString('cs-CZ');
     }
 
+    /** Google Drive URL → preview embed URL, jinak null. */
+    function getDrivePreviewUrl(url) {
+        if (!url || typeof url !== 'string') return null;
+        const m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        return m ? 'https://drive.google.com/file/d/' + m[1] + '/preview' : null;
+    }
+
+    /** Jednorázová inicializace náhledu smlouvy (PDF) při hoveru – delegace na document.body. */
+    let _contractPreviewInited = false;
+    function initContractPreview() {
+        if (_contractPreviewInited) return;
+        _contractPreviewInited = true;
+        let popover = document.getElementById('contract-preview-popover');
+        if (!popover) {
+            popover = document.createElement('div');
+            popover.id = 'contract-preview-popover';
+            popover.className = 'contract-preview-popover';
+            document.body.appendChild(popover);
+        }
+        let hideTimer = null;
+        function scheduleHide() {
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(() => popover.classList.remove('show'), 350);
+        }
+        function cancelHide() {
+            clearTimeout(hideTimer);
+            hideTimer = null;
+        }
+        document.body.addEventListener('mouseover', (e) => {
+            const trigger = e.target.closest('.contract-preview-trigger');
+            if (!trigger) return;
+            if (e.relatedTarget && trigger.contains(e.relatedTarget)) return;
+            cancelHide();
+            const url = trigger.getAttribute('data-url') || trigger.href || '';
+            const previewUrl = getDrivePreviewUrl(url);
+            if (previewUrl) {
+                popover.innerHTML = '<iframe src="' + esc(previewUrl) + '" title="Náhled dokumentu"></iframe>';
+                popover.classList.add('has-iframe');
+            } else {
+                popover.innerHTML = '<p class="contract-preview-fallback">Náhled není k dispozici.</p><a href="' + esc(url) + '" target="_blank" rel="noopener">Otevřít dokument</a>';
+                popover.classList.remove('has-iframe');
+            }
+            const rect = trigger.getBoundingClientRect();
+            const pw = 420, ph = 320;
+            let left = rect.left, top = rect.bottom + 6;
+            if (left + pw > window.innerWidth) left = window.innerWidth - pw - 8;
+            if (left < 8) left = 8;
+            if (top + ph > window.innerHeight - 8) top = Math.max(8, rect.top - ph - 6);
+            popover.style.width = pw + 'px';
+            popover.style.height = ph + 'px';
+            popover.style.left = left + 'px';
+            popover.style.top = top + 'px';
+            popover.classList.add('show');
+        }, true);
+        document.body.addEventListener('mouseout', (e) => {
+            if (!e.target.closest('.contract-preview-trigger')) return;
+            if (e.relatedTarget && (e.relatedTarget.closest('.contract-preview-popover') || e.relatedTarget.closest('.contract-preview-trigger'))) return;
+            scheduleHide();
+        }, true);
+        popover.addEventListener('mouseenter', cancelHide);
+        popover.addEventListener('mouseleave', () => scheduleHide());
+    }
+
     /** Ověří, zda řetězec YYYY-MM-DD představuje platné datum (např. 31.2. odmítne). */
     function isDateValid(str) {
         if (!str || typeof str !== 'string') return false;
@@ -215,5 +278,7 @@ const UI = (() => {
         renderTable,
         createCrudForm,
         confirmDelete,
+        getDrivePreviewUrl,
+        initContractPreview,
     };
 })();

@@ -71,6 +71,8 @@ const App = (() => {
             AddressAutocomplete.create('ten-address');
             AddressAutocomplete.create('modal-tenant-address');
         }
+        // Náhled smlouvy (PDF) při hoveru – kupní i nájemní
+        if (typeof UI !== 'undefined' && UI.initContractPreview) UI.initContractPreview();
         // Sidebar: collapsed on mobile
         const sb = document.getElementById('sidebar');
         if (window.innerWidth <= 768) sb.classList.add('collapsed');
