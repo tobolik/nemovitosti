@@ -326,7 +326,7 @@ const ContractsView = (() => {
                     '<td>' + UI.fmt(c.monthly_rent) + ' Kč</td>' +
                     '<td class="col-hide-mobile">' + depositCell + '</td>' +
                     '<td class="col-hide-mobile">' + contractLink + '</td>' +
-                    '<td class="col-hide-mobile">' + (c.note ? UI.esc(c.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
+                    '<td class="col-note col-hide-mobile">' + (c.note ? UI.esc(c.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +
                         '<button class="btn btn-ghost btn-sm" onclick="ContractsView.edit(' + (c.contracts_id ?? c.id) + ')">Úprava</button>' +
                         '<button class="btn btn-ghost btn-sm" onclick="PaymentsView.navigateWithFilter(' + (c.contracts_id ?? c.id) + ')">Platby</button>' +

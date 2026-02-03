@@ -415,6 +415,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   white-space: nowrap;
 }
 .tbl td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.06); vertical-align: middle; }
+.tbl td.col-address,
+.tbl td.col-note { max-width: 240px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.35; }
 .tbl tbody tr:last-child td { border-bottom: none; }
 .tbl tbody tr { transition: background .12s; }
 .tbl tbody tr:hover { background: var(--glass-hover); }
@@ -750,6 +752,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   background-repeat: no-repeat;
   background-position: right 9px center;
 }
+/* Rolětka filtru smluv – širší, aby byl dlouhý text (nájemník – nemovitost) čitelný */
+#pay-filter-contract { min-width: 360px; max-width: min(100%, 560px); }
 
 /* ============================================================
    MODAL

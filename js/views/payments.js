@@ -242,13 +242,12 @@ const PaymentsView = (() => {
             ).join('');
         document.getElementById('pay-contract').innerHTML = opts;
 
-        // Filter dropdown
+        // Filter dropdown – title u každé option pro tooltip (celý text při zkrácení)
         const fOpts = '<option value="">— Všechny smlouvy —</option>' +
-            contractsCache.map(c =>
-                '<option value="' + cid(c) + '"' + (filterContractId === cid(c) ? ' selected' : '') + '>' +
-                    UI.esc(c.tenant_name) + ' – ' + UI.esc(c.property_name) +
-                '</option>'
-            ).join('');
+            contractsCache.map(c => {
+                const label = UI.esc(c.tenant_name) + ' – ' + UI.esc(c.property_name);
+                return '<option value="' + cid(c) + '" title="' + label + '"' + (filterContractId === cid(c) ? ' selected' : '') + '>' + label + '</option>';
+            }).join('');
         document.getElementById('pay-filter-contract').innerHTML = fOpts;
         updateYearSelects();
     }
@@ -304,7 +303,7 @@ const PaymentsView = (() => {
                     '<td class="col-hide-mobile">' + UI.esc(p.payment_date) + '</td>' +
                     '<td class="col-hide-mobile">' + UI.esc(methodLabel) + '</td>' +
                     '<td class="col-hide-mobile">' + diffHtml + '</td>' +
-                    '<td class="col-hide-mobile">' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
+                    '<td class="col-note col-hide-mobile">' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +
                         '<button class="btn btn-ghost btn-sm" onclick="PaymentsView.edit(' + p.id + ')">Úprava</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="PaymentsView.del(' + p.id + ')">Smazat</button>' +
