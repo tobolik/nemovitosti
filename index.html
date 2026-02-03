@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=1.1.33">
+<link rel="stylesheet" href="css/style.css?v=1.1.36">
 </head>
 <body>
 
@@ -366,7 +366,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v1.1.33</span>
+    <span class="footer-version">v1.1.36</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -461,7 +461,7 @@
     <div class="alert" id="pay-req-alert"></div>
     <div class="fg"><label>Smlouva (nájemník + nemovitost) *</label><select id="pay-req-contract"><option value="">— Vyberte —</option></select></div>
     <div class="fg"><label>Částka (Kč) *</label><input type="number" id="pay-req-amount" step="0.01" min="0.01"></div>
-    <div class="fg"><label>Typ</label><select id="pay-req-type"><option value="energy">Doplatek energie</option><option value="settlement">Vyúčtování</option><option value="other">Jiné</option></select></div>
+    <div class="fg"><label>Typ</label><select id="pay-req-type"><option value="energy">Doplatek energie</option><option value="settlement">Vyúčtování</option><option value="deposit">Kauce</option><option value="deposit_return">Vrácení kauce</option><option value="other">Jiné</option></select></div>
     <div class="fg"><label>Splatnost (volitelně)</label><input type="date" id="pay-req-due-date"></div>
     <div class="fg"><label>Poznámka</label><input type="text" id="pay-req-note" placeholder="např. Vyúčtování 2025"></div>
     <div class="form-actions">
@@ -533,16 +533,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=1.1.33"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=1.1.33"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=1.1.33"></script>
-<script src="js/app.js?v=1.1.33"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=1.1.33"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=1.1.33"></script>
-<script src="js/views/tenants.js?v=1.1.33"></script>
-<script src="js/views/contracts.js?v=1.1.33"></script>
-<script src="js/views/payments.js?v=1.1.33"></script>
-<script src="js/views/bank_accounts.js?v=1.1.33"></script>
-<script src="js/views/users.js?v=1.1.33"></script>
+<script src="js/api.js?v=1.1.36"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=1.1.36"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=1.1.36"></script>
+<script src="js/app.js?v=1.1.36"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=1.1.36"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=1.1.36"></script>
+<script src="js/views/tenants.js?v=1.1.36"></script>
+<script src="js/views/contracts.js?v=1.1.36"></script>
+<script src="js/views/payments.js?v=1.1.36"></script>
+<script src="js/views/bank_accounts.js?v=1.1.36"></script>
+<script src="js/views/users.js?v=1.1.36"></script>
 </body>
 </html>

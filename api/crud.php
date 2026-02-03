@@ -204,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($e) jsonErr($e);
     }
     if ($table === 'payment_requests' && isset($data['type'])) {
-        if (!in_array($data['type'], ['energy', 'settlement', 'other'], true)) {
+        if (!in_array($data['type'], ['energy', 'settlement', 'other', 'deposit', 'deposit_return'], true)) {
             $data['type'] = 'energy';
         }
     }
@@ -305,10 +305,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'payment_requests') {
-            $data['type'] = in_array($data['type'] ?? 'energy', ['energy', 'settlement', 'other']) ? $data['type'] : 'energy';
+            $data['type'] = in_array($data['type'] ?? 'energy', ['energy', 'settlement', 'other', 'deposit', 'deposit_return']) ? $data['type'] : 'energy';
             $data['amount'] = (float)($data['amount'] ?? 0);
             if ($data['amount'] <= 0) jsonErr('Zadejte kladnou částku.');
             $newId = softInsert($table, $data);
+            jsonOk(findActive($table, $newId), 201);
+        } elseif ($table === 'contracts') {
+            $depositAmount = isset($data['deposit_amount']) ? (float)$data['deposit_amount'] : 0;
+            $newId = softInsert($table, $data);
+            $newContract = findActive($table, $newId);
+            $contractsId = (int)($newContract['contracts_id'] ?? $newContract['id']);
+            if ($depositAmount > 0 && $contractsId > 0) {
+                softInsert('payment_requests', [
+                    'contracts_id' => $contractsId,
+                    'amount'       => $depositAmount,
+                    'type'         => 'deposit',
+                    'note'         => 'Kauce',
+                ]);
+            }
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'bank_accounts') {
             if (isset($data['is_primary']) && (int)$data['is_primary'] === 1) {
@@ -380,6 +394,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'amount'        => (float)$data['amount'],
                 'effective_from'=> $data['effective_from'],
             ]);
+            jsonOk(findActive($table, $newId));
+        } elseif ($table === 'contracts') {
+            $newId = softUpdate($table, $rowId, $data);
+            $contractEnd = $data['contract_end'] ?? null;
+            $depositAmount = isset($data['deposit_amount']) ? (float)$data['deposit_amount'] : 0;
+            if ($contractEnd !== null && $contractEnd !== '' && $depositAmount > 0) {
+                $st = db()->prepare("SELECT id FROM payment_requests WHERE contracts_id = ? AND type = 'deposit_return' AND valid_to IS NULL");
+                $st->execute([$entityId]);
+                if ($st->fetch() === false) {
+                    softInsert('payment_requests', [
+                        'contracts_id' => $entityId,
+                        'amount'      => $depositAmount,
+                        'type'        => 'deposit_return',
+                        'note'        => 'Vrácení kauce',
+                    ]);
+                }
+            }
             jsonOk(findActive($table, $newId));
         } else {
             $newId = softUpdate($table, $rowId, $data);

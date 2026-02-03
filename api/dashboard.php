@@ -204,6 +204,7 @@ foreach ($contractsForView as $c) {
         'expected_months'=> $expected,
         'expected_total' => $expTotal,
         'total_paid'     => $totPaid,
+        'total_paid_rent'=> $totPaidRent,
         'balance'        => $balance,
         'status_type'    => $statusType,
         'unpaid_months'  => $unpaid,

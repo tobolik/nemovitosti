@@ -266,7 +266,8 @@ async function loadDashboard(year) {
         ],
         contracts,
         (d) => {
-            let pct = d.expected_total > 0 ? Math.min(100, (d.total_paid / d.expected_total) * 100) : 100;
+            const paidRent = d.total_paid_rent != null ? d.total_paid_rent : d.total_paid;
+            let pct = d.expected_total > 0 ? Math.min(100, (paidRent / d.expected_total) * 100) : 100;
             const hasDbt = d.balance > 0;
             const now = new Date();
             const currentY = now.getFullYear();
@@ -278,10 +279,13 @@ async function loadDashboard(year) {
             const hoverInfo = [];
             if (depAmt > 0) hoverInfo.push('Kauce: ' + UI.fmt(depAmt) + ' Kč' + (d.deposit_to_return ? ' (k vrácení)' : ''));
             hoverInfo.push(hasDbt ? (hasHistoricalArrear ? 'Stav: Nedoplatek (historický)' : 'Stav: Aktuální měsíc neuhrazen') : 'Stav: V pořádku');
-            const progTitle = hoverInfo.length ? hoverInfo.join(' | ') : '';
+            let progTitle = hoverInfo.length ? hoverInfo.join(' | ') : '';
+            if (d.total_paid != null && d.total_paid_rent != null && Math.abs(d.total_paid - d.total_paid_rent) > 0.01) {
+                progTitle = (progTitle ? progTitle + ' | ' : '') + 'Celkem včetně energií atd.: ' + UI.fmt(d.total_paid) + ' Kč';
+            }
 
             let tags = '';
-            const requestTypeLabels = { energy: 'Energie', settlement: 'Vyúčt.', other: 'Jiné' };
+            const requestTypeLabels = { energy: 'Energie', settlement: 'Vyúčt.', deposit: 'Kauce', deposit_return: 'Vrác. kauce', other: 'Jiné' };
             (d.unpaid_months || []).forEach(u => {
                 const tenant = (d.tenant_name || '').replace(/"/g, '&quot;');
                 const prop = (d.property_name || '').replace(/"/g, '&quot;');
@@ -314,7 +318,7 @@ async function loadDashboard(year) {
                 '<td' + propLink + '>' + UI.esc(d.property_name) + '</td>' +
                 '<td' + contractLink + '>' + UI.fmt(d.monthly_rent) + ' Kč</td>' +
                 '<td' + paymentsLink + '><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill ' + progClass + '" style="width:' + Math.round(pct) + '%"></div></div>' +
-                '<span class="prog-lbl">' + UI.fmt(d.total_paid) + ' / ' + UI.fmt(d.expected_total) + ' Kč</span></div></td>' +
+                '<span class="prog-lbl" title="' + UI.esc(progTitle || '') + '">' + UI.fmt(paidRent) + ' / ' + UI.fmt(d.expected_total) + ' Kč</span></div></td>' +
                 '<td class="dash-unpaid-cell">' + tagsHtml + '</td>'
             );
         },
@@ -374,7 +378,7 @@ function initPaymentRequestModal() {
                 if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Zadejte kladnou částku.'; }
                 return;
             }
-            const type = ['energy', 'settlement', 'other'].includes(typeEl.value) ? typeEl.value : 'energy';
+            const type = ['energy', 'settlement', 'other', 'deposit', 'deposit_return'].includes(typeEl.value) ? typeEl.value : 'energy';
             const dueDate = dueDateEl && dueDateEl.value ? dueDateEl.value.trim() : null;
             btnSave.disabled = true;
             try {
@@ -513,7 +517,8 @@ async function openPaymentModal(el) {
     if (paymentRequestId) {
         document.getElementById('pay-modal-payment-request-id').value = paymentRequestId;
         const reqType = (el.dataset.requestType || 'energy');
-        typeSelect.value = reqType === 'settlement' ? 'other' : reqType;
+        const payType = (reqType === 'deposit_return') ? 'deposit' : (['rent','deposit','energy','other'].includes(reqType) ? reqType : (reqType === 'settlement' ? 'other' : 'rent'));
+        typeSelect.value = payType;
         setTypeWrapClass(typeSelect.value);
         amount.value = parseFloat(el.dataset.amount) || '';
     } else {
