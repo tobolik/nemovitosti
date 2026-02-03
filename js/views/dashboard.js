@@ -558,7 +558,7 @@ async function openPaymentModal(el) {
         const p = forMonth[0];
         const method = p.payment_method || 'account';
         const pt = p.payment_type || 'rent';
-        editIdEl.value = String(p.payments_id ?? p.id || '');
+        editIdEl.value = String((p.payments_id ?? p.id) || '');
         editIdEl.dataset.batchId = String(p.payment_batch_id || '');
         editIdEl.dataset.originalAmount = String(p.amount ?? '');
         amount.value = p.amount ?? '';
