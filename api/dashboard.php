@@ -33,6 +33,14 @@ foreach ($rentChangesRaw as $rc) {
     if (!isset($rentChangesByContract[$cid])) $rentChangesByContract[$cid] = [];
     $rentChangesByContract[$cid][] = $rc;
 }
+// Indexovat i pod řádkovým id smlouvy (c.id), aby heatmapa našla změny i když frontend ukládá contracts_id = row.id
+foreach ($contracts as $c) {
+    $eid = (int)($c['contracts_id'] ?? $c['id']);
+    $rid = (int)$c['id'];
+    if ($eid !== $rid && isset($rentChangesByContract[$eid]) && !isset($rentChangesByContract[$rid])) {
+        $rentChangesByContract[$rid] = $rentChangesByContract[$eid];
+    }
+}
 
 /**
  * Očekávaná částka za měsíc: pokud je uložena first_month_rent a jde o první (poměrný) měsíc, použije se;

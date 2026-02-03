@@ -85,6 +85,7 @@ const TenantsView = (() => {
                 document.getElementById('ten-address').value = row.address || '';
                 document.getElementById('ten-ic').value      = row.ic      || '';
                 document.getElementById('ten-dic').value     = row.dic     || '';
+                document.getElementById('ten-edit-id').value = String(row.tenants_id ?? row.id);
                 document.getElementById('ten-note').value    = row.note    || '';
                 const wrap = document.getElementById('ten-ares-wrap');
                 if (wrap) wrap.style.display = (row.type === 'company') ? 'block' : 'none';
@@ -144,7 +145,7 @@ const TenantsView = (() => {
     }
 
     function edit(id) {
-        const row = _cache.find(r => r.id === id);
+        const row = _cache.find(r => (r.tenants_id ?? r.id) == id);
         if (row) form.startEdit(row);
     }
 

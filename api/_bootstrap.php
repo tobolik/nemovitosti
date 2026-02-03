@@ -169,7 +169,8 @@ function getRentForMonth(float $baseRent, int $contractsId, int $y, int $m, arra
     $changes = $rentChangesByContract[$contractsId] ?? [];
     $applicable = null;
     foreach ($changes as $ch) {
-        if ($ch['effective_from'] <= $firstOfMonth) {
+        $effFrom = substr((string)($ch['effective_from'] ?? ''), 0, 10);
+        if ($effFrom !== '' && $effFrom <= $firstOfMonth) {
             $applicable = (float)$ch['amount'];
         }
     }

@@ -72,7 +72,7 @@ async function loadDashboard(year) {
             let endingSoonHtml = '';
             if (es.contracts_ending_soon && es.contracts_ending_soon.length) {
                 endingSoonHtml = es.contracts_ending_soon.map(function (x) {
-                    return '<a href="#" class="dash-link" onclick="DashboardView.openEdit(\'contracts\',' + x.id + '); return false;">' + UI.esc(x.tenant_name) + ' – ' + UI.esc(x.property_name) + ' (do ' + (x.contract_end ? UI.fmtDate(x.contract_end) : '') + ')</a>';
+                    return '<a href="#" class="dash-link" onclick="DashboardView.openEdit(\'contracts\',' + (x.contracts_id ?? x.id) + '); return false;">' + UI.esc(x.tenant_name) + ' – ' + UI.esc(x.property_name) + ' (do ' + (x.contract_end ? UI.fmtDate(x.contract_end) : '') + ')</a>';
                 }).join('<br>');
             } else {
                 endingSoonHtml = '<span style="color:var(--txt3)">Žádné</span>';
@@ -197,9 +197,10 @@ async function loadDashboard(year) {
 
                 if (cell.type === 'empty' && isBeforePurchase) cls += ' heatmap-cell-before-purchase';
 
+                const contractEntityId = cell.contract.contracts_id ?? cell.contract.id;
                 const dataAttrs = cell.type !== 'empty'
-                    ? ' data-contract-id="' + cell.contract.id + '" data-contracts-id="' + (cell.contract.contracts_id ?? cell.contract.id) + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (cell.contract.tenant_name || '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"'
-                    : ' data-property-id="' + prop.id + '" data-month-key="' + monthKey + '"';
+                    ? ' data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (cell.contract.tenant_name || '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"'
+                    : ' data-property-id="' + (prop.properties_id ?? prop.id) + '" data-month-key="' + monthKey + '"';
 
                 let titleAttr = '';
                 if (cell.type !== 'empty' && cell.payment_details && cell.payment_details.length > 0) {
@@ -292,15 +293,16 @@ async function loadDashboard(year) {
                 const prop = (d.property_name || '').replace(/"/g, '&quot;');
                 const typeLabel = requestTypeLabels[pr.type] || pr.type;
                 tags += '<span class="tag tag-request">' + typeLabel + ' ' + UI.fmt(pr.amount) + ' Kč' +
-                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-amount="' + (pr.amount || 0) + '" data-request-type="' + (pr.type || 'energy') + '" data-payment-request-id="' + pr.id + '" data-tenant="' + tenant + '" data-property="' + prop + '" title="Zapsat platbu">+</span></span>';
+                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-amount="' + (pr.amount || 0) + '" data-request-type="' + (pr.type || 'energy') + '" data-payment-request-id="' + (pr.payment_requests_id ?? pr.id) + '" data-tenant="' + tenant + '" data-property="' + prop + '" title="Zapsat platbu">+</span></span>';
             });
             const tagsHtml = tags ? '<span class="tags dash-unpaid-tags">' + tags + '</span>' : '<span style="color:var(--txt3)">—</span>';
 
-            const tenantId = d.tenant_row_id || d.tenants_id;
-            const propId = d.property_row_id || d.properties_id;
+            const tenantId = d.tenants_id ?? d.tenant_row_id;
+            const propId = d.properties_id ?? d.property_row_id;
+            const contractEntityId = d.contracts_id ?? d.id;
             const tenantLink = tenantId ? ' onclick="DashboardView.openEdit(\'tenants\',' + tenantId + ')" class="dash-link" title="Upravit nájemníka"' : '';
             const propLink = propId ? ' onclick="DashboardView.openEdit(\'properties\',' + propId + ')" class="dash-link" title="Upravit nemovitost"' : '';
-            const contractLink = d.id ? ' onclick="DashboardView.openEdit(\'contracts\',' + d.id + ')" class="dash-link" title="Upravit smlouvu"' : '';
+            const contractLink = contractEntityId ? ' onclick="DashboardView.openEdit(\'contracts\',' + contractEntityId + ')" class="dash-link" title="Upravit smlouvu"' : '';
             const paymentsTitle = progTitle || 'Klikni pro platby';
             const paymentsLink = ' onclick="PaymentsView.navigateWithFilter(' + d.contracts_id + ')" class="dash-link" title="' + UI.esc(paymentsTitle) + '"';
 
@@ -344,6 +346,8 @@ function initPaymentRequestModal() {
         amountEl.value = '';
         typeEl.value = 'energy';
         noteEl.value = '';
+        const dueDateEl = document.getElementById('pay-req-due-date');
+        if (dueDateEl) dueDateEl.value = '';
         UI.modalOpen('modal-payment-request');
     });
 
@@ -355,6 +359,7 @@ function initPaymentRequestModal() {
             const amountEl = document.getElementById('pay-req-amount');
             const typeEl = document.getElementById('pay-req-type');
             const noteEl = document.getElementById('pay-req-note');
+            const dueDateEl = document.getElementById('pay-req-due-date');
             const alertEl = document.getElementById('pay-req-alert');
             const cid = parseInt(contractSel.value, 10);
             const amount = parseFloat(amountEl.value) || 0;
@@ -367,6 +372,7 @@ function initPaymentRequestModal() {
                 return;
             }
             const type = ['energy', 'settlement', 'other'].includes(typeEl.value) ? typeEl.value : 'energy';
+            const dueDate = dueDateEl && dueDateEl.value ? dueDateEl.value.trim() : null;
             btnSave.disabled = true;
             try {
                 await Api.crudAdd('payment_requests', {
@@ -374,6 +380,7 @@ function initPaymentRequestModal() {
                     amount: amount,
                     type: type,
                     note: (noteEl.value || '').trim() || null,
+                    due_date: dueDate,
                 });
                 UI.modalClose('modal-payment-request');
                 const yearBtn = document.querySelector('#dash-year .heatmap-year-btn.active');
@@ -535,10 +542,11 @@ async function openPaymentModal(el) {
             const typeLabel = typeLabels[pt] || 'Nájem';
             const typeBadge = '<span class="pay-modal-type-badge pay-type-' + pt + '">' + UI.esc(typeLabel) + '</span>';
             const batchTag = p.payment_batch_id ? ' <span class="tag tag-batch" title="Součást jedné platby za více měsíců">dávka</span>' : '';
+            const payEntityId = p.payments_id ?? p.id;
             html += '<li class="pay-modal-existing-item">' +
                 '<span>' + typeBadge + ' ' + amt + ' Kč (' + dt + ')' + batchTag + '</span> ' +
-                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + p.id + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '">Upravit</button> ' +
-                '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + p.id + '" data-batch-id="' + (p.payment_batch_id || '') + '">Smazat</button>' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '">Upravit</button> ' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + payEntityId + '" data-batch-id="' + (p.payment_batch_id || '') + '">Smazat</button>' +
                 '</li>';
         });
         html += '</ul><div class="pay-modal-add-link"><a href="#" data-action="add">+ Přidat novou platbu</a></div>';
@@ -550,7 +558,7 @@ async function openPaymentModal(el) {
         const p = forMonth[0];
         const method = p.payment_method || 'account';
         const pt = p.payment_type || 'rent';
-        editIdEl.value = String(p.id || '');
+        editIdEl.value = String(p.payments_id ?? p.id || '');
         editIdEl.dataset.batchId = String(p.payment_batch_id || '');
         editIdEl.dataset.originalAmount = String(p.amount ?? '');
         amount.value = p.amount ?? '';

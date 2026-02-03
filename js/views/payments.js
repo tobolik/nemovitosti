@@ -62,6 +62,7 @@ const PaymentsView = (() => {
                 return base;
             },
             fillForm(row) {
+                document.getElementById('pay-edit-id').value = String(row.payments_id ?? row.id);
                 document.getElementById('pay-contract').value = row.contracts_id || '';
                 document.getElementById('pay-type').value    = row.payment_type || 'rent';
                 document.getElementById('pay-year').value     = row.period_year  || '';
@@ -318,7 +319,7 @@ const PaymentsView = (() => {
     let _payCache = [];
 
     function edit(id) {
-        const row = _payCache.find(r => r.id === id);
+        const row = _payCache.find(r => (r.payments_id ?? r.id) == id);
         if (row) form.startEdit(row);
     }
 

@@ -40,6 +40,7 @@ const PropertiesView = (() => {
                 };
             },
             fillForm(row) {
+                document.getElementById('prop-edit-id').value = String(row.properties_id ?? row.id);
                 document.getElementById('prop-name').value                   = row.name                   || '';
                 document.getElementById('prop-address').value                = row.address                || '';
                 document.getElementById('prop-size-m2').value                 = row.size_m2                || '';
@@ -106,7 +107,7 @@ const PropertiesView = (() => {
     let _cache = [];
 
     function edit(id) {
-        const row = _cache.find(r => r.id === id);
+        const row = _cache.find(r => (r.properties_id ?? r.id) == id);
         if (row) form.startEdit(row);
     }
 

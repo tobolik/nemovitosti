@@ -108,9 +108,10 @@ const ContractsView = (() => {
             data.forEach(rc => {
                 const dt = rc.effective_from ? UI.fmtDate(rc.effective_from) : '—';
                 const amt = UI.fmt(rc.amount ?? 0);
+                const rcEntityId = rc.contract_rent_changes_id ?? rc.id;
                 html += '<tr><td>' + dt + '</td><td>' + amt + '</td><td class="td-act">' +
-                    '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + rc.id + '" data-effective="' + (rc.effective_from || '') + '" data-amount="' + (rc.amount ?? '') + '">Upravit</button> ' +
-                    '<button type="button" class="btn btn-danger btn-sm" data-action="del" data-id="' + rc.id + '">Smazat</button></td></tr>';
+                    '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + rcEntityId + '" data-effective="' + (rc.effective_from || '') + '" data-amount="' + (rc.amount ?? '') + '">Upravit</button> ' +
+                    '<button type="button" class="btn btn-danger btn-sm" data-action="del" data-id="' + rcEntityId + '">Smazat</button></td></tr>';
             });
             html += '</tbody></table>';
             listEl.innerHTML = html;
@@ -219,6 +220,7 @@ const ContractsView = (() => {
                 };
             },
             fillForm(row) {
+                document.getElementById('con-edit-id').value = String(row.contracts_id ?? row.id);
                 document.getElementById('con-property').value = row.properties_id || '';
                 document.getElementById('con-tenant').value   = row.tenants_id   || '';
                 document.getElementById('con-start').value    = row.contract_start || '';
@@ -326,9 +328,9 @@ const ContractsView = (() => {
                     '<td class="col-hide-mobile">' + contractLink + '</td>' +
                     '<td class="col-hide-mobile">' + (c.note ? UI.esc(c.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +
-                        '<button class="btn btn-ghost btn-sm" onclick="ContractsView.edit(' + c.id + ')">Úprava</button>' +
+                        '<button class="btn btn-ghost btn-sm" onclick="ContractsView.edit(' + (c.contracts_id ?? c.id) + ')">Úprava</button>' +
                         '<button class="btn btn-ghost btn-sm" onclick="PaymentsView.navigateWithFilter(' + (c.contracts_id ?? c.id) + ')">Platby</button>' +
-                        '<button class="btn btn-danger btn-sm" onclick="ContractsView.del(' + c.id + ')">Smazat</button>' +
+                        '<button class="btn btn-danger btn-sm" onclick="ContractsView.del(' + (c.contracts_id ?? c.id) + ')">Smazat</button>' +
                     '</td>'
                 );
             },
@@ -337,7 +339,7 @@ const ContractsView = (() => {
     }
 
     function edit(id) {
-        const row = _cache.find(r => r.id === id);
+        const row = _cache.find(r => (r.contracts_id ?? r.id) == id);
         if (row) form.startEdit(row);
     }
 

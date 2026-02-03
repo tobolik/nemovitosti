@@ -26,7 +26,7 @@ $REQUIRED = [
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date'],
     'bank_accounts' => ['name','account_number'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
-    'payment_requests' => ['contracts_id','amount','type','note','due_date'],
+    'payment_requests' => ['contracts_id','amount','type','note'],
 ];
 
 // Lidsky čitelné názvy polí pro chybové hlášky
@@ -60,9 +60,9 @@ function validateDateField(?string $val, string $label): ?string {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-    // Jednotlivý záznam
+    // Jednotlivý záznam – parametr id = entity_id (properties_id, contracts_id, …)
     if ($id > 0) {
-        $row = findActive($table, $id);
+        $row = findActiveByEntityId($table, $id);
         if (!$row) jsonErr('Záznam neexistuje.', 404);
         jsonOk($row);
     }
@@ -287,11 +287,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($pm === 'account' && ($baId <= 0)) jsonErr('Vyberte bankovní účet.');
             $data['bank_accounts_id'] = $pm === 'account' ? $baId : null;
             $data['payment_type'] = in_array($data['payment_type'] ?? 'rent', ['rent','deposit','energy','other']) ? $data['payment_type'] : 'rent';
-            $paymentRequestId = isset($b['payment_request_id']) ? (int)$b['payment_request_id'] : 0;
+            $paymentRequestEntityId = isset($b['payment_request_id']) ? (int)$b['payment_request_id'] : 0;
             $newId = softInsert($table, $data);
-            if ($paymentRequestId > 0) {
-                db()->prepare("UPDATE payment_requests SET paid_at = CURDATE(), payment_id = ? WHERE id = ? AND valid_to IS NULL")
-                    ->execute([$newId, $paymentRequestId]);
+            if ($paymentRequestEntityId > 0) {
+                $prRow = findActiveByEntityId('payment_requests', $paymentRequestEntityId);
+                if ($prRow) {
+                    db()->prepare("UPDATE payment_requests SET paid_at = CURDATE(), payment_id = ? WHERE id = ? AND valid_to IS NULL")
+                        ->execute([$newId, (int)$prRow['id']]);
+                }
             }
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'payment_requests') {
@@ -324,8 +327,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $paymentMethod = in_array($b['payment_method'] ?? '', ['account','cash']) ? $b['payment_method'] : null;
         $bankAccountsId = ($paymentMethod === 'account' && isset($b['bank_accounts_id'])) ? (int)$b['bank_accounts_id'] : null;
         if ($paymentMethod === 'account' && (!$bankAccountsId || $bankAccountsId <= 0)) jsonErr('Vyberte bankovní účet.');
-        $amountOverrideId = isset($b['amount_override_id']) ? (int)$b['amount_override_id'] : 0;
+        $amountOverrideEntityId = isset($b['amount_override_id']) ? (int)$b['amount_override_id'] : 0;
         $amountOverrideValue = isset($b['amount_override_value']) ? (float)$b['amount_override_value'] : null;
+        $amountOverrideRowId = null;
+        if ($amountOverrideEntityId > 0) {
+            $overrideRow = findActiveByEntityId('payments', $amountOverrideEntityId);
+            if ($overrideRow) $amountOverrideRowId = (int)$overrideRow['id'];
+        }
 
         $s = db()->prepare("SELECT id FROM payments WHERE payment_batch_id=? AND valid_to IS NULL");
         $s->execute([$batchId]);
@@ -334,7 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $baseData = ['payment_date' => $paymentDate, 'payment_method' => $paymentMethod, 'bank_accounts_id' => $bankAccountsId, 'payment_type' => $paymentType];
         foreach ($ids as $pid) {
             $updateData = $baseData;
-            if ($amountOverrideId > 0 && (int)$pid === $amountOverrideId && $amountOverrideValue !== null) {
+            if ($amountOverrideRowId !== null && (int)$pid === $amountOverrideRowId && $amountOverrideValue !== null) {
                 $updateData['amount'] = $amountOverrideValue;
             }
             softUpdate($table, (int)$pid, $updateData);
@@ -343,8 +351,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'edit') {
-        $id = (int)($b['id'] ?? 0);
-        if (!$id) jsonErr('Chybí ID.');
+        $entityId = (int)($b['id'] ?? 0);
+        if (!$entityId) jsonErr('Chybí ID.');
+        $row = findActiveByEntityId($table, $entityId);
+        if (!$row) jsonErr('Záznam neexistuje.', 404);
+        $rowId = (int)$row['id'];
         foreach ($POSITIVE_ID_FIELDS[$table] ?? [] as $f) {
             if (array_key_exists($f, $data) && (int)($data[$f] ?? 0) <= 0) {
                 $label = $FIELD_LABELS[$table][$f] ?? $f;
@@ -355,16 +366,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (isset($data['is_primary']) && (int)$data['is_primary'] === 1) {
                 db()->prepare("UPDATE bank_accounts SET is_primary=0 WHERE valid_to IS NULL")->execute();
             }
-            $newId = softUpdate($table, $id, $data);
+            $newId = softUpdate($table, $rowId, $data);
             jsonOk(findActive($table, $newId));
         } elseif ($table === 'contract_rent_changes') {
-            $newId = softUpdate($table, $id, [
+            $newId = softUpdate($table, $rowId, [
                 'amount'        => (float)$data['amount'],
                 'effective_from'=> $data['effective_from'],
             ]);
             jsonOk(findActive($table, $newId));
         } else {
-            $newId = softUpdate($table, $id, $data);
+            $newId = softUpdate($table, $rowId, $data);
             jsonOk(findActive($table, $newId));
         }
     }
@@ -383,16 +394,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'delete') {
-        $id = (int)($b['id'] ?? 0);
-        if (!$id) jsonErr('Chybí ID.');
+        $entityId = (int)($b['id'] ?? 0);
+        if (!$entityId) jsonErr('Chybí ID.');
+        $row = findActiveByEntityId($table, $entityId);
+        if (!$row) jsonErr('Záznam neexistuje.', 404);
+        $rowId = (int)$row['id'];
         if ($table === 'contract_rent_changes') {
-            softDelete($table, $id);
+            softDelete($table, $rowId);
         } elseif ($table === 'bank_accounts') {
-            softDelete($table, $id);
+            softDelete($table, $rowId);
         } else {
-            softDelete($table, $id);
+            softDelete($table, $rowId);
         }
-        jsonOk(['deleted'=>$id]);
+        jsonOk(['deleted'=>$entityId]);
     }
 
     jsonErr('Neznámá akce.');

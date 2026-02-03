@@ -28,6 +28,7 @@ const BankAccountsView = (() => {
                 };
             },
             fillForm(row) {
+                document.getElementById('bank-edit-id').value = String(row.bank_accounts_id ?? row.id);
                 document.getElementById('bank-name').value = row.name || '';
                 document.getElementById('bank-account').value = row.account_number || '';
                 document.getElementById('bank-primary').checked = !!row.is_primary;
@@ -72,7 +73,7 @@ const BankAccountsView = (() => {
     }
 
     function edit(id) {
-        const row = _cache.find(r => r.id === id);
+        const row = _cache.find(r => (r.bank_accounts_id ?? r.id) == id);
         if (row) form.startEdit(row);
     }
 
