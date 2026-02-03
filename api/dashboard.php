@@ -406,9 +406,10 @@ foreach ($properties as $p) {
             $isContractStartMonth = ($contract['contract_start'] > $firstOfMonth)
                 && (int)date('Y', strtotime($contract['contract_start'])) === $year
                 && (int)date('n', strtotime($contract['contract_start'])) === $m;
-            // Stav buňky: uhrazeno (zelená), když celková úhrada >= celkový předpis (nájem + energie atd.)
-            if ($hasPaymentDate && $paidTotal >= $expectedTotal) {
-                $type = $isPartialMonth ? 'exact' : ($paidTotal > $expectedTotal ? 'overpaid' : 'exact');
+            // Stav buňky: uhrazeno (zelená), když celková úhrada >= celkový předpis (nájem + energie atd.); přeplatek = oranžová
+            $diff = round($paidTotal - $expectedTotal, 2);
+            if ($hasPaymentDate && $diff >= 0) {
+                $type = $isPartialMonth ? 'exact' : ($diff > 0 ? 'overpaid' : 'exact');
             } else {
                 $type = $isPast ? 'overdue' : 'unpaid';
             }

@@ -163,7 +163,7 @@ async function loadDashboard(year) {
                 if (isFuture && (cell.type === 'unpaid' || cell.type === 'overdue')) {
                     cls = (isCurrentMonth ? 'heatmap-cell current-month-unpaid' : 'heatmap-cell future-unpaid') + (cell.is_contract_start_month ? ' heatmap-cell-start-month' : '');
                 } else if (isFuture && isPaid) {
-                    cls = (isCurrentMonth ? 'heatmap-cell ' + (cell.type || 'exact') : 'heatmap-cell paid-advance') + (cell.is_contract_start_month ? ' heatmap-cell-start-month' : '');
+                    cls = (isCurrentMonth ? 'heatmap-cell ' + (cell.type || 'exact') : 'heatmap-cell paid-advance' + (cell.type === 'overpaid' ? ' overpaid' : '')) + (cell.is_contract_start_month ? ' heatmap-cell-start-month' : '');
                 }
 
                 const prescribedTotal = cell.amount || 0;
@@ -212,7 +212,13 @@ async function loadDashboard(year) {
                             tipParts.push('• ' + UI.fmt(p.amount) + ' Kč (' + dt + ')');
                         });
                     }
-                    tipParts.push(remaining > 0 ? 'Zbývá: ' + UI.fmt(remaining) + ' Kč' : 'Uhrazeno v plné výši.');
+                    if (remaining > 0) {
+                        tipParts.push('Zbývá: ' + UI.fmt(remaining) + ' Kč');
+                    } else if (cell.type === 'overpaid' && paidAmt > prescribedTotal) {
+                        tipParts.push('Přeplaceno o ' + UI.fmt(paidAmt - prescribedTotal) + ' Kč');
+                    } else {
+                        tipParts.push('Uhrazeno v plné výši.');
+                    }
                     titleAttr = ' title="' + UI.esc(tipParts.join('\n')) + '"';
                 }
 
