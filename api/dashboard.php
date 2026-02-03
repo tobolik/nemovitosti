@@ -124,7 +124,7 @@ $contractsForView = $showEnded ? $contracts : array_values(array_filter($contrac
     return empty($c['contract_end']) || $c['contract_end'] >= $today;
 }));
 
-// Očekáváno = nájem + jen neuhrazené požadavky. Uhrazené požadavky už jsou v payments – nezapočítávat duplicitně.
+// Očekáváno = nájem + jen neuhrazené požadavky. Uhrazený požadavek (ať + nebo −) se nezapočítává – odpovídající platba je už v payments, jinak by to odečítalo/zvýšovalo 2×.
 $paymentRequestsSumByContract = [];
 $allRequestsStmt = db()->query("
     SELECT contracts_id, type, amount FROM payment_requests
