@@ -536,6 +536,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .heatmap-table th:nth-child(n+2):nth-child(-n+13) { width: 6%; }
 .heatmap-table th.heatmap-total-col { width: 14%; }
 .heatmap-table td { padding: 4px; vertical-align: middle; }
+.heatmap-table tbody tr { height: 54px; }
+.heatmap-table tbody td { height: 54px; max-height: 54px; overflow: hidden; }
 .heatmap-table tbody td:first-child,
 .heatmap-table tfoot td:first-child { width: 14%; }
 .heatmap-table tbody td:not(:first-child):not(.heatmap-total-cell),
@@ -1061,8 +1063,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
     font-size: .68rem;
   }
   
-  /* Heatmap cells – bez min-width, šířky řízené procenty tabulky */
+  /* Heatmap cells – pevná výška řádku i buněk */
+  .heatmap-table tbody tr { height: 44px; }
+  .heatmap-table tbody td { height: 44px; max-height: 44px; }
   .heatmap-cell {
+    height: 36px;
     min-height: 36px;
     padding: 2px 1px;
     font-size: .65rem;
