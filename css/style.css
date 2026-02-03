@@ -557,26 +557,26 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 /* Celkem: částky čitelné, zalamování do buňky */
 .heatmap-table tbody td.heatmap-total-cell,
 .heatmap-sum-row td { overflow: hidden; white-space: normal; word-wrap: break-word; }
-.heatmap-cell { height: 46px; min-height: 46px; min-width: 0; width: 100%; max-width: 100%; padding: 4px 3px; border-radius: var(--r); cursor: pointer; transition: opacity .15s; text-align: center; box-sizing: border-box; font-size: .76rem; display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1.25; }
-.heatmap-cell:hover { opacity: .85; }
+.heatmap-cell { height: 46px; min-height: 46px; min-width: 0; width: 100%; max-width: 100%; padding: 4px 3px; border-radius: var(--r); cursor: pointer; transition: opacity .15s; text-align: center; box-sizing: border-box; font-size: .76rem; display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1.25; position: relative; }
+.heatmap-cell:hover { opacity: .9; }
 .heatmap-cell.empty { background: rgba(100,100,100,.3); color: var(--txt3); font-size: .76rem; padding: 4px 3px; }
 .heatmap-cell.heatmap-cell-before-purchase { cursor: default; pointer-events: none; background: transparent; }
+.heatmap-cell .heatmap-cell-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; min-width: 0; background: var(--green-600); border-radius: var(--r); z-index: 0; pointer-events: none; }
+.heatmap-cell .heatmap-cell-content { position: relative; z-index: 1; }
 .heatmap-cell.exact { background: var(--green-600); color: #fff; font-weight: 600; }
 .heatmap-cell.overpaid { background: var(--orange-600); color: #fff; font-weight: 600; }
 .heatmap-cell.unpaid, .heatmap-cell.overdue { background: var(--red-600); color: #fff; font-weight: 600; }
 .heatmap-cell.heatmap-cell-start-month { box-shadow: inset 0 0 0 2px var(--orange-500); }
-/* Budoucí neuhrazené měsíce – stejné pozadí jako paid-advance (květen, červen) */
-.heatmap-cell.future-unpaid {
-  color: var(--txt);
-  font-weight: 600;
-}
-/* Aktuálně probíhající měsíc neuhrazený – oranžový okraj (ještě je čas na uhrazení) */
+.heatmap-cell.future-unpaid { color: var(--txt); font-weight: 600; }
 .heatmap-cell.current-month-unpaid {
-  background: rgba(251, 146, 60, 0.15);
+  background: rgba(251, 146, 60, 0.2);
   border: 2px solid var(--orange-500);
   color: var(--txt);
   font-weight: 600;
 }
+.heatmap-cell .heatmap-cell-prescribed { font-size: .72rem; display: block; }
+.heatmap-cell .heatmap-cell-remaining { font-size: .72rem; opacity: .95; }
+.heatmap-cell .heatmap-cell-ok { font-size: .72rem; opacity: .95; }
 .heatmap-cell .cell-amount { font-size: .81rem; }
 .heatmap-cell .cell-partial { font-size: .81rem; }
 .heatmap-cell .cell-remaining { font-size: .76rem; opacity: .9; }
@@ -700,6 +700,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .tags { display: flex; flex-wrap: wrap; gap: 4px; max-width: 250px; }
 .dash-unpaid-tags { max-width: 100%; }
 .dash-unpaid-cell { white-space: normal; }
+.dash-p-col { width: 2.5em; text-align: center; vertical-align: middle; }
+.dash-add-req-btn { width: 28px; height: 28px; padding: 0; font-size: 1.1rem; line-height: 1; border-radius: var(--r); }
 .dash-link { cursor: pointer; }
 .dash-link:hover { text-decoration: underline; }
 #dash-table .tbl-wrap { overflow-x: visible; }

@@ -90,8 +90,16 @@ const PaymentsView = (() => {
                     const payId = row.payments_id ?? row.id;
                     if (row.linked_payment_request_id) {
                         const note = row.linked_request_note || (UI.fmt(Number(row.linked_request_amount)) + ' Kč');
-                        linkedEl.innerHTML = '<span class="tag tag-request">' + UI.esc(note) + '</span> <button type="button" class="btn btn-ghost btn-sm" id="btn-pay-unlink-request">Odpojit</button>';
+                        linkedEl.innerHTML = '<span class="tag tag-request">' + UI.esc(note) + '</span> ' +
+                            '<button type="button" class="btn btn-ghost btn-sm" id="btn-pay-edit-request" title="Upravit požadavek">Upravit požadavek</button> ' +
+                            '<button type="button" class="btn btn-ghost btn-sm" id="btn-pay-unlink-request">Odpojit</button>';
                         if (linkRow) linkRow.style.display = 'none';
+                        const editReqBtn = document.getElementById('btn-pay-edit-request');
+                        if (editReqBtn && typeof window.openPaymentRequestEdit === 'function') {
+                            editReqBtn.onclick = () => {
+                                window.openPaymentRequestEdit(row.linked_payment_request_id, () => { PaymentsView.edit(row.payments_id ?? row.id); });
+                            };
+                        }
                         const unlinkBtn = document.getElementById('btn-pay-unlink-request');
                         if (unlinkBtn) unlinkBtn.onclick = async () => {
                             try {

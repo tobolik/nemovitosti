@@ -35,7 +35,7 @@ async function loadDashboard(year) {
             '<div class="dash-table-header">' +
             '<h3 class="dash-table-title">Přehled smluv</h3>' +
             '<label class="dash-toggle"><input type="checkbox" id="dash-show-ended"' + (showEnded ? ' checked' : '') + '> Zobrazit skončené smlouvy</label>' +
-            '<a href="#" class="dash-add-request" id="dash-add-request">Přidat požadavek (energie, vyúčt.)</a>' +
+            '<a href="#" class="dash-add-request" id="dash-add-request">Přidat požadavek (energie, vyúčtování, kauce…)</a>' +
             '</div>';
     }
     initPaymentRequestModal();
@@ -166,33 +166,21 @@ async function loadDashboard(year) {
                     cls = (isCurrentMonth ? 'heatmap-cell ' + (cell.type || 'exact') : 'heatmap-cell paid-advance') + (cell.is_contract_start_month ? ' heatmap-cell-start-month' : '');
                 }
 
+                const prescribedTotal = cell.amount || 0;
+                const pctPaid = prescribedTotal > 0 ? Math.min(100, (paidAmt / prescribedTotal) * 100) : 100;
                 let content = '';
                 let isBeforePurchase = false;
                 if (cell.type === 'empty') {
-                    // Volno jen od měsíce koupě nemovitosti; předtím buňka prázdná
                     const purchaseDate = prop.purchase_date || '';
                     const purchaseYear = purchaseDate ? parseInt(purchaseDate.substring(0, 4), 10) : null;
                     const purchaseMonth = purchaseDate ? parseInt(purchaseDate.substring(5, 7), 10) : null;
                     isBeforePurchase = purchaseYear != null && purchaseMonth != null &&
                         (y < purchaseYear || (y === purchaseYear && m < purchaseMonth));
                     content = isBeforePurchase ? '' : 'Volno';
-                } else if (isFuture && (cell.type === 'unpaid' || cell.type === 'overdue')) {
-                    if (paidAmt > 0 && remaining > 0) {
-                        const partialLabel = paymentCount > 1 ? UI.fmt(paidAmt) + ' (' + paymentCount + ' platby) / ' : UI.fmt(paidAmt) + ' / ';
-                        content = '<span class="cell-partial">' + partialLabel + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-remaining">zbývá ' + UI.fmt(remaining) + '</span>';
-                    } else {
-                        content = '<span class="cell-amount">' + UI.fmt(cell.amount || 0) + '</span>';
-                    }
-                } else if (cell.type === 'exact' || cell.type === 'overpaid') {
-                    const fullPrescribed = cell.amount_full != null && cell.amount_full > (cell.amount || 0);
-                    const sumLabel = paymentCount > 1 ? UI.fmt(paidAmt) + ' (' + paymentCount + ' platby)' : UI.fmt(paidAmt);
-                    const prescribedLabel = fullPrescribed ? UI.fmt(paidAmt) + ' / ' + UI.fmt(cell.amount_full) : sumLabel;
-                    content = '<span class="cell-amount">' + prescribedLabel + '</span><br><span class="cell-icon cell-check">✓</span>';
-                } else if (paidAmt > 0 && remaining > 0) {
-                    const partialLabel = paymentCount > 1 ? UI.fmt(paidAmt) + ' (' + paymentCount + ' platby) / ' : UI.fmt(paidAmt) + ' / ';
-                    content = '<span class="cell-partial">' + partialLabel + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-remaining">zbývá ' + UI.fmt(remaining) + '</span>';
                 } else {
-                    content = '<span class="cell-amount">' + UI.fmt(cell.amount || 0) + '</span><br><span class="cell-icon cell-cross">✗</span>';
+                    content = '<span class="heatmap-cell-prescribed">Předpis: ' + UI.fmt(prescribedTotal) + ' Kč</span><br>' +
+                        (remaining > 0 ? '<span class="heatmap-cell-remaining">Zbývá: ' + UI.fmt(remaining) + ' Kč</span>' : '<span class="heatmap-cell-ok">Uhrazeno</span>');
+                    content = '<div class="heatmap-cell-fill" style="width:' + Math.round(pctPaid) + '%"></div><div class="heatmap-cell-content">' + content + '</div>';
                 }
 
                 if (cell.type === 'empty' && isBeforePurchase) cls += ' heatmap-cell-before-purchase';
@@ -204,14 +192,17 @@ async function loadDashboard(year) {
                     : ' data-property-id="' + (prop.properties_id ?? prop.id) + '" data-month-key="' + monthKey + '"';
 
                 let titleAttr = '';
-                if (cell.type !== 'empty' && cell.payment_details && cell.payment_details.length > 0) {
-                    const titleLines = cell.payment_details.map(function(p) {
-                        const dt = p.payment_date ? UI.fmtDate(p.payment_date) : '—';
-                        return UI.fmt(p.amount) + ' Kč (' + dt + ')';
-                    });
-                    titleAttr = ' title="' + UI.esc(titleLines.join('\n')) + '"';
-                } else if (cell.type !== 'empty' && cell.payment && cell.payment.date) {
-                    titleAttr = ' title="' + UI.esc(UI.fmtDate(cell.payment.date)) + '"';
+                if (cell.type !== 'empty') {
+                    const tipParts = ['Předpis (součet): ' + UI.fmt(prescribedTotal) + ' Kč'];
+                    if (cell.payment_details && cell.payment_details.length > 0) {
+                        tipParts.push('Uhrazené platby:');
+                        cell.payment_details.forEach(function(p) {
+                            const dt = p.payment_date ? UI.fmtDate(p.payment_date) : '—';
+                            tipParts.push('• ' + UI.fmt(p.amount) + ' Kč (' + dt + ')');
+                        });
+                    }
+                    tipParts.push(remaining > 0 ? 'Zbývá: ' + UI.fmt(remaining) + ' Kč' : 'Uhrazeno v plné výši.');
+                    titleAttr = ' title="' + UI.esc(tipParts.join('\n')) + '"';
                 }
 
                 const onClick = cell.type === 'empty'
@@ -263,6 +254,7 @@ async function loadDashboard(year) {
             { label: 'Nájemné / měs.' },
             { label: 'Uhrazeno / Očekáváno (od zač. smlouvy)', title: 'Očekáváno = nájem + požadavky (energie, kauce, vyúčt.); vrácení kauce = odchod. Uhrazeno = všechny platby.' },
             { label: 'Neuhrazené měsíce' },
+            { label: 'P', title: 'Přidat požadavek (energie, vyúčtování, kauce…) k této smlouvě' },
         ],
         contracts,
         (d) => {
@@ -313,13 +305,16 @@ async function loadDashboard(year) {
             const paymentsTitle = progTitle || 'Klikni pro platby';
             const paymentsLink = ' onclick="PaymentsView.navigateWithFilter(' + d.contracts_id + ')" class="dash-link" title="' + UI.esc(paymentsTitle) + '"';
 
+            const addReqTitle = 'Přidat požadavek k této smlouvě';
+            const addReqBtn = '<button type="button" class="btn btn-ghost btn-sm dash-add-req-btn" data-contracts-id="' + (d.contracts_id ?? d.id) + '" title="' + UI.esc(addReqTitle) + '">+</button>';
             return (
                 '<td><strong' + tenantLink + '>' + UI.esc(d.tenant_name) + '</strong></td>' +
                 '<td' + propLink + '>' + UI.esc(d.property_name) + '</td>' +
                 '<td' + contractLink + '>' + UI.fmt(d.monthly_rent) + ' Kč</td>' +
                 '<td' + paymentsLink + '><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill ' + progClass + '" style="width:' + Math.round(pct) + '%"></div></div>' +
                 '<span class="prog-lbl" title="' + UI.esc(progTitle || '') + '">' + UI.fmt(totalPaid) + ' / ' + UI.fmt(expectedTotal) + ' Kč</span></div></td>' +
-                '<td class="dash-unpaid-cell">' + tagsHtml + '</td>'
+                '<td class="dash-unpaid-cell">' + tagsHtml + '</td>' +
+                '<td class="dash-p-col" title="' + UI.esc(addReqTitle) + '">' + addReqBtn + '</td>'
             );
         },
         { emptyMsg: 'Žádné aktivní smlouvy.' }
@@ -371,6 +366,16 @@ function initPaymentRequestModal() {
         e.stopPropagation();
         const id = editBtn.dataset.paymentRequestId;
         if (id) openPaymentRequestEdit(parseInt(id, 10));
+    });
+
+    // Klik na „+“ ve sloupci P – přidat požadavek k dané smlouvě (předvyplní smlouvu)
+    view.addEventListener('click', (e) => {
+        const addBtn = e.target.closest('.dash-add-req-btn');
+        if (!addBtn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const cid = addBtn.dataset.contractsId;
+        if (cid) openAddPaymentRequestModal(parseInt(cid, 10));
     });
 
     const btnSave = document.getElementById('btn-pay-req-save');
@@ -425,6 +430,39 @@ function initPaymentRequestModal() {
         });
     }
 }
+
+/** Otevře modal „Přidat požadavek“ s předvyplněnou smlouvou (voláno ze sloupce P v přehledu smluv). */
+async function openAddPaymentRequestModal(contractId) {
+    const contractSel = document.getElementById('pay-req-contract');
+    const editIdEl = document.getElementById('pay-req-edit-id');
+    const titleEl = document.getElementById('pay-req-modal-title');
+    const saveBtn = document.getElementById('btn-pay-req-save');
+    const amountEl = document.getElementById('pay-req-amount');
+    const typeEl = document.getElementById('pay-req-type');
+    const noteEl = document.getElementById('pay-req-note');
+    const dueDateEl = document.getElementById('pay-req-due-date');
+    const alertEl = document.getElementById('pay-req-alert');
+    if (!contractSel || !editIdEl) return;
+    try {
+        const contracts = await Api.crudList('contracts');
+        contractSel.innerHTML = '<option value="">— Vyberte smlouvu —</option>' +
+            contracts.map(c => '<option value="' + (c.contracts_id ?? c.id) + '">' + UI.esc(c.tenant_name) + ' – ' + UI.esc(c.property_name) + '</option>').join('');
+        editIdEl.value = '';
+        if (titleEl) titleEl.textContent = 'Přidat požadavek na platbu';
+        if (saveBtn) saveBtn.textContent = 'Přidat';
+        contractSel.value = String(contractId || '');
+        if (amountEl) amountEl.value = '';
+        if (typeEl) typeEl.value = 'energy';
+        if (noteEl) noteEl.value = '';
+        if (dueDateEl) dueDateEl.value = '';
+        if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
+        window._paymentRequestEditOnSaved = null;
+        UI.modalOpen('modal-payment-request');
+    } catch (err) {
+        if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = err.message || 'Chyba načtení.'; }
+    }
+}
+window.openAddPaymentRequestModal = openAddPaymentRequestModal;
 
 /** Otevře modal požadavku na platbu v režimu úpravy. Volatelné ze smluv i z dashboardu. */
 async function openPaymentRequestEdit(paymentRequestId, onSaved) {
