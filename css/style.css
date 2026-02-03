@@ -575,6 +575,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   font-weight: 600;
 }
 .heatmap-cell .heatmap-cell-prescribed { font-size: .72rem; display: block; }
+.heatmap-cell .heatmap-cell-icon { font-size: 1rem; font-weight: 700; display: inline-block; }
 .heatmap-cell .heatmap-cell-remaining { font-size: .72rem; opacity: .95; }
 .heatmap-cell .heatmap-cell-ok { font-size: .72rem; opacity: .95; }
 .heatmap-cell .cell-amount { font-size: .81rem; }

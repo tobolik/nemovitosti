@@ -179,7 +179,7 @@ async function loadDashboard(year) {
                     content = isBeforePurchase ? '' : 'Volno';
                 } else {
                     content = '<span class="heatmap-cell-prescribed">Předpis: ' + UI.fmt(prescribedTotal) + ' Kč</span><br>' +
-                        (remaining > 0 ? '<span class="heatmap-cell-remaining">Zbývá: ' + UI.fmt(remaining) + ' Kč</span>' : '<span class="heatmap-cell-ok">Uhrazeno</span>');
+                        (remaining > 0 ? '' : '<span class="heatmap-cell-icon cell-check">✓</span>');
                     content = '<div class="heatmap-cell-fill" style="width:' + Math.round(pctPaid) + '%"></div><div class="heatmap-cell-content">' + content + '</div>';
                 }
 
@@ -269,10 +269,21 @@ async function loadDashboard(year) {
             const progClass = hasDbt ? (hasHistoricalArrear ? 'bad' : 'current-debt') : 'ok';
             if (hasDbt && pct < 2) pct = 2;
             const depAmt = d.deposit_amount || 0;
-            const hoverInfo = [];
-            if (depAmt > 0) hoverInfo.push('Kauce: ' + UI.fmt(depAmt) + ' Kč' + (d.deposit_to_return ? ' (k vrácení)' : ''));
-            hoverInfo.push(hasDbt ? (hasHistoricalArrear ? 'Stav: Nedoplatek (historický)' : 'Stav: Aktuální měsíc neuhrazen') : 'Stav: V pořádku');
-            const progTitle = hoverInfo.length ? hoverInfo.join(' | ') : '';
+            const balanceAll = (d.expected_total != null && d.total_paid != null) ? (d.expected_total - d.total_paid) : 0;
+            const unpaidMonths = d.unpaid_months || [];
+            const unpaidMonthsStr = unpaidMonths.length ? unpaidMonths.map(u => u.month + '/' + u.year).join(', ') : '';
+            let progTitle = '';
+            if (balanceAll < 0) {
+                progTitle = 'Přeplaceno o ' + UI.fmt(-balanceAll) + ' Kč.';
+            } else if (balanceAll === 0 || (Math.abs(balanceAll) < 0.01)) {
+                progTitle = 'Vše v pořádku.';
+            } else {
+                progTitle = 'Chybí doplatit ' + UI.fmt(balanceAll) + ' Kč.';
+                if (unpaidMonthsStr) progTitle += ' Neuhrazené měsíce: ' + unpaidMonthsStr + '.';
+                if (hasHistoricalArrear) progTitle += ' Včetně historického nedoplatku.';
+                else if (hasDbt) progTitle += ' Aktuální měsíc neuhrazen.';
+            }
+            if (depAmt > 0) progTitle += (progTitle ? ' ' : '') + 'Kauce: ' + UI.fmt(depAmt) + ' Kč' + (d.deposit_to_return ? ' (k vrácení)' : '') + '.';
 
             let tags = '';
             const requestTypeLabels = { energy: 'Energie', settlement: 'Vyúčt.', deposit: 'Kauce', deposit_return: 'Vrác. kauce', other: 'Jiné' };
@@ -304,6 +315,7 @@ async function loadDashboard(year) {
             const contractLink = contractEntityId ? ' onclick="DashboardView.openEdit(\'contracts\',' + contractEntityId + ')" class="dash-link" title="Upravit smlouvu"' : '';
             const paymentsTitle = progTitle || 'Klikni pro platby';
             const paymentsLink = ' onclick="PaymentsView.navigateWithFilter(' + d.contracts_id + ')" class="dash-link" title="' + UI.esc(paymentsTitle) + '"';
+            const progWrapTitle = progTitle || (UI.fmt(totalPaid) + ' / ' + UI.fmt(expectedTotal) + ' Kč');
 
             const addReqTitle = 'Přidat požadavek k této smlouvě';
             const addReqBtn = '<button type="button" class="btn btn-ghost btn-sm dash-add-req-btn" data-contracts-id="' + (d.contracts_id ?? d.id) + '" title="' + UI.esc(addReqTitle) + '">+</button>';
@@ -311,8 +323,8 @@ async function loadDashboard(year) {
                 '<td><strong' + tenantLink + '>' + UI.esc(d.tenant_name) + '</strong></td>' +
                 '<td' + propLink + '>' + UI.esc(d.property_name) + '</td>' +
                 '<td' + contractLink + '>' + UI.fmt(d.monthly_rent) + ' Kč</td>' +
-                '<td' + paymentsLink + '><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill ' + progClass + '" style="width:' + Math.round(pct) + '%"></div></div>' +
-                '<span class="prog-lbl" title="' + UI.esc(progTitle || '') + '">' + UI.fmt(totalPaid) + ' / ' + UI.fmt(expectedTotal) + ' Kč</span></div></td>' +
+                '<td' + paymentsLink + '><div class="prog-wrap" title="' + UI.esc(progWrapTitle) + '"><div class="prog-bar"><div class="prog-fill ' + progClass + '" style="width:' + Math.round(pct) + '%"></div></div>' +
+                '<span class="prog-lbl" title="' + UI.esc(progWrapTitle) + '">' + UI.fmt(totalPaid) + ' / ' + UI.fmt(expectedTotal) + ' Kč</span></div></td>' +
                 '<td class="dash-unpaid-cell">' + tagsHtml + '</td>' +
                 '<td class="dash-p-col" title="' + UI.esc(addReqTitle) + '">' + addReqBtn + '</td>'
             );
