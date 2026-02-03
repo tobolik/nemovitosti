@@ -190,6 +190,70 @@ button, select, input, textarea { font-family: var(--font-ui); }
 }
 .sidebar-nav .nav-link .icon { font-size: 1.1rem; opacity: .9; }
 
+/* Globální vyhledávání v sidebaru */
+.global-search-wrap {
+  position: relative;
+  padding: 12px;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.global-search-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: .9rem;
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 8px;
+  background: var(--slate-800);
+  color: var(--txt);
+}
+.global-search-input::placeholder { color: var(--txt3); }
+.global-search-input:focus {
+  outline: none;
+  border-color: var(--purple-500);
+}
+.global-search-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 12px;
+  right: 12px;
+  margin-top: 4px;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--slate-800);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  z-index: 1000;
+}
+.global-search-dropdown.show { display: block; }
+.global-search-group { padding: 8px 0; }
+.global-search-group-title {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--txt3);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 4px 12px 6px;
+}
+.global-search-result {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  font-size: .85rem;
+  color: var(--txt);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background .15s;
+}
+.global-search-result:hover { background: var(--slate-700); }
+.global-search-empty {
+  padding: 16px 12px;
+  color: var(--txt3);
+  font-size: .9rem;
+}
+
 .sidebar-footer {
   padding: 16px;
   border-top: 1px solid rgba(255,255,255,.08);

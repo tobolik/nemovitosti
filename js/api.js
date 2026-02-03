@@ -140,6 +140,15 @@ const Api = (() => {
     }
 
     // ════════════════════════════════════════════════════════════════════
+    // GLOBÁLNÍ VYHLEDÁVÁNÍ
+    // ════════════════════════════════════════════════════════════════════
+    async function search(q) {
+        const qs = String(q ?? '').trim();
+        if (!qs) return { tenants: [], properties: [], contracts: [] };
+        return get('/api/search.php?q=' + encodeURIComponent(qs));
+    }
+
+    // ════════════════════════════════════════════════════════════════════
     // ARES – načtení firmy podle IČ
     // ════════════════════════════════════════════════════════════════════
     async function aresLookup(ico) {
@@ -154,6 +163,7 @@ const Api = (() => {
         authCheck, authLogin, authLogout,
         crudList, crudGet, crudAdd, crudEdit, crudDelete, paymentsEditBatch, paymentsDeleteBatch, paymentRequestLink, paymentRequestUnlink,
         dashboardLoad,
+        search,
         usersList, usersAdd, usersDelete, usersChangePassword,
         aresLookup,
     };

@@ -73,6 +73,8 @@ const App = (() => {
         }
         // Náhled smlouvy (PDF) při hoveru – kupní i nájemní
         if (typeof UI !== 'undefined' && UI.initContractPreview) UI.initContractPreview();
+        // Globální vyhledávání
+        initGlobalSearch();
         // Sidebar: collapsed on mobile
         const sb = document.getElementById('sidebar');
         if (window.innerWidth <= 768) sb.classList.add('collapsed');
@@ -161,6 +163,94 @@ const App = (() => {
     }
     document.getElementById('btn-hamburger').addEventListener('click', sidebarOpen);
     document.getElementById('btn-sidebar-close').addEventListener('click', sidebarClose);
+
+    // ── globální vyhledávání ─────────────────────────────────────────────
+    let globalSearchDebounce = null;
+    function initGlobalSearch() {
+        const input = document.getElementById('global-search-input');
+        const dropdown = document.getElementById('global-search-dropdown');
+        if (!input || !dropdown) return;
+
+        function hideDropdown() {
+            dropdown.classList.remove('show');
+            dropdown.innerHTML = '';
+            dropdown.setAttribute('aria-hidden', 'true');
+        }
+
+        function showDropdown(html) {
+            dropdown.innerHTML = html;
+            dropdown.classList.add('show');
+            dropdown.setAttribute('aria-hidden', 'false');
+        }
+
+        function openResult(viewName, id) {
+            sessionStorage.setItem('dashboard-open-edit', JSON.stringify({ view: viewName, id: String(id) }));
+            navigateWithHistory(viewName);
+            input.value = '';
+            hideDropdown();
+            sidebarClose();
+        }
+
+        input.addEventListener('input', () => {
+            const q = input.value.trim();
+            clearTimeout(globalSearchDebounce);
+            if (q.length < 2) {
+                hideDropdown();
+                return;
+            }
+            globalSearchDebounce = setTimeout(async () => {
+                try {
+                    const data = await Api.search(q);
+                    const parts = [];
+                    if ((data.tenants || []).length) {
+                        parts.push('<div class="global-search-group"><div class="global-search-group-title">👤 Nájemníci</div>');
+                        data.tenants.forEach(t => {
+                            const sub = [UI.esc(t.name)];
+                            if (t.phone) sub.push('📞 ' + UI.esc(t.phone));
+                            if (t.email) sub.push(UI.esc(t.email));
+                            parts.push('<button type="button" class="global-search-result" data-view="tenants" data-id="' + t.id + '">' + sub.join(' · ') + '</button>');
+                        });
+                        parts.push('</div>');
+                    }
+                    if ((data.properties || []).length) {
+                        parts.push('<div class="global-search-group"><div class="global-search-group-title">🏠 Nemovitosti</div>');
+                        data.properties.forEach(p => {
+                            parts.push('<button type="button" class="global-search-result" data-view="properties" data-id="' + p.id + '">' + UI.esc(p.name) + (p.address ? ' – ' + UI.esc(p.address) : '') + '</button>');
+                        });
+                        parts.push('</div>');
+                    }
+                    if ((data.contracts || []).length) {
+                        parts.push('<div class="global-search-group"><div class="global-search-group-title">📄 Smlouvy</div>');
+                        data.contracts.forEach(c => {
+                            const lbl = UI.esc(c.tenant_name) + ' – ' + UI.esc(c.property_name);
+                            parts.push('<button type="button" class="global-search-result" data-view="contracts" data-id="' + c.id + '">' + lbl + '</button>');
+                        });
+                        parts.push('</div>');
+                    }
+                    if (parts.length) showDropdown(parts.join(''));
+                    else showDropdown('<div class="global-search-empty">Žádné výsledky</div>');
+                } catch (e) {
+                    showDropdown('<div class="global-search-empty">Chyba: ' + UI.esc(e.message || '') + '</div>');
+                }
+            }, 300);
+        });
+
+        dropdown.addEventListener('click', (e) => {
+            const btn = e.target.closest('.global-search-result');
+            if (!btn) return;
+            openResult(btn.dataset.view, btn.dataset.id);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.global-search-wrap')) hideDropdown();
+        });
+        input.addEventListener('focus', () => {
+            if (dropdown.innerHTML.trim()) dropdown.classList.add('show');
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hideDropdown();
+        });
+    }
 
     // ── boot: check existing session ────────────────────────────────────
     (async () => {
