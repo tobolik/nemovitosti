@@ -197,9 +197,10 @@ async function loadDashboard(year) {
 
                 if (cell.type === 'empty' && isBeforePurchase) cls += ' heatmap-cell-before-purchase';
 
-                const contractEntityId = cell.contract.contracts_id ?? cell.contract.id;
+                const contract = cell.type !== 'empty' ? cell.contract : null;
+                const contractEntityId = contract ? (contract.contracts_id ?? contract.id) : '';
                 const dataAttrs = cell.type !== 'empty'
-                    ? ' data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (cell.contract.tenant_name || '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"'
+                    ? ' data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"'
                     : ' data-property-id="' + (prop.properties_id ?? prop.id) + '" data-month-key="' + monthKey + '"';
 
                 let titleAttr = '';
