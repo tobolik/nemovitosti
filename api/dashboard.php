@@ -69,6 +69,15 @@ function getExpectedRentForMonth(array $c, int $year, int $m, array $rentChanges
     return round($fullRent * $daysCovered / $daysInMonth, 2);
 }
 
+/** Očekávaná částka za měsíc = nájem + předpisy (payment_requests) se splatností v daném měsíci. */
+function getExpectedTotalForMonth(array $c, int $year, int $m, array $rentChangesByContract, array $paymentRequestsByContractMonth): float {
+    $rent = getExpectedRentForMonth($c, $year, $m, $rentChangesByContract);
+    $entityId = (int)($c['contracts_id'] ?? $c['id']);
+    $monthKey = sprintf('%04d-%02d', $year, $m);
+    $requests = $paymentRequestsByContractMonth[$entityId][$monthKey] ?? 0;
+    return round($rent + $requests, 2);
+}
+
 // Payments per contract – platby odkazují na contracts_id (entity_id smlouvy)
 // paidRent: jen platby typu rent (pro očekávaný nájem, neuhrazené měsíce)
 // paidTotal: všechny platby (pro součet v sekci Nájemník)
@@ -203,7 +212,7 @@ foreach ($contractsForView as $c) {
     ];
 }
 
-// Požadované platby (nezaplacené) – seskupeno podle contracts_id
+// Požadované platby (nezaplacené) – seskupeno podle contracts_id (pro tagy u smluv)
 $paymentRequestsRaw = db()->query("
     SELECT * FROM payment_requests
     WHERE valid_to IS NULL AND paid_at IS NULL
@@ -221,6 +230,33 @@ foreach ($out as &$row) {
     $row['payment_requests'] = $paymentRequestsByContract[(int)$row['contracts_id']] ?? [];
 }
 unset($row);
+
+// Předpisy s due_date – součet částek podle smlouvy a měsíce (pro očekávané v heatmapě a součtech)
+$paymentRequestsByContractMonth = [];
+$stmtPrMonth = db()->query("
+    SELECT contracts_id, due_date, amount
+    FROM payment_requests
+    WHERE valid_to IS NULL AND due_date IS NOT NULL
+");
+foreach ($stmtPrMonth->fetchAll() as $pr) {
+    $cid = (int)$pr['contracts_id'];
+    $monthKey = date('Y-m', strtotime($pr['due_date']));
+    if (!isset($paymentRequestsByContractMonth[$cid])) {
+        $paymentRequestsByContractMonth[$cid] = [];
+    }
+    if (!isset($paymentRequestsByContractMonth[$cid][$monthKey])) {
+        $paymentRequestsByContractMonth[$cid][$monthKey] = 0.0;
+    }
+    $paymentRequestsByContractMonth[$cid][$monthKey] += (float)$pr['amount'];
+}
+// Index i pod řádkovým id smlouvy (jako u rentChanges)
+foreach ($contracts as $c) {
+    $eid = (int)($c['contracts_id'] ?? $c['id']);
+    $rid = (int)$c['id'];
+    if ($eid !== $rid && isset($paymentRequestsByContractMonth[$eid]) && !isset($paymentRequestsByContractMonth[$rid])) {
+        $paymentRequestsByContractMonth[$rid] = $paymentRequestsByContractMonth[$eid];
+    }
+}
 
 // Heatmap: pro každou nemovitost, pro každý měsíc roku
 $heatmap = [];
@@ -251,8 +287,10 @@ foreach ($properties as $p) {
             $entityId = $contract['contracts_id'] ?? $contract['id'];
             $paid = $paymentsByContract[$entityId][$monthKey] ?? null;
             $expectedRent = getExpectedRentForMonth($contract, $year, $m, $rentChangesByContract);
+            $expectedTotal = getExpectedTotalForMonth($contract, $year, $m, $rentChangesByContract, $paymentRequestsByContractMonth);
             $fullMonthRent = getRentForMonth((float)$contract['monthly_rent'], $entityId, $year, $m, $rentChangesByContract);
-            $paidAmt = $paid ? (float)($paid['amount_rent'] ?? $paid['amount'] ?? 0) : 0;
+            $paidRent = $paid ? (float)($paid['amount_rent'] ?? $paid['amount'] ?? 0) : 0;
+            $paidTotal = $paid ? (float)($paid['amount'] ?? 0) : 0;
             $paymentCount = $paid ? (int)($paid['payment_count'] ?? 0) : 0;
             $hasPaymentDate = $paid && !empty($paid['payment_date']);
             $isPast = ($year < $nowY) || ($year == $nowY && $m < $nowM);
@@ -262,8 +300,9 @@ foreach ($properties as $p) {
             $isContractStartMonth = ($contract['contract_start'] > $firstOfMonth)
                 && (int)date('Y', strtotime($contract['contract_start'])) === $year
                 && (int)date('n', strtotime($contract['contract_start'])) === $m;
-            if ($hasPaymentDate && $paidAmt >= $expectedRent) {
-                $type = $isPartialMonth ? 'exact' : ($paidAmt > $fullMonthRent ? 'overpaid' : 'exact');
+            // Stav buňky: uhrazeno (zelená), když celková úhrada >= celkový předpis (nájem + energie atd.)
+            if ($hasPaymentDate && $paidTotal >= $expectedTotal) {
+                $type = $isPartialMonth ? 'exact' : ($paidTotal > $expectedTotal ? 'overpaid' : 'exact');
             } else {
                 $type = $isPast ? 'overdue' : 'unpaid';
             }
@@ -275,12 +314,12 @@ foreach ($properties as $p) {
                 'is_contract_start_month' => $isContractStartMonth,
                 'contract'             => ['id'=>$entityId, 'contracts_id'=>$entityId, 'monthly_rent'=>$fullMonthRent, 'tenant_name'=>$contract['tenant_name']],
                 'monthKey'             => $monthKey,
-                'amount'               => $expectedRent,
-                'amount_full'          => $fullMonthRent,
-                'payment'              => $paid ? ['amount'=>(float)($paid['amount_rent'] ?? $paid['amount'] ?? 0), 'date'=>$paid['payment_date'], 'count'=>$paymentCount] : null,
-                'paid_amount'          => $paidAmt,
+                'amount'               => $expectedTotal,
+                'amount_full'          => $expectedTotal,
+                'payment'              => $paid ? ['amount'=>$paidTotal, 'date'=>$paid['payment_date'], 'count'=>$paymentCount] : null,
+                'paid_amount'          => $paidTotal,
                 'payment_count'        => $paymentCount,
-                'remaining'            => max(0, $expectedRent - $paidAmt),
+                'remaining'            => max(0, $expectedTotal - $paidTotal),
                 'payment_details'      => $paymentDetails,
             ];
         }
@@ -388,11 +427,11 @@ if ($extended) {
         $actual = 0;
         foreach ($contractsForView as $c) {
             if ($c['contract_start'] <= $lastDayOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth)) {
-                $expected += getExpectedRentForMonth($c, $chartY, $chartM, $rentChangesByContract);
+                $expected += getExpectedTotalForMonth($c, $chartY, $chartM, $rentChangesByContract, $paymentRequestsByContractMonth);
                 $entityId = $c['contracts_id'] ?? $c['id'];
                 $paid = $paymentsByContract[$entityId][$key] ?? null;
                 if ($paid && !empty($paid['payment_date'])) {
-                    $actual += (float)($paid['amount_rent'] ?? $paid['amount'] ?? 0);
+                    $actual += (float)($paid['amount'] ?? 0);
                 }
             }
         }
@@ -424,11 +463,11 @@ for ($m = 1; $m <= 12; $m++) {
     $actual = 0;
     foreach ($contracts as $c) {
         if ($c['contract_start'] <= $lastDayOfMonth && (!$c['contract_end'] || $c['contract_end'] >= $firstOfMonth)) {
-            $expected += getExpectedRentForMonth($c, $year, $m, $rentChangesByContract);
+            $expected += getExpectedTotalForMonth($c, $year, $m, $rentChangesByContract, $paymentRequestsByContractMonth);
             $entityId = $c['contracts_id'] ?? $c['id'];
             $paid = $paymentsByContract[$entityId][$monthKey] ?? null;
             if ($paid && !empty($paid['payment_date'])) {
-                $actual += (float)($paid['amount_rent'] ?? $paid['amount'] ?? 0);
+                $actual += (float)($paid['amount'] ?? 0);
             }
         }
     }
