@@ -178,8 +178,7 @@ async function loadDashboard(year) {
                         (y < purchaseYear || (y === purchaseYear && m < purchaseMonth));
                     content = isBeforePurchase ? '' : 'Volno';
                 } else {
-                    content = '<span class="heatmap-cell-prescribed">Předpis: ' + UI.fmt(prescribedTotal) + ' Kč</span><br>' +
-                        (remaining > 0 ? '' : '<span class="heatmap-cell-icon cell-check">✓</span>');
+                    content = remaining > 0 ? '<span class="heatmap-cell-icon cell-cross">✗</span>' : '<span class="heatmap-cell-icon cell-check">✓</span>';
                     content = '<div class="heatmap-cell-fill" style="width:' + Math.round(pctPaid) + '%"></div><div class="heatmap-cell-content">' + content + '</div>';
                 }
 
