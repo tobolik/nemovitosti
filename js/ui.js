@@ -49,6 +49,16 @@ const UI = (() => {
             clearTimeout(hideTimer);
             hideTimer = null;
         }
+        function positionCenter() {
+            const pw = Math.min(840, window.innerWidth - 24);
+            const ph = Math.min(640, window.innerHeight - 24);
+            const left = Math.max(0, (window.innerWidth - pw) / 2);
+            const top = Math.max(0, (window.innerHeight - ph) / 2);
+            popover.style.width = pw + 'px';
+            popover.style.height = ph + 'px';
+            popover.style.left = left + 'px';
+            popover.style.top = top + 'px';
+        }
         document.body.addEventListener('mouseover', (e) => {
             const trigger = e.target.closest('.contract-preview-trigger');
             if (!trigger) return;
@@ -63,16 +73,7 @@ const UI = (() => {
                 popover.innerHTML = '<p class="contract-preview-fallback">Náhled není k dispozici.</p><a href="' + esc(url) + '" target="_blank" rel="noopener">Otevřít dokument</a>';
                 popover.classList.remove('has-iframe');
             }
-            const rect = trigger.getBoundingClientRect();
-            const pw = 420, ph = 320;
-            let left = rect.left, top = rect.bottom + 6;
-            if (left + pw > window.innerWidth) left = window.innerWidth - pw - 8;
-            if (left < 8) left = 8;
-            if (top + ph > window.innerHeight - 8) top = Math.max(8, rect.top - ph - 6);
-            popover.style.width = pw + 'px';
-            popover.style.height = ph + 'px';
-            popover.style.left = left + 'px';
-            popover.style.top = top + 'px';
+            positionCenter();
             popover.classList.add('show');
         }, true);
         document.body.addEventListener('mouseout', (e) => {
