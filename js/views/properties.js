@@ -2,9 +2,17 @@
 
 const TYPE_LABELS = { apartment:'Byt', house:'Dům', garage:'Garáž', commercial:'Komerční', land:'Pozemek' };
 
+/** Vrátí Google Drive preview URL pro embed, nebo null. */
+function getDrivePreviewUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    const m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    return m ? 'https://drive.google.com/file/d/' + m[1] + '/preview' : null;
+}
+
 const PropertiesView = (() => {
     // CRUD form controller (created once on first load)
     let form = null;
+    let contractPreviewInited = false;
 
     function initForm() {
         if (form) return;
@@ -81,8 +89,9 @@ const PropertiesView = (() => {
             ],
             data,
             (p) => {
-                const contractLink = p.purchase_contract_url
-                    ? '<a href="' + UI.esc(p.purchase_contract_url) + '" target="_blank" rel="noopener" title="Otevřít kupní smlouvu">📄</a>'
+                const url = p.purchase_contract_url;
+                const contractLink = url
+                    ? '<a href="' + UI.esc(url) + '" target="_blank" rel="noopener" class="contract-preview-trigger" data-url="' + UI.esc(url) + '" title="Náhled smlouvy (najeď myší)">📄</a>'
                     : '<span style="color:var(--txt3)">—</span>';
                 return (
                     '<td><strong>' + UI.esc(p.name) + '</strong></td>' +
@@ -91,7 +100,7 @@ const PropertiesView = (() => {
                     '<td class="col-hide-mobile">' + (p.size_m2 ? UI.fmt(p.size_m2) + ' m²' : '—') + '</td>' +
                     '<td class="col-hide-mobile">' + (p.purchase_price ? UI.fmt(p.purchase_price) + ' Kč' : '—') + '</td>' +
                     '<td class="col-hide-mobile">' + (p.purchase_date ? UI.fmtDate(p.purchase_date) : '—') + '</td>' +
-                    '<td class="col-hide-mobile">' + contractLink + '</td>' +
+                    '<td class="col-hide-mobile contract-preview-cell">' + contractLink + '</td>' +
                     '<td class="col-note col-hide-mobile">' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +
                         '<button class="btn btn-ghost btn-sm" onclick="PropertiesView.edit(' + p.id + ')">Úprava</button>' +
@@ -101,6 +110,64 @@ const PropertiesView = (() => {
             },
             { emptyMsg: 'Žádné nemovitosti. Přidejte první výše.' }
         );
+        initContractPreview();
+    }
+
+    function initContractPreview() {
+        if (contractPreviewInited) return;
+        contractPreviewInited = true;
+        const view = document.getElementById('view-properties');
+        if (!view) return;
+        let popover = document.getElementById('contract-preview-popover');
+        if (!popover) {
+            popover = document.createElement('div');
+            popover.id = 'contract-preview-popover';
+            popover.className = 'contract-preview-popover';
+            document.body.appendChild(popover);
+        }
+        let hideTimer = null;
+        function scheduleHide() {
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(() => { popover.classList.remove('show'); }, 350);
+        }
+        function cancelHide() {
+            clearTimeout(hideTimer);
+            hideTimer = null;
+        }
+        view.addEventListener('mouseover', (e) => {
+            const trigger = e.target.closest('.contract-preview-trigger');
+            if (!trigger) return;
+            if (e.relatedTarget && trigger.contains(e.relatedTarget)) return; /* pohyb uvnitř ikonky */
+            cancelHide();
+            const url = trigger.getAttribute('data-url') || trigger.href || '';
+            const previewUrl = getDrivePreviewUrl(url);
+            if (previewUrl) {
+                popover.innerHTML = '<iframe src="' + UI.esc(previewUrl) + '" title="Náhled dokumentu"></iframe>';
+                popover.classList.add('has-iframe');
+            } else {
+                popover.innerHTML = '<p class="contract-preview-fallback">Náhled není k dispozici.</p><a href="' + UI.esc(url) + '" target="_blank" rel="noopener">Otevřít dokument</a>';
+                popover.classList.remove('has-iframe');
+            }
+            const rect = trigger.getBoundingClientRect();
+            const pw = 420;
+            const ph = 320;
+            let left = rect.left;
+            let top = rect.bottom + 6;
+            if (left + pw > window.innerWidth) left = window.innerWidth - pw - 8;
+            if (left < 8) left = 8;
+            if (top + ph > window.innerHeight - 8) top = Math.max(8, rect.top - ph - 6);
+            popover.style.width = pw + 'px';
+            popover.style.height = ph + 'px';
+            popover.style.left = left + 'px';
+            popover.style.top = top + 'px';
+            popover.classList.add('show');
+        }, true);
+        view.addEventListener('mouseleave', (e) => {
+            if (e.relatedTarget && popover.contains(e.relatedTarget)) cancelHide();
+            else scheduleHide();
+        }, true);
+        popover.addEventListener('mouseenter', cancelHide);
+        popover.addEventListener('mouseleave', () => scheduleHide());
     }
 
     // ── exposed actions (volané z onclick) ──────────────────────────────
