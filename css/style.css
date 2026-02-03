@@ -536,18 +536,28 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .heatmap-table th:nth-child(n+2):nth-child(-n+13) { width: 6%; }
 .heatmap-table th.heatmap-total-col { width: 14%; }
 .heatmap-table td { padding: 4px; vertical-align: middle; }
-/* Pevná výška jen u měsíčních buněk (2.–13. sloupec), aby Volno a částky měly stejnou výšku */
-.heatmap-table tbody td:nth-child(n+2):nth-child(-n+13) { height: 54px; max-height: 54px; overflow: hidden; }
+/* Jednotná výška řádku – řádek ani buňka nesmí růst, jinak Volno vypadá dvojnásobně vysoké */
+.heatmap-table tbody tr { height: 54px; }
+.heatmap-table tbody td { height: 54px; max-height: 54px; }
 .heatmap-table tbody td:first-child,
 .heatmap-table tfoot td:first-child { width: 14%; }
-/* První sloupec: celý název nemovitosti, zalamování bez ořezu */
-.heatmap-table tbody td.heatmap-property { overflow: visible; white-space: normal; word-wrap: break-word; line-height: 1.25; }
+/* První sloupec: max 2 řádky, vejde se do 54px, zalamování slov */
+.heatmap-table tbody td.heatmap-property {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  line-height: 1.2;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
 .heatmap-table tbody td:not(:first-child):not(.heatmap-total-cell),
 .heatmap-table tfoot td.heatmap-sum-cell { width: 6%; }
 .heatmap-table td:last-child { width: 14%; }
-/* Celkem a Součet: celé částky čitelné */
+/* Celkem: částky čitelné, zalamování do buňky */
 .heatmap-table tbody td.heatmap-total-cell,
-.heatmap-sum-row td { overflow: visible; }
+.heatmap-sum-row td { overflow: hidden; white-space: normal; word-wrap: break-word; }
 .heatmap-cell { height: 46px; min-height: 46px; min-width: 0; width: 100%; max-width: 100%; padding: 4px 3px; border-radius: var(--r); cursor: pointer; transition: opacity .15s; text-align: center; box-sizing: border-box; font-size: .84rem; display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1.25; }
 .heatmap-cell:hover { opacity: .85; }
 .heatmap-cell.empty { background: rgba(100,100,100,.3); color: var(--txt3); font-size: .84rem; }
