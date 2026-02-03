@@ -124,12 +124,11 @@ $contractsForView = $showEnded ? $contracts : array_values(array_filter($contrac
     return empty($c['contract_end']) || $c['contract_end'] >= $today;
 }));
 
-// Očekáváno = nájem + jen neuhrazené požadavky (částka v DB může být kladná i záporná – výdej).
-// Uhrazený požadavek se nezapočítává, jeho vliv je v platbách.
+// Očekáváno = nájem + všechny požadavky (uhrazené i neuhrazené), aby souhlasilo s Uhrazono a nebylo „přeplaceno“.
 $paymentRequestsSumByContract = [];
 $allRequestsStmt = db()->query("
     SELECT contracts_id, type, amount FROM payment_requests
-    WHERE valid_to IS NULL AND paid_at IS NULL
+    WHERE valid_to IS NULL
 ");
 foreach ($allRequestsStmt->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
@@ -267,12 +266,12 @@ foreach ($out as &$row) {
 }
 unset($row);
 
-// Předpisy s due_date (jen neuhrazené) – součet podle smlouvy a měsíce pro heatmapu.
+// Předpisy s due_date – součet podle smlouvy a měsíce pro heatmapu (všechny, aby měsíc nebyl oranžový).
 $paymentRequestsByContractMonth = [];
 $stmtPrMonth = db()->query("
     SELECT contracts_id, due_date, amount, type
     FROM payment_requests
-    WHERE valid_to IS NULL AND due_date IS NOT NULL AND paid_at IS NULL
+    WHERE valid_to IS NULL AND due_date IS NOT NULL
 ");
 foreach ($stmtPrMonth->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];

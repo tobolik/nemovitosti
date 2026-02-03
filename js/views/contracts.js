@@ -243,6 +243,7 @@ const ContractsView = (() => {
                 if (!values.contract_start) return 'Vyplňte začátek smlouvy.';
                 if (!UI.isDateValid(values.contract_start)) return 'Začátek smlouvy: zadejte platné datum (např. únor má max. 29 dní).';
                 if (values.contract_end && !UI.isDateValid(values.contract_end)) return 'Konec smlouvy: zadejte platné datum (např. únor má max. 29 dní).';
+                if (values.deposit_return_date && !values.contract_end) return 'Při vyplnění data vrácení kauce musí být vyplněno datum ukončení smlouvy.';
                 return null;
             },
             getValues() {
