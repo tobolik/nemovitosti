@@ -261,7 +261,7 @@ async function loadDashboard(year) {
             { label: 'Nájemník' },
             { label: 'Nemovitost' },
             { label: 'Nájemné / měs.' },
-            { label: 'Uhrazeno / Očekáváno' },
+            { label: 'Uhrazeno / Očekáváno (od zač. smlouvy)', title: 'Očekáváno = součet nájmu od začátku smlouvy do dneška' },
             { label: 'Neuhrazené měsíce' },
         ],
         contracts,

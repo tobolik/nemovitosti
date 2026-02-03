@@ -72,7 +72,8 @@ const UI = (() => {
             let cls = [];
             if (h.act) cls.push('th-act');
             if (h.hideMobile) cls.push('col-hide-mobile');
-            return '<th' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + '>' + esc(h.label) + '</th>';
+            const titleAttr = h.title ? ' title="' + esc(h.title) + '"' : '';
+            return '<th' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + titleAttr + '>' + esc(h.label) + '</th>';
         }).join('');
 
         const trs = rows.map(item => {
