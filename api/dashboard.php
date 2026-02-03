@@ -226,8 +226,18 @@ foreach ($paymentRequestsRaw as $pr) {
     }
     $paymentRequestsByContract[$cid][] = $pr;
 }
+// Smlouvy mohou mít contracts_id (entity_id) jiné než řádkové id – indexovat i pod id, ať se požadavky vždy zobrazí
+foreach ($contracts as $c) {
+    $eid = (int)($c['contracts_id'] ?? $c['id']);
+    $rid = (int)$c['id'];
+    if ($rid !== $eid && isset($paymentRequestsByContract[$eid]) && !isset($paymentRequestsByContract[$rid])) {
+        $paymentRequestsByContract[$rid] = $paymentRequestsByContract[$eid];
+    }
+}
 foreach ($out as &$row) {
-    $row['payment_requests'] = $paymentRequestsByContract[(int)$row['contracts_id']] ?? [];
+    $byEntity = $paymentRequestsByContract[(int)$row['contracts_id']] ?? [];
+    $byRowId = $paymentRequestsByContract[(int)$row['id']] ?? [];
+    $row['payment_requests'] = $byEntity ?: $byRowId;
 }
 unset($row);
 

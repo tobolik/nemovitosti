@@ -291,9 +291,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newId = softInsert($table, $data);
             if ($paymentRequestEntityId > 0) {
                 $prRow = findActiveByEntityId('payment_requests', $paymentRequestEntityId);
+                if (!$prRow) {
+                    $st = db()->prepare("SELECT * FROM payment_requests WHERE id = ? AND valid_to IS NULL");
+                    $st->execute([$paymentRequestEntityId]);
+                    $prRow = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+                }
                 if ($prRow) {
-                    db()->prepare("UPDATE payment_requests SET paid_at = CURDATE(), payment_id = ? WHERE id = ? AND valid_to IS NULL")
-                        ->execute([$newId, (int)$prRow['id']]);
+                    $paidAt = !empty($data['payment_date']) ? substr($data['payment_date'], 0, 10) : date('Y-m-d');
+                    $paymentRow = findActive('payments', $newId);
+                    $paymentEntityId = $paymentRow ? (int)($paymentRow['payments_id'] ?? $paymentRow['id']) : $newId;
+                    softUpdate('payment_requests', (int)$prRow['id'], ['paid_at' => $paidAt, 'payments_id' => $paymentEntityId]);
                 }
             }
             jsonOk(findActive($table, $newId), 201);

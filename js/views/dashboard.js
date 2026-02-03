@@ -293,8 +293,10 @@ async function loadDashboard(year) {
                 const tenant = (d.tenant_name || '').replace(/"/g, '&quot;');
                 const prop = (d.property_name || '').replace(/"/g, '&quot;');
                 const typeLabel = requestTypeLabels[pr.type] || pr.type;
+                const dueDate = (pr.due_date || '').slice(0, 10);
+                const dueAttr = dueDate ? ' data-due-date="' + dueDate.replace(/"/g, '&quot;') + '"' : '';
                 tags += '<span class="tag tag-request">' + typeLabel + ' ' + UI.fmt(pr.amount) + ' Kč' +
-                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-amount="' + (pr.amount || 0) + '" data-request-type="' + (pr.type || 'energy') + '" data-payment-request-id="' + (pr.payment_requests_id ?? pr.id) + '" data-tenant="' + tenant + '" data-property="' + prop + '" title="Zapsat platbu">+</span></span>';
+                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-amount="' + (pr.amount || 0) + '" data-request-type="' + (pr.type || 'energy') + '" data-payment-request-id="' + (pr.payment_requests_id ?? pr.id) + '" data-tenant="' + tenant + '" data-property="' + prop + '"' + dueAttr + ' title="Zapsat platbu">+</span></span>';
             });
             const tagsHtml = tags ? '<span class="tags dash-unpaid-tags">' + tags + '</span>' : '<span style="color:var(--txt3)">—</span>';
 
@@ -798,7 +800,8 @@ function initQuickPayDelegation() {
             const requestId = parseInt(plus.dataset.paymentRequestId, 10);
             const tenant = plus.dataset.tenant || '';
             const property = plus.dataset.property || '';
-            DashboardView.quickPayFromRequest(contractsId, amount, requestType, requestId, tenant, property);
+            const dueDate = plus.dataset.dueDate || '';
+            DashboardView.quickPayFromRequest(contractsId, amount, requestType, requestId, tenant, property, dueDate);
         } else {
             const year = parseInt(plus.dataset.year, 10);
             const month = parseInt(plus.dataset.month, 10);
@@ -836,9 +839,20 @@ const DashboardView = {
         fakeEl.dataset.propertyName = propertyName || '';
         await openPaymentModal(fakeEl);
     },
-    async quickPayFromRequest(contractsId, amount, requestType, requestId, tenantName, propertyName) {
+    async quickPayFromRequest(contractsId, amount, requestType, requestId, tenantName, propertyName, dueDateStr) {
         const now = new Date();
-        const monthKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        let year, month, paymentDate;
+        if (dueDateStr && /^\d{4}-\d{2}-\d{2}$/.test(dueDateStr)) {
+            const [y, m] = dueDateStr.split('-').map(Number);
+            year = y;
+            month = m;
+            paymentDate = dueDateStr;
+        } else {
+            year = now.getFullYear();
+            month = now.getMonth() + 1;
+            paymentDate = now.toISOString().slice(0, 10);
+        }
+        const monthKey = year + '-' + String(month).padStart(2, '0');
         const fakeEl = document.createElement('div');
         fakeEl.dataset.contractId = String(contractsId);
         fakeEl.dataset.contractsId = String(contractsId);
@@ -846,7 +860,7 @@ const DashboardView = {
         fakeEl.dataset.amount = String(amount);
         fakeEl.dataset.tenant = tenantName || '';
         fakeEl.dataset.paid = '0';
-        fakeEl.dataset.paymentDate = now.toISOString().slice(0, 10);
+        fakeEl.dataset.paymentDate = paymentDate;
         fakeEl.dataset.paymentAmount = '0';
         fakeEl.dataset.remaining = String(amount);
         fakeEl.dataset.propertyName = propertyName || '';
