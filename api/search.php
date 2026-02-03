@@ -23,13 +23,12 @@ $st = db()->prepare("
     SELECT id, tenants_id, name, email, phone, address, ic, dic, note
     FROM tenants
     WHERE valid_to IS NULL
-      AND (name LIKE :q OR COALESCE(email,'') LIKE :q OR COALESCE(phone,'') LIKE :q
-           OR COALESCE(address,'') LIKE :q OR COALESCE(ic,'') LIKE :q OR COALESCE(dic,'') LIKE :q OR COALESCE(note,'') LIKE :q)
+      AND (name LIKE ? OR COALESCE(email,'') LIKE ? OR COALESCE(phone,'') LIKE ?
+           OR COALESCE(address,'') LIKE ? OR COALESCE(ic,'') LIKE ? OR COALESCE(dic,'') LIKE ? OR COALESCE(note,'') LIKE ?)
     ORDER BY name ASC
     LIMIT " . (int)$limit
 );
-$st->bindValue(':q', $like, PDO::PARAM_STR);
-$st->execute();
+$st->execute(array_fill(0, 7, $like));
 foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
     $tenants[] = [
         'id'   => (int)($r['tenants_id'] ?? $r['id']),
@@ -45,12 +44,11 @@ $st = db()->prepare("
     SELECT id, properties_id, name, address, note
     FROM properties
     WHERE valid_to IS NULL
-      AND (name LIKE :q OR COALESCE(address,'') LIKE :q OR COALESCE(note,'') LIKE :q)
+      AND (name LIKE ? OR COALESCE(address,'') LIKE ? OR COALESCE(note,'') LIKE ?)
     ORDER BY name ASC
     LIMIT " . (int)$limit
 );
-$st->bindValue(':q', $like, PDO::PARAM_STR);
-$st->execute();
+$st->execute(array_fill(0, 3, $like));
 foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
     $properties[] = [
         'id'      => (int)($r['properties_id'] ?? $r['id']),
@@ -68,12 +66,11 @@ $st = db()->prepare("
     JOIN properties p ON p.properties_id = c.properties_id AND p.valid_to IS NULL
     JOIN tenants   t ON t.tenants_id = c.tenants_id   AND t.valid_to IS NULL
     WHERE c.valid_to IS NULL
-      AND (t.name LIKE :q OR p.name LIKE :q OR COALESCE(p.address,'') LIKE :q)
+      AND (t.name LIKE ? OR p.name LIKE ? OR COALESCE(p.address,'') LIKE ?)
     ORDER BY c.contract_start DESC
     LIMIT " . (int)$limit
 );
-$st->bindValue(':q', $like, PDO::PARAM_STR);
-$st->execute();
+$st->execute(array_fill(0, 3, $like));
 foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
     $contracts[] = [
         'id'             => (int)($r['contracts_id'] ?? $r['id']),
