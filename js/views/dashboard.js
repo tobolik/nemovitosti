@@ -606,6 +606,7 @@ async function openPaymentModal(el) {
     const methodSelect = document.getElementById('pay-modal-method');
     const accountWrap = document.getElementById('pay-modal-account-wrap');
     const accountSelect = document.getElementById('pay-modal-account');
+    const noteEl = document.getElementById('pay-modal-note');
     const existingWrap = document.getElementById('pay-modal-existing');
     const batchHintEl = document.getElementById('pay-modal-batch-hint');
     const breakdownWrap = document.getElementById('pay-modal-breakdown');
@@ -636,6 +637,7 @@ async function openPaymentModal(el) {
     document.getElementById('pay-modal-month-key').value = monthKey;
     document.getElementById('pay-modal-payment-request-id').value = '';
     editIdEl.value = '';
+    noteEl.value = '';
     batchHintEl.style.display = 'none';
     bulkCheckbox.checked = false;
     rangeRow.style.display = 'none';
@@ -750,9 +752,10 @@ async function openPaymentModal(el) {
             const typeBadge = '<span class="pay-modal-type-badge pay-type-' + pt + '">' + UI.esc(typeLabel) + '</span>';
             const batchTag = p.payment_batch_id ? ' <span class="tag tag-batch" title="Součást jedné platby za více měsíců">dávka</span>' : '';
             const payEntityId = p.payments_id ?? p.id;
+            const noteAttr = (p.note != null && p.note !== '') ? (' data-note="' + String(p.note).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"') : '';
             html += '<li class="pay-modal-existing-item">' +
                 '<span>' + typeBadge + ' ' + amt + ' Kč (' + dt + ')' + batchTag + '</span> ' +
-                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '">Upravit</button> ' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '"' + noteAttr + '>Upravit</button> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + payEntityId + '" data-batch-id="' + (p.payment_batch_id || '') + '">Smazat</button>' +
                 '</li>';
         });
@@ -783,6 +786,7 @@ async function openPaymentModal(el) {
         batchHintEl.style.display = p.payment_batch_id ? 'block' : 'none';
         bulkWrap.style.display = 'none';
         if (breakdownWrap) breakdownWrap.style.display = 'none';
+        noteEl.value = p.note ?? '';
     } else {
         bulkWrap.style.display = editIdEl.value ? 'none' : 'block';
     }
@@ -801,6 +805,7 @@ async function openPaymentModal(el) {
             methodSelect.value = editBtn.dataset.method === 'cash' ? 'cash' : 'account';
             accountSelect.value = editBtn.dataset.account || '';
             accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
+            noteEl.value = editBtn.dataset.note ?? '';
         typeSelect.value = ['rent','deposit','deposit_return','energy','other'].includes(pt) ? pt : 'rent';
         setTypeWrapClass(typeSelect.value);
         paid.checked = true;
@@ -843,6 +848,7 @@ async function openPaymentModal(el) {
             bulkWrap.style.display = 'block';
             bulkCheckbox.checked = false;
             rangeRow.style.display = 'none';
+            noteEl.value = '';
             if (hasBreakdown && breakdownWrap && breakdownBtns && breakdownBtns.innerHTML) {
                 breakdownWrap.style.display = 'block';
                 breakdownBtns.querySelectorAll('.pay-breakdown-btn').forEach(b => b.classList.remove('active'));
@@ -919,6 +925,7 @@ async function openPaymentModal(el) {
                         payment_method: method,
                         bank_accounts_id: accountId || null,
                         payment_type: paymentType,
+                        note: (noteEl.value || '').trim() || null,
                     };
                     await Api.crudEdit('payments', parseInt(editId, 10), payData);
                 } else {
@@ -930,6 +937,7 @@ async function openPaymentModal(el) {
                         payment_method: method,
                         bank_accounts_id: accountId || null,
                         payment_type: paymentType,
+                        note: (noteEl.value || '').trim() || null,
                     };
                     if (bulk) {
                         const yFrom = parseInt(yearFromEl.value, 10);
