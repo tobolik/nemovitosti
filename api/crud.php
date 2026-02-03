@@ -514,13 +514,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($table === 'payments' && $action === 'deleteBatch') {
         $batchId = trim($b['payment_batch_id'] ?? '');
         if ($batchId === '') jsonErr('Chybí payment_batch_id.');
-        $s = db()->prepare("SELECT id FROM payments WHERE payment_batch_id=? AND valid_to IS NULL");
+        $s = db()->prepare("SELECT id, payments_id FROM payments WHERE payment_batch_id=? AND valid_to IS NULL");
         $s->execute([$batchId]);
-        $ids = array_column($s->fetchAll(), 'id');
-        foreach ($ids as $pid) {
-            softDelete($table, (int)$pid);
+        $rows = $s->fetchAll();
+        $unlink = db()->prepare("SELECT id FROM payment_requests WHERE payments_id = ? AND valid_to IS NULL");
+        foreach ($rows as $pay) {
+            $entityId = (int)($pay['payments_id'] ?? $pay['id']);
+            $unlink->execute([$entityId]);
+            foreach ($unlink->fetchAll() as $pr) {
+                softUpdate('payment_requests', (int)$pr['id'], ['payments_id' => null, 'paid_at' => null]);
+            }
+            softDelete($table, (int)$pay['id']);
         }
-        jsonOk(['deleted' => count($ids)]);
+        jsonOk(['deleted' => count($rows)]);
     }
 
     if ($action === 'delete') {
@@ -529,6 +535,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $row = findActiveByEntityId($table, $entityId);
         if (!$row) jsonErr('Záznam neexistuje.', 404);
         $rowId = (int)$row['id'];
+        // Při mazání platby zrušit u propojených požadavků datum úhrady a vazbu
+        if ($table === 'payments') {
+            $st = db()->prepare("SELECT id FROM payment_requests WHERE payments_id = ? AND valid_to IS NULL");
+            $st->execute([$entityId]);
+            foreach ($st->fetchAll() as $pr) {
+                softUpdate('payment_requests', (int)$pr['id'], ['payments_id' => null, 'paid_at' => null]);
+            }
+        }
         if ($table === 'contract_rent_changes') {
             softDelete($table, $rowId);
         } elseif ($table === 'bank_accounts') {

@@ -217,6 +217,13 @@ foreach ($contractsForView as $c) {
     $depositReturned = !empty($c['deposit_return_date']);
     $contractEnded = !empty($c['contract_end']) && $c['contract_end'] <= date('Y-m-d');
     $depositToReturn = $depositAmt > 0 && !$depositReturned && $contractEnded;
+    // Historie nájmu pro tooltip (základní nájem + změny, řazeno podle effective_from)
+    $changes = $rentChangesByContract[$entityId] ?? $rentChangesByContract[(int)$c['id']] ?? [];
+    $rentHistory = [['amount' => $baseRent, 'effective_from' => $c['contract_start'] ?? '']];
+    foreach ($changes as $ch) {
+        $rentHistory[] = ['amount' => (float)($ch['amount'] ?? 0), 'effective_from' => $ch['effective_from'] ?? ''];
+    }
+    usort($rentHistory, fn($a, $b) => strcmp($a['effective_from'], $b['effective_from']));
     $out[] = [
         'id'             => $c['id'],
         'contracts_id'   => $entityId,
@@ -227,6 +234,7 @@ foreach ($contractsForView as $c) {
         'property_name'  => $c['property_name'],
         'tenant_name'    => $c['tenant_name'],
         'monthly_rent'   => $currentRent,
+        'rent_history'   => $rentHistory,
         'contract_start' => $c['contract_start'],
         'contract_end'   => $c['contract_end'],
         'expected_months'=> $expected,
@@ -282,8 +290,9 @@ foreach ($contracts as $c) {
     $contractToProperty[$eid] = $pid;
     if ($eid !== $rid) $contractToProperty[$rid] = $pid;
 }
+$paymentRequestsListByContractMonth = []; // [contracts_id][monthKey] => [{ id, amount, type, note }, ...]
 $stmtPrMonth = db()->query("
-    SELECT contracts_id, due_date, amount, type
+    SELECT id, payment_requests_id, contracts_id, due_date, amount, type, note
     FROM payment_requests
     WHERE valid_to IS NULL AND due_date IS NOT NULL
 ");
@@ -292,6 +301,19 @@ foreach ($stmtPrMonth->fetchAll() as $pr) {
     $monthKey = date('Y-m', strtotime($pr['due_date']));
     $amt = (float)$pr['amount'];
     if (($pr['type'] ?? '') === 'deposit_return' && $amt > 0) $amt = -$amt;
+    $prId = (int)($pr['payment_requests_id'] ?? $pr['id']);
+    if (!isset($paymentRequestsListByContractMonth[$cid])) {
+        $paymentRequestsListByContractMonth[$cid] = [];
+    }
+    if (!isset($paymentRequestsListByContractMonth[$cid][$monthKey])) {
+        $paymentRequestsListByContractMonth[$cid][$monthKey] = [];
+    }
+    $paymentRequestsListByContractMonth[$cid][$monthKey][] = [
+        'id' => $prId,
+        'amount' => $amt,
+        'type' => $pr['type'] ?? 'energy',
+        'note' => $pr['note'] ?? '',
+    ];
     if (!isset($paymentRequestsByContractMonth[$cid])) {
         $paymentRequestsByContractMonth[$cid] = [];
     }
@@ -320,6 +342,12 @@ foreach ($contracts as $c) {
     }
     if (isset($paymentRequestsByContractMonth[$rid]) && !isset($paymentRequestsByContractMonth[$eid])) {
         $paymentRequestsByContractMonth[$eid] = $paymentRequestsByContractMonth[$rid];
+    }
+    if (isset($paymentRequestsListByContractMonth[$eid]) && !isset($paymentRequestsListByContractMonth[$rid])) {
+        $paymentRequestsListByContractMonth[$rid] = $paymentRequestsListByContractMonth[$eid];
+    }
+    if (isset($paymentRequestsListByContractMonth[$rid]) && !isset($paymentRequestsListByContractMonth[$eid])) {
+        $paymentRequestsListByContractMonth[$eid] = $paymentRequestsListByContractMonth[$rid];
     }
 }
 
@@ -386,6 +414,20 @@ foreach ($properties as $p) {
             }
 
             $paymentDetails = $paymentsListByContract[$entityId][$monthKey] ?? [];
+            $monthRequests = $paymentRequestsListByContractMonth[$entityId][$monthKey] ?? [];
+            $monthBreakdown = [];
+            if ($expectedRent > 0) {
+                $monthBreakdown[] = ['type' => 'rent', 'label' => 'Nájem', 'amount' => round($expectedRent, 2)];
+            }
+            foreach ($monthRequests as $req) {
+                $monthBreakdown[] = [
+                    'type'   => 'request',
+                    'id'     => (int)$req['id'],
+                    'label'  => $req['note'] ?: ($req['type'] === 'energy' ? 'Energie' : ($req['type'] === 'settlement' ? 'Vyúčtování' : 'Požadavek')),
+                    'amount' => (float)$req['amount'],
+                    'request_type' => $req['type'],
+                ];
+            }
             $heatmap[$propId . '_' . $monthKey] = [
                 'type'                 => $type,
                 'isPast'               => $isPast,
@@ -399,6 +441,7 @@ foreach ($properties as $p) {
                 'payment_count'        => $paymentCount,
                 'remaining'            => max(0, $expectedTotal - $paidTotal),
                 'payment_details'      => $paymentDetails,
+                'month_breakdown'      => $monthBreakdown,
             ];
         }
     }

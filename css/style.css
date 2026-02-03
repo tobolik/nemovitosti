@@ -597,6 +597,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .pay-modal-full.pay-modal-overpaid { color: var(--orange-600); }
 .pay-modal-batch-hint { margin: 8px 0; padding: 8px 12px; background: rgba(234,88,12,.15); border-radius: var(--r); font-size: .85rem; color: var(--orange-600); border: 1px solid rgba(234,88,12,.3); }
 .pay-modal-existing { margin: 12px 0; padding: 10px; background: var(--bg2); border-radius: var(--r); }
+.pay-modal-breakdown { margin: 12px 0; padding: 10px 0; border-bottom: 1px solid var(--glass-border); }
+.pay-modal-breakdown-title { font-size: .85rem; font-weight: 600; margin-bottom: 8px; color: var(--txt2); }
+.pay-modal-breakdown-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.pay-modal-breakdown-btns .pay-breakdown-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .pay-modal-existing-title { font-size: .85rem; font-weight: 600; margin-bottom: 8px; color: var(--txt2); }
 .pay-modal-existing-list { list-style: none; margin: 0; padding: 0; }
 .pay-modal-existing-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: .9rem; flex-wrap: wrap; }
@@ -704,6 +708,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .dash-unpaid-cell { white-space: normal; }
 .dash-p-col { width: 2.5em; text-align: center; vertical-align: middle; }
 .dash-add-req-btn { width: 28px; height: 28px; padding: 0; font-size: 1.1rem; line-height: 1; border-radius: var(--r); }
+.dash-rent-up { font-size: .85em; opacity: .75; margin-left: 2px; }
 .dash-link { cursor: pointer; }
 .dash-link:hover { text-decoration: underline; }
 #dash-table .tbl-wrap { overflow-x: visible; }
@@ -769,15 +774,20 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .filter-bar select {
   min-width: 300px; max-width: min(100%, 480px);
   padding: 6px 26px 6px 11px;
-  background: rgba(0,0,0,.2);
+  background-color: rgba(30,41,59,.95);
   border: 1px solid var(--glass-border);
   border-radius: var(--r);
   color: var(--txt);
   font-size: .82rem;
   appearance: none;
+  color-scheme: dark;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c4b5fd'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 9px center;
+}
+.filter-bar select option {
+  background: var(--slate-900);
+  color: var(--txt);
 }
 /* Rolětka filtru smluv – širší, aby byl dlouhý text (nájemník – nemovitost) čitelný */
 #pay-filter-contract { min-width: 360px; max-width: min(100%, 560px); }
@@ -824,8 +834,15 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .modal-box .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; color: var(--txt); }
 .modal-box .fg label { color: var(--txt2); }
 .modal-box .fg input, .modal-box .fg select, .modal-box .fg textarea {
-  background: rgba(0,0,0,.2);
+  background: rgba(30,41,59,.95);
   border-color: var(--glass-border);
+  color: var(--txt);
+}
+.modal-box .fg select {
+  color-scheme: dark;
+}
+.modal-box .fg select option {
+  background: var(--slate-900);
   color: var(--txt);
 }
 .modal-box .fg input:focus, .modal-box .fg select:focus, .modal-box .fg textarea:focus {

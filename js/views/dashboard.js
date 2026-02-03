@@ -195,8 +195,11 @@ async function loadDashboard(year) {
 
                 const contract = (cell && cell.contract != null) ? cell.contract : null;
                 const contractEntityId = contract ? (contract.contracts_id ?? contract.id) : '';
+                const breakdownJson = (cell.month_breakdown && cell.month_breakdown.length > 0)
+                    ? JSON.stringify(cell.month_breakdown).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+                    : '';
                 const dataAttrs = cell.type !== 'empty'
-                    ? ' data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"'
+                    ? ' data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"' + (breakdownJson ? ' data-month-breakdown="' + breakdownJson + '"' : '')
                     : ' data-property-id="' + (prop.properties_id ?? prop.id) + '" data-month-key="' + monthKey + '"';
 
                 let titleAttr = '';
@@ -262,7 +265,7 @@ async function loadDashboard(year) {
             { label: 'Nájemné / měs.' },
             { label: 'Uhrazeno / Očekáváno (od zač. smlouvy)', title: 'Očekáváno = nájem + požadavky (energie, kauce, vyúčt.); vrácení kauce = odchod. Uhrazeno = všechny platby.' },
             { label: 'Neuhrazené měsíce' },
-            { label: 'P', title: 'Přidat požadavek (energie, vyúčtování, kauce…) k této smlouvě' },
+            { label: 'Pož.', title: 'Přidat požadavek (energie, vyúčtování, kauce…) k této smlouvě' },
         ],
         contracts,
         (d) => {
@@ -347,10 +350,26 @@ async function loadDashboard(year) {
 
             const addReqTitle = 'Přidat požadavek k této smlouvě';
             const addReqBtn = '<button type="button" class="btn btn-ghost btn-sm dash-add-req-btn" data-contracts-id="' + (d.contracts_id ?? d.id) + '" title="' + UI.esc(addReqTitle) + '">+</button>';
+            const rentHistory = d.rent_history || [];
+            const hasRentChanges = rentHistory.length > 1;
+            let rentCellTitle = '';
+            if (rentHistory.length) {
+                rentCellTitle = 'Aktuální nájem: ' + UI.fmt(d.monthly_rent) + ' Kč';
+                if (rentHistory.length > 1) {
+                    rentCellTitle += '\nHistorie změn:';
+                    rentHistory.forEach(h => {
+                        const from = (h.effective_from || '').slice(0, 10);
+                        const dateStr = from ? (from.slice(8, 10) + '.' + from.slice(5, 7) + '.' + from.slice(0, 4)) : '—';
+                        rentCellTitle += '\n — ' + UI.fmt(h.amount) + ' Kč (od ' + dateStr + ')';
+                    });
+                }
+            }
+            const rentCellContent = UI.fmt(d.monthly_rent) + ' Kč' + (hasRentChanges ? ' <span class="dash-rent-up">↑</span>' : '');
+            const rentTdTitle = rentCellTitle ? ' title="' + UI.esc(rentCellTitle) + '"' : '';
             return (
                 '<td><strong' + tenantLink + '>' + UI.esc(d.tenant_name) + '</strong></td>' +
                 '<td' + propLink + '>' + UI.esc(d.property_name) + '</td>' +
-                '<td' + contractLink + '>' + UI.fmt(d.monthly_rent) + ' Kč</td>' +
+                '<td' + contractLink + rentTdTitle + '>' + rentCellContent + '</td>' +
                 '<td' + paymentsLink + '><div class="prog-wrap" title="' + UI.esc(progWrapTitle) + '"><div class="prog-bar"><div class="prog-fill ' + progClass + '" style="width:' + Math.round(pct) + '%"></div></div>' +
                 '<span class="prog-lbl" title="' + UI.esc(progWrapTitle) + '">' + UI.fmt(totalPaid) + ' / ' + UI.fmt(expectedTotal) + ' Kč</span></div></td>' +
                 '<td class="dash-unpaid-cell">' + tagsHtml + '</td>' +
@@ -589,6 +608,8 @@ async function openPaymentModal(el) {
     const accountSelect = document.getElementById('pay-modal-account');
     const existingWrap = document.getElementById('pay-modal-existing');
     const batchHintEl = document.getElementById('pay-modal-batch-hint');
+    const breakdownWrap = document.getElementById('pay-modal-breakdown');
+    const breakdownBtns = document.getElementById('pay-modal-breakdown-btns');
     const editIdEl = document.getElementById('pay-modal-edit-id');
     const typeSelect = document.getElementById('pay-modal-type');
     const typeWrap = document.getElementById('pay-modal-type-wrap');
@@ -650,6 +671,43 @@ async function openPaymentModal(el) {
         }
     }
 
+    let monthBreakdown = [];
+    try {
+        if (el.dataset.monthBreakdown) monthBreakdown = JSON.parse(el.dataset.monthBreakdown);
+    } catch (_) {}
+    const totalForMonth = amountVal;
+    const hasBreakdown = monthBreakdown.length > 0;
+
+    if (breakdownWrap && breakdownBtns) {
+        if (hasBreakdown && !el.dataset.paymentRequestId) {
+            breakdownWrap.style.display = 'block';
+            let btnsHtml = '<button type="button" class="btn btn-pri btn-sm pay-breakdown-btn active" data-amount="' + totalForMonth + '" data-type="rent" data-request-id="">Celá částka (' + UI.fmt(totalForMonth) + ' Kč)</button> ';
+            monthBreakdown.forEach(function (item) {
+                if (item.type === 'rent') {
+                    btnsHtml += '<button type="button" class="btn btn-ghost btn-sm pay-breakdown-btn" data-amount="' + item.amount + '" data-type="rent" data-request-id="">' + UI.esc(item.label) + ' ' + UI.fmt(item.amount) + ' Kč</button> ';
+                } else {
+                    const payType = (item.request_type === 'deposit_return') ? 'deposit_return' : (['rent','deposit','energy','other'].includes(item.request_type) ? item.request_type : (item.request_type === 'settlement' ? 'energy' : 'energy'));
+                    const amtVal = (item.request_type === 'deposit_return' && item.amount > 0) ? -item.amount : item.amount;
+                    btnsHtml += '<button type="button" class="btn btn-ghost btn-sm pay-breakdown-btn" data-amount="' + amtVal + '" data-type="' + payType + '" data-request-id="' + (item.id || '') + '">' + UI.esc(item.label) + ' ' + UI.fmt(Math.abs(item.amount)) + ' Kč</button> ';
+                }
+            });
+            breakdownBtns.innerHTML = btnsHtml;
+            breakdownBtns.onclick = function (e) {
+                const btn = e.target.closest('.pay-breakdown-btn');
+                if (!btn) return;
+                breakdownBtns.querySelectorAll('.pay-breakdown-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                amount.value = btn.dataset.amount;
+                typeSelect.value = btn.dataset.type || 'rent';
+                setTypeWrapClass(typeSelect.value);
+                document.getElementById('pay-modal-payment-request-id').value = btn.dataset.requestId || '';
+            };
+        } else {
+            breakdownWrap.style.display = 'none';
+            breakdownBtns.innerHTML = '';
+        }
+    }
+
     const paymentRequestId = el.dataset.paymentRequestId || '';
     if (paymentRequestId) {
         document.getElementById('pay-modal-payment-request-id').value = paymentRequestId;
@@ -664,7 +722,10 @@ async function openPaymentModal(el) {
         setTypeWrapClass('rent');
     }
     paid.checked = isPaid;
-    if (!paymentRequestId) amount.value = isPaid ? amountVal : remaining;
+    if (!paymentRequestId) {
+        if (isPaid) amount.value = amountVal;
+        else amount.value = hasBreakdown ? totalForMonth : remaining;
+    }
     dateInput.value = paymentDate;
     dateWrap.style.display = isPaid ? 'block' : 'none';
     methodWrap.style.display = isPaid ? 'flex' : 'none';
@@ -721,6 +782,7 @@ async function openPaymentModal(el) {
         methodWrap.style.display = 'flex';
         batchHintEl.style.display = p.payment_batch_id ? 'block' : 'none';
         bulkWrap.style.display = 'none';
+        if (breakdownWrap) breakdownWrap.style.display = 'none';
     } else {
         bulkWrap.style.display = editIdEl.value ? 'none' : 'block';
     }
@@ -770,7 +832,8 @@ async function openPaymentModal(el) {
             editIdEl.value = '';
             delete editIdEl.dataset.batchId;
             delete editIdEl.dataset.originalAmount;
-            amount.value = remaining;
+            document.getElementById('pay-modal-payment-request-id').value = '';
+            amount.value = hasBreakdown ? totalForMonth : remaining;
             typeSelect.value = 'rent';
             setTypeWrapClass('rent');
             paid.checked = false;
@@ -780,6 +843,12 @@ async function openPaymentModal(el) {
             bulkWrap.style.display = 'block';
             bulkCheckbox.checked = false;
             rangeRow.style.display = 'none';
+            if (hasBreakdown && breakdownWrap && breakdownBtns && breakdownBtns.innerHTML) {
+                breakdownWrap.style.display = 'block';
+                breakdownBtns.querySelectorAll('.pay-breakdown-btn').forEach(b => b.classList.remove('active'));
+                const firstBtn = breakdownBtns.querySelector('.pay-breakdown-btn');
+                if (firstBtn) { firstBtn.classList.add('active'); amount.value = firstBtn.dataset.amount || totalForMonth; }
+            }
         }
     };
 

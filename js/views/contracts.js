@@ -118,7 +118,8 @@ const ContractsView = (() => {
                 const prId = pr.payment_requests_id ?? pr.id;
                 const paid = pr.paid_at ? ' <span class="badge badge-ok">uhrazeno</span>' : '';
                 html += '<tr><td>' + UI.esc(typeLabel) + paid + '</td><td>' + amt + ' Kč</td><td>' + due + '</td><td class="col-note">' + note + '</td><td class="td-act">' +
-                    '<button type="button" class="btn btn-ghost btn-sm btn-edit-pay-req" data-pr-id="' + prId + '">Upravit</button></td></tr>';
+                    '<button type="button" class="btn btn-ghost btn-sm btn-edit-pay-req" data-pr-id="' + prId + '">Upravit</button> ' +
+                    '<button type="button" class="btn btn-danger btn-sm btn-del-pay-req" data-pr-id="' + prId + '">Smazat</button></td></tr>';
             });
             html += '</tbody></table>';
             listEl.innerHTML = html;
@@ -128,6 +129,15 @@ const ContractsView = (() => {
                     if (typeof window.openPaymentRequestEdit === 'function') {
                         window.openPaymentRequestEdit(prId, () => loadPaymentRequests(_paymentRequestsContractsId));
                     }
+                };
+            });
+            listEl.querySelectorAll('.btn-del-pay-req').forEach(btn => {
+                btn.onclick = async () => {
+                    if (!confirm('Smazat tento požadavek na platbu?')) return;
+                    try {
+                        await Api.crudDelete('payment_requests', parseInt(btn.dataset.prId, 10));
+                        loadPaymentRequests(_paymentRequestsContractsId);
+                    } catch (e) { alert(e.message || 'Chyba při mazání.'); }
                 };
             });
             wrapEl.style.display = 'block';
