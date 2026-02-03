@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=1.1.72">
+<link rel="stylesheet" href="css/style.css?v=1.1.73">
 </head>
 <body>
 
@@ -113,6 +113,10 @@
             <div class="fg"><label>Datum koupě</label><input type="date" id="prop-purchase-date"></div>
           </div>
           <div class="fg"><label>Kupní smlouva (odkaz)</label><input type="url" id="prop-purchase-contract-url" placeholder="https://drive.google.com/..."></div>
+          <div class="form-row">
+            <div class="fg"><label>K odhadu ke dni</label><input type="date" id="prop-valuation-date" title="Datum, k němuž platí odhadní cena"></div>
+            <div class="fg"><label>Odhadní cena (Kč)</label><input type="number" id="prop-valuation-amount" step="0.01" min="0" placeholder="Pro výpočet ROI"></div>
+          </div>
           <div class="fg"><label>Poznámka</label><textarea id="prop-note" rows="2"></textarea></div>
           <div class="form-actions">
             <button class="btn btn-pri" id="btn-prop-save" data-save-btn>Přidat nemovitost</button>
@@ -384,7 +388,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v1.1.72</span>
+    <span class="footer-version">v1.1.73</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -557,16 +561,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=1.1.72"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=1.1.72"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=1.1.72"></script>
-<script src="js/app.js?v=1.1.72"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=1.1.72"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=1.1.72"></script>
-<script src="js/views/tenants.js?v=1.1.72"></script>
-<script src="js/views/contracts.js?v=1.1.72"></script>
-<script src="js/views/payments.js?v=1.1.72"></script>
-<script src="js/views/bank_accounts.js?v=1.1.72"></script>
-<script src="js/views/users.js?v=1.1.72"></script>
+<script src="js/api.js?v=1.1.73"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=1.1.73"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=1.1.73"></script>
+<script src="js/app.js?v=1.1.73"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=1.1.73"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=1.1.73"></script>
+<script src="js/views/tenants.js?v=1.1.73"></script>
+<script src="js/views/contracts.js?v=1.1.73"></script>
+<script src="js/views/payments.js?v=1.1.73"></script>
+<script src="js/views/bank_accounts.js?v=1.1.73"></script>
+<script src="js/views/users.js?v=1.1.73"></script>
 </body>
 </html>

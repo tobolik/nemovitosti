@@ -9,7 +9,7 @@ requireLogin();
 
 // Whitelist: tabulka → povolená pole
 $FIELDS = [
-    'properties' => ['name','address','size_m2','purchase_price','purchase_date','purchase_contract_url','type','note'],
+    'properties' => ['name','address','size_m2','purchase_price','purchase_date','purchase_contract_url','valuation_date','valuation_amount','type','note'],
     'tenants'    => ['name','type','birth_date','email','phone','address','ic','dic','note'],
     'contracts'  => ['properties_id','tenants_id','contract_start','contract_end','monthly_rent','first_month_rent','contract_url','deposit_amount','deposit_paid_date','deposit_return_date','note'],
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','payment_batch_id','payment_method','bank_accounts_id','payment_type'],
@@ -17,6 +17,29 @@ $FIELDS = [
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
     'payment_requests' => ['contracts_id','amount','type','note','due_date'],
 ];
+
+// Seznam nemovitostí včetně ročního nájmu a ROI (když je zadána odhadní cena)
+if ($table === 'properties' && $id <= 0) {
+    $rows = db()->query("
+        SELECT p.*,
+            (SELECT COALESCE(SUM(c.monthly_rent), 0) * 12
+             FROM contracts c
+             WHERE (c.properties_id = p.properties_id OR c.properties_id = p.id)
+               AND c.valid_to IS NULL
+               AND (c.contract_end IS NULL OR c.contract_end >= CURDATE())
+            ) AS annual_rent
+        FROM properties p
+        WHERE p.valid_to IS NULL
+        ORDER BY p.name ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as &$r) {
+        $r['annual_rent'] = (float)($r['annual_rent'] ?? 0);
+        $val = (float)($r['valuation_amount'] ?? 0);
+        $r['roi_pct'] = $val > 0 ? round($r['annual_rent'] / $val * 100, 1) : null;
+    }
+    unset($r);
+    jsonOk($rows);
+}
 
 // Povinná pole při přidávání
 $REQUIRED = [
@@ -31,7 +54,7 @@ $REQUIRED = [
 
 // Lidsky čitelné názvy polí pro chybové hlášky
 $FIELD_LABELS = [
-    'properties' => ['name'=>'Název','address'=>'Adresa'],
+    'properties' => ['name'=>'Název','address'=>'Adresa','valuation_date'=>'K odhadu ke dni','valuation_amount'=>'Odhadní cena'],
     'tenants'    => ['name'=>'Jméno / Název','birth_date'=>'Datum narození'],
     'contracts'  => ['properties_id'=>'Nemovitost','tenants_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','first_month_rent'=>'Nájem za první měsíc (poměrná část)','deposit_amount'=>'Kauce','deposit_paid_date'=>'Datum přijetí kauce','deposit_return_date'=>'Datum vrácení kauce','note'=>'Poznámka'],
     'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','payment_method'=>'Způsob platby','bank_accounts_id'=>'Bankovní účet','payment_type'=>'Typ platby'],
@@ -155,6 +178,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         jsonOk($rows);
     }
 
+    // Nemovitosti: seznam včetně ročního nájmu a ROI (když je zadána odhadní cena)
+    if ($table === 'properties') {
+        $rows = db()->query("
+            SELECT p.*,
+                (SELECT COALESCE(SUM(c.monthly_rent), 0) * 12
+                 FROM contracts c
+                 WHERE (c.properties_id = p.properties_id OR c.properties_id = p.id)
+                   AND c.valid_to IS NULL
+                   AND (c.contract_end IS NULL OR c.contract_end >= CURDATE())
+                ) AS annual_rent
+            FROM properties p
+            WHERE p.valid_to IS NULL
+            ORDER BY p.name ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$r) {
+            $r['annual_rent'] = (float)($r['annual_rent'] ?? 0);
+            $val = (float)($r['valuation_amount'] ?? 0);
+            $r['roi_pct'] = $val > 0 ? round($r['annual_rent'] / $val * 100, 1) : null;
+        }
+        unset($r);
+        jsonOk($rows);
+    }
+
     // Default plain list
     jsonOk(findAllActive($table, 'name ASC'));
 }
@@ -196,6 +242,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // contract_end, deposit_* & note mohou být prázdné → null
     if ($table === 'contracts' && ($data['contract_end']??'') === '') $data['contract_end'] = null;
+    if ($table === 'properties' && ($data['valuation_date']??'') === '') $data['valuation_date'] = null;
+    if ($table === 'properties' && ($data['valuation_amount']??'') === '') $data['valuation_amount'] = null;
     if ($table === 'contracts' && ($data['deposit_amount']??'') === '') $data['deposit_amount'] = null;
     if ($table === 'contracts' && ($data['deposit_paid_date']??'') === '') $data['deposit_paid_date'] = null;
     if ($table === 'contracts' && ($data['deposit_return_date']??'') === '') $data['deposit_return_date'] = null;
@@ -224,6 +272,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($table === 'properties' && isset($data['purchase_date']) && $data['purchase_date'] !== '') {
         $e = validateDateField($data['purchase_date'], 'Datum koupě');
+        if ($e) jsonErr($e);
+    }
+    if ($table === 'properties' && isset($data['valuation_date']) && $data['valuation_date'] !== '') {
+        $e = validateDateField($data['valuation_date'], 'K odhadu ke dni');
         if ($e) jsonErr($e);
     }
     if ($table === 'tenants' && isset($data['birth_date']) && $data['birth_date'] !== '') {

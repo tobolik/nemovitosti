@@ -35,6 +35,8 @@ const PropertiesView = (() => {
                     purchase_price:         document.getElementById('prop-purchase-price').value || null,
                     purchase_date:          document.getElementById('prop-purchase-date').value || null,
                     purchase_contract_url:  document.getElementById('prop-purchase-contract-url').value.trim() || null,
+                    valuation_date:         document.getElementById('prop-valuation-date').value || null,
+                    valuation_amount:       document.getElementById('prop-valuation-amount').value || null,
                     type:                   document.getElementById('prop-type').value,
                     note:                   document.getElementById('prop-note').value.trim(),
                 };
@@ -47,11 +49,13 @@ const PropertiesView = (() => {
                 document.getElementById('prop-purchase-price').value          = row.purchase_price         || '';
                 document.getElementById('prop-purchase-date').value          = row.purchase_date          || '';
                 document.getElementById('prop-purchase-contract-url').value   = row.purchase_contract_url || '';
+                document.getElementById('prop-valuation-date').value         = row.valuation_date         || '';
+                document.getElementById('prop-valuation-amount').value       = row.valuation_amount       || '';
                 document.getElementById('prop-type').value                    = row.type                   || 'apartment';
                 document.getElementById('prop-note').value                    = row.note                   || '';
             },
             resetForm() {
-                ['prop-name','prop-address','prop-size-m2','prop-purchase-price','prop-purchase-date','prop-purchase-contract-url','prop-note'].forEach(id =>
+                ['prop-name','prop-address','prop-size-m2','prop-purchase-price','prop-purchase-date','prop-purchase-contract-url','prop-valuation-date','prop-valuation-amount','prop-note'].forEach(id =>
                     document.getElementById(id).value = ''
                 );
                 document.getElementById('prop-type').value = 'apartment';
@@ -75,6 +79,7 @@ const PropertiesView = (() => {
                 { label: 'Výměra', hideMobile: true },
                 { label: 'Kupní cena', hideMobile: true },
                 { label: 'Datum koupě', hideMobile: true },
+                { label: 'Odhad / ROI', hideMobile: true, title: 'Odhadní cena k datu; ROI = roční nájem / odhadní cena' },
                 { label: 'Smlouva', hideMobile: true },
                 { label: 'Poznámka', hideMobile: true },
                 { label: 'Akce', act: true },
@@ -85,6 +90,13 @@ const PropertiesView = (() => {
                 const contractLink = url
                     ? '<a href="' + UI.esc(url) + '" target="_blank" rel="noopener" class="contract-preview-trigger" data-url="' + UI.esc(url) + '" title="Náhled smlouvy (najeď myší)">📄</a>'
                     : '<span style="color:var(--txt3)">—</span>';
+                const valuationStr = p.valuation_amount != null && p.valuation_amount !== ''
+                    ? (p.valuation_date ? UI.fmtDate(p.valuation_date) + ': ' : '') + UI.fmt(p.valuation_amount) + ' Kč'
+                    : '—';
+                const roiStr = p.roi_pct != null ? '<strong>' + Number(p.roi_pct) + ' %</strong>' : '—';
+                const odhadRoiCell = valuationStr !== '—' || roiStr !== '—'
+                    ? (valuationStr !== '—' ? valuationStr + '<br>' : '') + (roiStr !== '—' ? 'ROI ' + roiStr : '')
+                    : '—';
                 return (
                     '<td><strong>' + UI.esc(p.name) + '</strong></td>' +
                     '<td>' + UI.esc(TYPE_LABELS[p.type] || p.type) + '</td>' +
@@ -92,6 +104,7 @@ const PropertiesView = (() => {
                     '<td class="col-hide-mobile">' + (p.size_m2 ? UI.fmt(p.size_m2) + ' m²' : '—') + '</td>' +
                     '<td class="col-hide-mobile">' + (p.purchase_price ? UI.fmt(p.purchase_price) + ' Kč' : '—') + '</td>' +
                     '<td class="col-hide-mobile">' + (p.purchase_date ? UI.fmtDate(p.purchase_date) : '—') + '</td>' +
+                    '<td class="col-hide-mobile">' + odhadRoiCell + '</td>' +
                     '<td class="col-hide-mobile contract-preview-cell">' + contractLink + '</td>' +
                     '<td class="col-note col-hide-mobile">' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +
