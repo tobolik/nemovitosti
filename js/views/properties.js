@@ -80,6 +80,7 @@ const PropertiesView = (() => {
                 { label: 'Kupní cena', hideMobile: true },
                 { label: 'Datum koupě', hideMobile: true },
                 { label: 'Odhad / ROI', hideMobile: true, title: 'Odhadní cena k datu; ROI = roční nájem / odhadní cena' },
+                { label: 'Vybraný nájem', title: 'Celkem vybraný nájem (platby typu nájem) za celou dobu' },
                 { label: 'Smlouva', hideMobile: true },
                 { label: 'Poznámka', hideMobile: true },
                 { label: 'Akce', act: true },
@@ -97,6 +98,8 @@ const PropertiesView = (() => {
                 const odhadRoiCell = valuationStr !== '—' || roiStr !== '—'
                     ? (valuationStr !== '—' ? valuationStr + '<br>' : '') + (roiStr !== '—' ? 'ROI ' + roiStr : '')
                     : '—';
+                const totalRent = (p.total_rent_received != null && Number(p.total_rent_received) > 0)
+                    ? '<strong>' + UI.fmt(p.total_rent_received) + ' Kč</strong>' : '—';
                 return (
                     '<td><strong>' + UI.esc(p.name) + '</strong></td>' +
                     '<td>' + UI.esc(TYPE_LABELS[p.type] || p.type) + '</td>' +
@@ -105,6 +108,7 @@ const PropertiesView = (() => {
                     '<td class="col-hide-mobile">' + (p.purchase_price ? UI.fmt(p.purchase_price) + ' Kč' : '—') + '</td>' +
                     '<td class="col-hide-mobile">' + (p.purchase_date ? UI.fmtDate(p.purchase_date) : '—') + '</td>' +
                     '<td class="col-hide-mobile">' + odhadRoiCell + '</td>' +
+                    '<td>' + totalRent + '</td>' +
                     '<td class="col-hide-mobile contract-preview-cell">' + contractLink + '</td>' +
                     '<td class="col-note col-hide-mobile">' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +

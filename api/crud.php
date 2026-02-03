@@ -178,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         jsonOk($rows);
     }
 
-    // Nemovitosti: seznam včetně ročního nájmu a ROI (když je zadána odhadní cena)
+    // Nemovitosti: seznam včetně ročního nájmu, ROI a celkového vybraného nájmu
     if ($table === 'properties') {
         $rows = db()->query("
             SELECT p.*,
@@ -187,13 +187,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                  WHERE (c.properties_id = p.properties_id OR c.properties_id = p.id)
                    AND c.valid_to IS NULL
                    AND (c.contract_end IS NULL OR c.contract_end >= CURDATE())
-                ) AS annual_rent
+                ) AS annual_rent,
+                (SELECT COALESCE(SUM(pay.amount), 0)
+                 FROM payments pay
+                 JOIN contracts c ON c.contracts_id = pay.contracts_id AND c.valid_to IS NULL
+                 WHERE (c.properties_id = p.properties_id OR c.properties_id = p.id)
+                   AND pay.valid_to IS NULL
+                   AND pay.payment_type = 'rent'
+                ) AS total_rent_received
             FROM properties p
             WHERE p.valid_to IS NULL
             ORDER BY p.name ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
         foreach ($rows as &$r) {
             $r['annual_rent'] = (float)($r['annual_rent'] ?? 0);
+            $r['total_rent_received'] = (float)($r['total_rent_received'] ?? 0);
             $val = (float)($r['valuation_amount'] ?? 0);
             $r['roi_pct'] = $val > 0 ? round($r['annual_rent'] / $val * 100, 1) : null;
         }
