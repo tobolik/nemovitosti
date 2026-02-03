@@ -266,12 +266,12 @@ foreach ($out as &$row) {
 }
 unset($row);
 
-// Předpisy s due_date – součet podle smlouvy a měsíce pro heatmapu; jen neuhrazené (uhrazené jsou v payments).
+// Předpisy s due_date – součet podle smlouvy a měsíce pro heatmapu; všechny předpisy (uhrazené i ne), očekávání za měsíc = nájem + předpisy.
 $paymentRequestsByContractMonth = [];
 $stmtPrMonth = db()->query("
     SELECT contracts_id, due_date, amount, type
     FROM payment_requests
-    WHERE valid_to IS NULL AND due_date IS NOT NULL AND paid_at IS NULL
+    WHERE valid_to IS NULL AND due_date IS NOT NULL
 ");
 foreach ($stmtPrMonth->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
