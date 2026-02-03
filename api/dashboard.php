@@ -124,6 +124,23 @@ $contractsForView = $showEnded ? $contracts : array_values(array_filter($contrac
     return empty($c['contract_end']) || $c['contract_end'] >= $today;
 }));
 
+// Součet požadovaných plateb podle smlouvy (všechny aktivní – pro „očekáváno“ = nájem + energie, kauce, vyúčt. atd.)
+$paymentRequestsSumByContract = [];
+$allRequestsStmt = db()->query("SELECT contracts_id, type, amount FROM payment_requests WHERE valid_to IS NULL");
+foreach ($allRequestsStmt->fetchAll() as $pr) {
+    $cid = (int)$pr['contracts_id'];
+    $amt = (float)$pr['amount'];
+    if (($pr['type'] ?? '') === 'deposit_return') $amt = -$amt;
+    $paymentRequestsSumByContract[$cid] = ($paymentRequestsSumByContract[$cid] ?? 0) + $amt;
+}
+foreach ($contracts as $c) {
+    $eid = (int)($c['contracts_id'] ?? $c['id']);
+    $rid = (int)$c['id'];
+    if ($rid !== $eid && isset($paymentRequestsSumByContract[$eid]) && !isset($paymentRequestsSumByContract[$rid])) {
+        $paymentRequestsSumByContract[$rid] = $paymentRequestsSumByContract[$eid];
+    }
+}
+
 // Contract overview (pro tabulku)
 $out = [];
 $totalInvestment = 0;
@@ -182,8 +199,11 @@ foreach ($contractsForView as $c) {
         }
     }
 
-    $balance = $expTotal - $totPaidRent;
-    $statusType = $balance > 0 ? 'debt' : ($balance < 0 ? 'overpaid' : 'exact');
+    $requestsSum = $paymentRequestsSumByContract[$entityId] ?? 0;
+    $expectedTotalIncl = round($expTotal + $requestsSum, 2);
+    $balanceRent = $expTotal - $totPaidRent;
+    $balanceAll = $expectedTotalIncl - $totPaid;
+    $statusType = $balanceAll > 0 ? 'debt' : ($balanceAll < 0 ? 'overpaid' : 'exact');
     $currentRent = getRentForMonth($baseRent, $entityId, $nowY, $nowM, $rentChangesByContract);
     $depositAmt = (float)($c['deposit_amount'] ?? 0);
     $depositReturned = !empty($c['deposit_return_date']);
@@ -202,10 +222,10 @@ foreach ($contractsForView as $c) {
         'contract_start' => $c['contract_start'],
         'contract_end'   => $c['contract_end'],
         'expected_months'=> $expected,
-        'expected_total' => $expTotal,
+        'expected_total' => $expectedTotalIncl,
         'total_paid'     => $totPaid,
         'total_paid_rent'=> $totPaidRent,
-        'balance'        => $balance,
+        'balance'        => $balanceRent,
         'status_type'    => $statusType,
         'unpaid_months'  => $unpaid,
         'deposit_amount' => $depositAmt,

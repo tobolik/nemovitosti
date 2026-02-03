@@ -261,14 +261,15 @@ async function loadDashboard(year) {
             { label: 'Nájemník' },
             { label: 'Nemovitost' },
             { label: 'Nájemné / měs.' },
-            { label: 'Uhrazeno / Očekáváno (od zač. smlouvy)', title: 'Očekáváno = součet nájmu od začátku smlouvy do dneška' },
+            { label: 'Uhrazeno / Očekáváno (od zač. smlouvy)', title: 'Očekáváno = nájem + požadavky (energie, kauce, vyúčt.); vrácení kauce = odchod. Uhrazeno = všechny platby.' },
             { label: 'Neuhrazené měsíce' },
         ],
         contracts,
         (d) => {
-            const paidRent = d.total_paid_rent != null ? d.total_paid_rent : d.total_paid;
-            let pct = d.expected_total > 0 ? Math.min(100, (paidRent / d.expected_total) * 100) : 100;
-            const hasDbt = d.balance > 0;
+            const totalPaid = d.total_paid != null ? d.total_paid : 0;
+            const expectedTotal = d.expected_total != null ? d.expected_total : 0;
+            let pct = expectedTotal > 0 ? Math.min(100, (totalPaid / expectedTotal) * 100) : 100;
+            const hasDbt = d.status_type === 'debt';
             const now = new Date();
             const currentY = now.getFullYear();
             const currentM = now.getMonth() + 1;
@@ -279,10 +280,7 @@ async function loadDashboard(year) {
             const hoverInfo = [];
             if (depAmt > 0) hoverInfo.push('Kauce: ' + UI.fmt(depAmt) + ' Kč' + (d.deposit_to_return ? ' (k vrácení)' : ''));
             hoverInfo.push(hasDbt ? (hasHistoricalArrear ? 'Stav: Nedoplatek (historický)' : 'Stav: Aktuální měsíc neuhrazen') : 'Stav: V pořádku');
-            let progTitle = hoverInfo.length ? hoverInfo.join(' | ') : '';
-            if (d.total_paid != null && d.total_paid_rent != null && Math.abs(d.total_paid - d.total_paid_rent) > 0.01) {
-                progTitle = (progTitle ? progTitle + ' | ' : '') + 'Celkem včetně energií atd.: ' + UI.fmt(d.total_paid) + ' Kč';
-            }
+            const progTitle = hoverInfo.length ? hoverInfo.join(' | ') : '';
 
             let tags = '';
             const requestTypeLabels = { energy: 'Energie', settlement: 'Vyúčt.', deposit: 'Kauce', deposit_return: 'Vrác. kauce', other: 'Jiné' };
@@ -318,7 +316,7 @@ async function loadDashboard(year) {
                 '<td' + propLink + '>' + UI.esc(d.property_name) + '</td>' +
                 '<td' + contractLink + '>' + UI.fmt(d.monthly_rent) + ' Kč</td>' +
                 '<td' + paymentsLink + '><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill ' + progClass + '" style="width:' + Math.round(pct) + '%"></div></div>' +
-                '<span class="prog-lbl" title="' + UI.esc(progTitle || '') + '">' + UI.fmt(paidRent) + ' / ' + UI.fmt(d.expected_total) + ' Kč</span></div></td>' +
+                '<span class="prog-lbl" title="' + UI.esc(progTitle || '') + '">' + UI.fmt(totalPaid) + ' / ' + UI.fmt(expectedTotal) + ' Kč</span></div></td>' +
                 '<td class="dash-unpaid-cell">' + tagsHtml + '</td>'
             );
         },
