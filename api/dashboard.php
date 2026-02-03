@@ -124,11 +124,11 @@ $contractsForView = $showEnded ? $contracts : array_values(array_filter($contrac
     return empty($c['contract_end']) || $c['contract_end'] >= $today;
 }));
 
-// Očekáváno = nájem + jen neuhrazené požadavky. Uhrazený požadavek (ať + nebo −) se nezapočítává – odpovídající platba je už v payments, jinak by to odečítalo/zvýšovalo 2×.
+// Očekáváno = nájem + všechny předpisy (požadavky), stejně jako v heatmapě. Jednotná logika: předpis = očekávání, platba = uhrazeno.
 $paymentRequestsSumByContract = [];
 $allRequestsStmt = db()->query("
     SELECT contracts_id, type, amount FROM payment_requests
-    WHERE valid_to IS NULL AND paid_at IS NULL
+    WHERE valid_to IS NULL
 ");
 foreach ($allRequestsStmt->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
@@ -140,8 +140,12 @@ foreach ($allRequestsStmt->fetchAll() as $pr) {
 foreach ($contracts as $c) {
     $eid = (int)($c['contracts_id'] ?? $c['id']);
     $rid = (int)$c['id'];
-    if ($rid !== $eid && isset($paymentRequestsSumByContract[$eid]) && !isset($paymentRequestsSumByContract[$rid])) {
+    if ($eid === $rid) continue;
+    if (isset($paymentRequestsSumByContract[$eid]) && !isset($paymentRequestsSumByContract[$rid])) {
         $paymentRequestsSumByContract[$rid] = $paymentRequestsSumByContract[$eid];
+    }
+    if (isset($paymentRequestsSumByContract[$rid]) && !isset($paymentRequestsSumByContract[$eid])) {
+        $paymentRequestsSumByContract[$eid] = $paymentRequestsSumByContract[$rid];
     }
 }
 
@@ -286,12 +290,16 @@ foreach ($stmtPrMonth->fetchAll() as $pr) {
     }
     $paymentRequestsByContractMonth[$cid][$monthKey] += $amt;
 }
-// Index i pod řádkovým id smlouvy (jako u rentChanges)
+// Index i pod řádkovým id smlouvy a naopak (contracts_id v payment_requests může být entity_id nebo row id)
 foreach ($contracts as $c) {
     $eid = (int)($c['contracts_id'] ?? $c['id']);
     $rid = (int)$c['id'];
-    if ($eid !== $rid && isset($paymentRequestsByContractMonth[$eid]) && !isset($paymentRequestsByContractMonth[$rid])) {
+    if ($eid === $rid) continue;
+    if (isset($paymentRequestsByContractMonth[$eid]) && !isset($paymentRequestsByContractMonth[$rid])) {
         $paymentRequestsByContractMonth[$rid] = $paymentRequestsByContractMonth[$eid];
+    }
+    if (isset($paymentRequestsByContractMonth[$rid]) && !isset($paymentRequestsByContractMonth[$eid])) {
+        $paymentRequestsByContractMonth[$eid] = $paymentRequestsByContractMonth[$rid];
     }
 }
 

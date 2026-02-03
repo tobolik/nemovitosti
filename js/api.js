@@ -97,6 +97,16 @@ const Api = (() => {
         return post('/api/crud.php?table=payments', { action: 'deleteBatch', table: 'payments', payment_batch_id: batchId });
     }
 
+    /** Přiřadit platbu k požadavku (nastaví payment_requests.payments_id a paid_at). */
+    function paymentRequestLink(paymentRequestId, paymentsId) {
+        return post('/api/crud.php?table=payment_requests', { action: 'link_payment_request', table: 'payment_requests', payment_request_id: paymentRequestId, payments_id: paymentsId });
+    }
+
+    /** Odpojit platbu od požadavku (zruší payment_requests.payments_id a paid_at). */
+    function paymentRequestUnlink(paymentRequestId) {
+        return post('/api/crud.php?table=payment_requests', { action: 'unlink_payment_request', table: 'payment_requests', payment_request_id: paymentRequestId });
+    }
+
     // ════════════════════════════════════════════════════════════════════
     // DASHBOARD
     // ════════════════════════════════════════════════════════════════════
@@ -142,7 +152,7 @@ const Api = (() => {
     return {
         setCsrf, getCsrf,
         authCheck, authLogin, authLogout,
-        crudList, crudGet, crudAdd, crudEdit, crudDelete, paymentsEditBatch, paymentsDeleteBatch,
+        crudList, crudGet, crudAdd, crudEdit, crudDelete, paymentsEditBatch, paymentsDeleteBatch, paymentRequestLink, paymentRequestUnlink,
         dashboardLoad,
         usersList, usersAdd, usersDelete, usersChangePassword,
         aresLookup,

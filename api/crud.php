@@ -119,10 +119,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     if ($table === 'payments') {
         $cid = isset($_GET['contracts_id']) ? (int)$_GET['contracts_id'] : 0;
-        // properties_id, tenants_id = odkazy na entity_id; bank_accounts_id → account_number pro zobrazení
+        // properties_id, tenants_id = odkazy na entity_id; bank_accounts_id → account_number; propojení s požadavkem
         $sql = "
             SELECT pay.*, c.monthly_rent, p.name AS property_name, t.name AS tenant_name,
-                   ba.account_number AS account_number
+                   ba.account_number AS account_number,
+                   (SELECT COALESCE(pr.payment_requests_id, pr.id) FROM payment_requests pr WHERE pr.payments_id = pay.payments_id AND pr.valid_to IS NULL ORDER BY pr.id DESC LIMIT 1) AS linked_payment_request_id,
+                   (SELECT pr.note FROM payment_requests pr WHERE pr.payments_id = pay.payments_id AND pr.valid_to IS NULL ORDER BY pr.id DESC LIMIT 1) AS linked_request_note,
+                   (SELECT pr.amount FROM payment_requests pr WHERE pr.payments_id = pay.payments_id AND pr.valid_to IS NULL ORDER BY pr.id DESC LIMIT 1) AS linked_request_amount
             FROM payments pay
             JOIN contracts  c ON c.contracts_id = pay.contracts_id AND c.valid_to IS NULL
             JOIN properties p ON p.properties_id = c.properties_id AND p.valid_to IS NULL
@@ -161,6 +164,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrf();
     $b      = body();
     $action = $b['action'] ?? '';
+
+    // Přiřazení platby k požadavku / odpojení (nastaví payment_requests.payments_id a paid_at)
+    if ($action === 'link_payment_request') {
+        $prEntityId = isset($b['payment_request_id']) ? (int)$b['payment_request_id'] : 0;
+        $payEntityId = isset($b['payments_id']) ? (int)$b['payments_id'] : 0;
+        if ($prEntityId <= 0 || $payEntityId <= 0) jsonErr('Zadejte požadavek a platbu.');
+        $prRow = findActiveByEntityId('payment_requests', $prEntityId);
+        if (!$prRow) jsonErr('Požadavek nenalezen.');
+        $payRow = findActiveByEntityId('payments', $payEntityId);
+        if (!$payRow) jsonErr('Platba nenalezena.');
+        if ((int)($prRow['contracts_id'] ?? 0) !== (int)($payRow['contracts_id'] ?? 0)) jsonErr('Platba a požadavek musí být ke stejné smlouvě.');
+        $paidAt = !empty($payRow['payment_date']) ? $payRow['payment_date'] : date('Y-m-d');
+        softUpdate('payment_requests', (int)$prRow['id'], ['payments_id' => $payEntityId, 'paid_at' => $paidAt]);
+        jsonOk(['ok' => true]);
+    }
+    if ($action === 'unlink_payment_request') {
+        $prEntityId = isset($b['payment_request_id']) ? (int)$b['payment_request_id'] : 0;
+        if ($prEntityId <= 0) jsonErr('Zadejte požadavek.');
+        $prRow = findActiveByEntityId('payment_requests', $prEntityId);
+        if (!$prRow) jsonErr('Požadavek nenalezen.');
+        softUpdate('payment_requests', (int)$prRow['id'], ['payments_id' => null, 'paid_at' => null]);
+        jsonOk(['ok' => true]);
+    }
 
     // Vybereme jen whitelisted pole
     $data = [];

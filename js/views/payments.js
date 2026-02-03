@@ -65,7 +65,7 @@ const PaymentsView = (() => {
                 }
                 return base;
             },
-            fillForm(row) {
+            async fillForm(row) {
                 document.getElementById('pay-edit-id').value = String(row.payments_id ?? row.id);
                 document.getElementById('pay-contract').value = row.contracts_id || '';
                 document.getElementById('pay-type').value    = row.payment_type || 'rent';
@@ -82,6 +82,47 @@ const PaymentsView = (() => {
                 accWrap.style.display = row.payment_method === 'cash' ? 'none' : 'block';
                 const batchHint = document.getElementById('pay-batch-hint');
                 if (batchHint) batchHint.style.display = row.payment_batch_id ? 'block' : 'none';
+                const linkWrap = document.getElementById('pay-request-link-wrap');
+                if (linkWrap) {
+                    linkWrap.style.display = 'block';
+                    const linkedEl = document.getElementById('pay-linked-request');
+                    const linkRow = document.getElementById('pay-link-row');
+                    const payId = row.payments_id ?? row.id;
+                    if (row.linked_payment_request_id) {
+                        const note = row.linked_request_note || (UI.fmt(Number(row.linked_request_amount)) + ' Kč');
+                        linkedEl.innerHTML = '<span class="tag tag-request">' + UI.esc(note) + '</span> <button type="button" class="btn btn-ghost btn-sm" id="btn-pay-unlink-request">Odpojit</button>';
+                        if (linkRow) linkRow.style.display = 'none';
+                        const unlinkBtn = document.getElementById('btn-pay-unlink-request');
+                        if (unlinkBtn) unlinkBtn.onclick = async () => {
+                            try {
+                                await Api.paymentRequestUnlink(row.linked_payment_request_id);
+                                await renderPayments();
+                                form.exitEdit();
+                            } catch (e) { UI.alert(form.alertId, e.message); }
+                        };
+                    } else {
+                        linkedEl.innerHTML = '<span style="color:var(--txt3)">Tato platba není přiřazena k požadavku.</span>';
+                        if (linkRow) linkRow.style.display = 'flex';
+                        const reqSelect = document.getElementById('pay-request-select');
+                        const linkBtn = document.getElementById('btn-pay-link-request');
+                        const requests = await Api.crudList('payment_requests', { contracts_id: row.contracts_id });
+                        const typeLabels = { energy: 'Energie', settlement: 'Vyúčtování', other: 'Jiné', deposit: 'Kauce', deposit_return: 'Vrácení kauce' };
+                        reqSelect.innerHTML = '<option value="">— Přiřadit k požadavku —</option>' + requests.map(pr => {
+                            const eid = pr.payment_requests_id ?? pr.id;
+                            const label = (UI.fmt(Number(pr.amount)) + ' Kč') + (pr.note ? ' – ' + pr.note : '') + ' (' + (typeLabels[pr.type] || pr.type) + ')';
+                            return '<option value="' + eid + '">' + UI.esc(label) + '</option>';
+                        }).join('');
+                        if (linkBtn) linkBtn.onclick = async () => {
+                            const prId = Number(reqSelect.value);
+                            if (!prId) return;
+                            try {
+                                await Api.paymentRequestLink(prId, payId);
+                                await renderPayments();
+                                form.exitEdit();
+                            } catch (e) { UI.alert(form.alertId, e.message); }
+                        };
+                    }
+                }
             },
             async editSave(id, values, row) {
                 const batchId = (row && row.payment_batch_id) ? String(row.payment_batch_id).trim() : '';
@@ -106,6 +147,8 @@ const PaymentsView = (() => {
             resetForm() {
                 const batchHint = document.getElementById('pay-batch-hint');
                 if (batchHint) batchHint.style.display = 'none';
+                const linkWrap = document.getElementById('pay-request-link-wrap');
+                if (linkWrap) linkWrap.style.display = 'none';
                 document.getElementById('pay-contract').value = '';
                 document.getElementById('pay-amount').value   = '';
                 document.getElementById('pay-note').value     = '';
@@ -299,6 +342,7 @@ const PaymentsView = (() => {
 
                 const methodLabel = p.payment_method === 'cash' ? 'Hotovost' : (p.account_number ? 'Účet ' + UI.esc(p.account_number) : 'Na účet');
                 const batchHint = p.payment_batch_id ? '<br><span class="tag tag-batch" title="Součást jedné platby">dávka</span>' : '';
+                const linkedReq = p.linked_payment_request_id ? ('<br><span class="tag tag-request" title="Úhrada požadavku">Úhrada pož.: ' + (p.linked_request_note ? UI.esc(p.linked_request_note) : (UI.fmt(Number(p.linked_request_amount)) + ' Kč')) + '</span>') : '';
                 return (
                     '<td><strong>' + UI.esc(p.tenant_name) + '</strong><br><span style="color:var(--txt3);font-size:.8em">' + UI.esc(p.property_name) + '</span></td>' +
                     '<td>' + UI.MONTHS[p.period_month] + ' ' + p.period_year + batchHint + '</td>' +
@@ -307,7 +351,7 @@ const PaymentsView = (() => {
                     '<td class="col-hide-mobile">' + UI.esc(p.payment_date) + '</td>' +
                     '<td class="col-hide-mobile">' + UI.esc(methodLabel) + '</td>' +
                     '<td class="col-hide-mobile">' + diffHtml + '</td>' +
-                    '<td class="col-note col-hide-mobile">' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
+                    '<td class="col-note col-hide-mobile">' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + linkedReq + '</td>' +
                     '<td class="td-act">' +
                         '<button class="btn btn-ghost btn-sm" onclick="PaymentsView.edit(' + (p.payments_id ?? p.id) + ')">Úprava</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="PaymentsView.del(' + (p.payments_id ?? p.id) + ')">Smazat</button>' +
