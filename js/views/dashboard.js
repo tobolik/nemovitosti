@@ -555,7 +555,9 @@ async function openPaymentModal(el) {
     }
     renderExisting();
 
-    if (forMonth.length === 1) {
+    // Předvyplnění z jediné platby za měsíc – NEPOUŽÍT při přidání platby z požadavku (Energie +),
+    // jinak by se formulář převzal z nájmu v dávce a uložení by změnilo celou dávku na energii.
+    if (!paymentRequestId && forMonth.length === 1) {
         const p = forMonth[0];
         const method = p.payment_method || 'account';
         const pt = p.payment_type || 'rent';
