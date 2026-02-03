@@ -532,28 +532,26 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .heatmap-wrap { overflow-x: auto; max-width: 100%; }
 .heatmap-table { width: 100%; max-width: 100%; border-collapse: collapse; font-size: .96rem; table-layout: fixed; }
 .heatmap-table th { padding: 3px 4px; text-align: center; color: var(--txt2); font-weight: 600; border-bottom: 1px solid var(--glass-border); font-size: .78rem; line-height: 1.2; }
-.heatmap-table th:first-child { width: 14%; }
-.heatmap-table th:nth-child(n+2):nth-child(-n+13) { width: 6%; }
+.heatmap-table th:first-child { width: 20%; }
+.heatmap-table th:nth-child(n+2):nth-child(-n+13) { width: 5.5%; }
 .heatmap-table th.heatmap-total-col { width: 14%; }
-.heatmap-table td { padding: 4px; vertical-align: middle; }
-/* Jednotná výška řádku – řádek ani buňka nesmí růst, jinak Volno vypadá dvojnásobně vysoké */
-.heatmap-table tbody tr { height: 54px; }
-.heatmap-table tbody td { height: 54px; max-height: 54px; }
+.heatmap-table td { padding: 4px; vertical-align: middle; box-sizing: border-box; }
+/* Jednotná výška – řádek a všechny buňky pevně 54px, aby Volno nebylo dvojnásobně vysoké */
+.heatmap-table tbody tr { height: 54px !important; }
+.heatmap-table tbody td { height: 54px !important; max-height: 54px !important; }
 .heatmap-table tbody td:first-child,
-.heatmap-table tfoot td:first-child { width: 14%; }
-/* První sloupec: max 2 řádky, vejde se do 54px, zalamování slov */
+.heatmap-table tfoot td:first-child { width: 20%; }
+/* První sloupec: širší (20 %), zalamování bez -webkit-box (ten lámal zobrazení textu) */
 .heatmap-table tbody td.heatmap-property {
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
   line-height: 1.2;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  font-size: .85rem;
+  white-space: normal;
 }
 .heatmap-table tbody td:not(:first-child):not(.heatmap-total-cell),
-.heatmap-table tfoot td.heatmap-sum-cell { width: 6%; }
+.heatmap-table tfoot td.heatmap-sum-cell { width: 5.5%; }
 .heatmap-table td:last-child { width: 14%; }
 /* Celkem: částky čitelné, zalamování do buňky */
 .heatmap-table tbody td.heatmap-total-cell,
