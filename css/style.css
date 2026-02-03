@@ -556,9 +556,9 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 /* Celkem: částky čitelné, zalamování do buňky */
 .heatmap-table tbody td.heatmap-total-cell,
 .heatmap-sum-row td { overflow: hidden; white-space: normal; word-wrap: break-word; }
-.heatmap-cell { height: 46px; min-height: 46px; min-width: 0; width: 100%; max-width: 100%; padding: 4px 3px; border-radius: var(--r); cursor: pointer; transition: opacity .15s; text-align: center; box-sizing: border-box; font-size: .84rem; display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1.25; }
+.heatmap-cell { height: 46px; min-height: 46px; min-width: 0; width: 100%; max-width: 100%; padding: 4px 3px; border-radius: var(--r); cursor: pointer; transition: opacity .15s; text-align: center; box-sizing: border-box; font-size: .76rem; display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1.25; }
 .heatmap-cell:hover { opacity: .85; }
-.heatmap-cell.empty { background: rgba(100,100,100,.3); color: var(--txt3); font-size: .84rem; padding: 4px 3px; }
+.heatmap-cell.empty { background: rgba(100,100,100,.3); color: var(--txt3); font-size: .76rem; padding: 4px 3px; }
 .heatmap-cell.heatmap-cell-before-purchase { cursor: default; pointer-events: none; background: transparent; }
 .heatmap-cell.exact { background: var(--green-600); color: #fff; font-weight: 600; }
 .heatmap-cell.overpaid { background: var(--orange-600); color: #fff; font-weight: 600; }
@@ -576,10 +576,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   color: var(--txt);
   font-weight: 600;
 }
-.heatmap-cell .cell-amount { font-size: .9rem; }
-.heatmap-cell .cell-partial { font-size: .9rem; }
-.heatmap-cell .cell-remaining { font-size: .84rem; opacity: .9; }
-.heatmap-cell .cell-icon { font-size: 1.02rem; font-weight: 700; display: inline-block; }
+.heatmap-cell .cell-amount { font-size: .81rem; }
+.heatmap-cell .cell-partial { font-size: .81rem; }
+.heatmap-cell .cell-remaining { font-size: .76rem; opacity: .9; }
+.heatmap-cell .cell-icon { font-size: .92rem; font-weight: 700; display: inline-block; }
 .heatmap-cell.exact .cell-check, .heatmap-cell.overpaid .cell-check, .heatmap-cell.paid-advance .cell-check { color: #fff; }
 .heatmap-cell.unpaid .cell-cross,
 .heatmap-cell.overdue .cell-cross { color: #fff; }
