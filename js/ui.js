@@ -301,6 +301,7 @@ const UI = (() => {
         dropdown.setAttribute('role', 'listbox');
         dropdown.setAttribute('aria-hidden', 'true');
         select.classList.add('searchable-select-native');
+        select.setAttribute('tabindex', '-1');  /* vyřadit z tab pořadí – focus jen na input */
         wrapper.appendChild(input);
         wrapper.appendChild(dropdown);
         wrapper.appendChild(select);
@@ -370,6 +371,12 @@ const UI = (() => {
         input.addEventListener('focus', () => {
             renderDropdown(input.value);
             dropdown.classList.add('show');
+            /* Kliknutím do pole se nesmí označit celý text – při „select all“ posunout kurzor na konec */
+            setTimeout(function () {
+                if (input.selectionStart === 0 && input.selectionEnd === input.value.length && input.value.length > 0) {
+                    input.selectionStart = input.selectionEnd = input.value.length;
+                }
+            }, 0);
         });
         input.addEventListener('input', () => {
             renderDropdown(input.value);

@@ -56,6 +56,7 @@ function jsonOk($data = null, int $code = 200): never {
 function jsonErr(string $msg, int $code = 400): never {
     if (ob_get_level()) ob_end_clean();
     http_response_code($code);
+    _securityHeaders();
     header('Content-Type: application/json');
     echo json_encode(['ok'=>false,'error'=>$msg], JSON_UNESCAPED_UNICODE);
     exit;

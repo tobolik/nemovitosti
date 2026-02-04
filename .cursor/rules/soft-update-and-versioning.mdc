@@ -1,0 +1,40 @@
+---
+description: Pravidla pro soft-update, entity_id, valid_*, verzování aplikace
+globs: api/**/*.php, migrations/*.sql, docs/SOFT-UPDATE-AND-VERSIONING.md
+alwaysApply: false
+---
+
+# Soft-update a verzování – KRITICKÁ PRAVIDLA
+
+Při úpravách API, migrací nebo nových tabulek **vždy** dodržuj následující.
+
+## 1. Metody v crud.php a _bootstrap.php
+
+- **Přidání:** pouze `softInsert($table, $data)` – nikdy přímý INSERT (chybí valid_from, valid_to, valid_user_*, entity_id).
+- **Úprava:** pouze `softUpdate($table, $id, $data)` – $id = fyzické `id` řádku; uzavře starou verzi, vloží novou se stejným entity_id.
+- **Smazání:** pouze `softDelete($table, $id)` – $id = fyzické `id`; nastaví valid_to, valid_user_to.
+- **Čtení:** `findActive($table, $id)`, `findActiveByEntityId($table, $entityId)`, `findAllActive($table, $order)`; v SQL vždy `WHERE valid_to IS NULL`.
+
+## 2. Entity_id
+
+- `properties_id`, `tenants_id`, `contracts_id` (a obdobně u jiných tabulek) = **vždy entity_id** (logický identifikátor), ne fyzické `id`.
+- Název sloupce: `{tabulka}_id` (např. `contracts_id`). Použití: provázání verzí stejné entity; v API a JOINech pracovat s entity_id.
+
+## 3. Valid_* a user
+
+- `valid_from` = kdy verze začala; `valid_to` = NULL = aktivní.
+- `valid_user_from` / `valid_user_to` = kdo vytvořil / uzavřel verzi (doplňuje softInsert/softUpdate/softDelete z SESSION).
+
+## 4. Nové tabulky (migrace)
+
+- Sloupce: `id`, `{tabulka}_id`, obchodní pole, `valid_from`, `valid_to`, `valid_user_from`, `valid_user_to`.
+- Indexy: `idx_{tabulka}_id ({tabulka}_id, valid_to)`, `idx_v (valid_to)`.
+- V crud.php přidat do $FIELDS, $REQUIRED, $FIELD_LABELS a používat jen soft* metody.
+
+## 5. Verzování aplikace (index.html)
+
+- Při každé změně kódu zvýšit verzi (PATCH): `vMAJOR.MINOR.PATCH`.
+- Stejnou hodnotu (bez „v“) použít u všech `?v=...` u CSS a JS (cache busting).
+- Viz také `.cursor/rules/version-increment.mdc`.
+
+Plná dokumentace: `docs/SOFT-UPDATE-AND-VERSIONING.md`.

@@ -17,6 +17,20 @@ Verze v patičce (`index.html`). Při změnách navýšit podle [Semantic Versio
 - **Databáze:** MySQL 5.7+ / MariaDB 10.3+
 - **Architektura:** soft-update / soft-delete (audit trail na každé tabulce)
 
+## Dokumentace
+
+| Dokument | Popis |
+|----------|--------|
+| [docs/SOFT-UPDATE-AND-VERSIONING.md](docs/SOFT-UPDATE-AND-VERSIONING.md) | Pravidla soft-update, entity_id, verzování |
+| [docs/SECURITY.md](docs/SECURITY.md) | Bezpečnostní prověrka a doporučení |
+| [docs/TESTING.md](docs/TESTING.md) | Automatizované testy (API, E2E) |
+| [docs/DEMO-DATA.md](docs/DEMO-DATA.md) | Demo data pro beta (anonymizace) |
+| [docs/demo-data-instructions.md](docs/demo-data-instructions.md) | Návod: seed-demo.sql a plné demo z dumpu |
+| [docs/PROPMANAGER-RENAME.md](docs/PROPMANAGER-RENAME.md) | Návrh přejmenování projektu na PropManager |
+
+- **Testy:** `php tests/run-tests.php` (kontrola přítomnosti soft-update a CSRF; s config + DB běží i kontroly funkcí).
+- **Demo data:** po schema + migracích lze naplnit `seed-demo.sql`; přihlášení `admin@propmanager.demo` / `password`.
+
 ---
 
 ## Automatický deploy přes GitHub Actions
