@@ -186,6 +186,18 @@ foreach ($contracts as $c) {
         $hasUnfulfilledByContractMonth[$eid] = $hasUnfulfilledByContractMonth[$rid];
     }
 }
+// Pro oranžový okraj buňky: neuhrazený požadavek u JAKÉKOLIV smlouvy dané nemovitosti v daném měsíci
+$hasUnfulfilledByPropertyMonth = [];
+foreach ($hasUnfulfilledByContractMonth as $cid => $months) {
+    $pid = $contractToProperty[$cid] ?? null;
+    if ($pid === null) continue;
+    if (!isset($hasUnfulfilledByPropertyMonth[$pid])) {
+        $hasUnfulfilledByPropertyMonth[$pid] = [];
+    }
+    foreach ($months as $monthKey => $_) {
+        $hasUnfulfilledByPropertyMonth[$pid][$monthKey] = true;
+    }
+}
 
 $stmtPrMonth = db()->query("
     SELECT id, payment_requests_id, contracts_id, due_date, amount, type, note
@@ -453,7 +465,7 @@ foreach ($properties as $p) {
                     'request_type' => $req['type'],
                 ];
             }
-            $hasUnfulfilledRequests = !empty($hasUnfulfilledByContractMonth[$entityId][$monthKey]);
+            $hasUnfulfilledRequests = !empty($hasUnfulfilledByPropertyMonth[$propEntityId][$monthKey]);
             $heatmap[$propId . '_' . $monthKey] = [
                 'type'                 => $type,
                 'isPast'               => $isPast,
