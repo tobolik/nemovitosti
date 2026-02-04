@@ -161,6 +161,32 @@ foreach ($contracts as $c) {
     if ($eid !== $rid) $contractToProperty[$rid] = $pid;
 }
 $paymentRequestsListByContractMonth = [];
+// Nevyřízené požadavky (paid_at IS NULL) podle smlouvy a měsíce – pro oranžový okraj buňky
+$hasUnfulfilledByContractMonth = [];
+$stmtUnfulfilled = db()->query("
+    SELECT contracts_id, due_date FROM payment_requests
+    WHERE valid_to IS NULL AND due_date IS NOT NULL AND paid_at IS NULL
+");
+foreach ($stmtUnfulfilled->fetchAll() as $pr) {
+    $cid = (int)$pr['contracts_id'];
+    $monthKey = date('Y-m', strtotime($pr['due_date']));
+    if (!isset($hasUnfulfilledByContractMonth[$cid])) {
+        $hasUnfulfilledByContractMonth[$cid] = [];
+    }
+    $hasUnfulfilledByContractMonth[$cid][$monthKey] = true;
+}
+foreach ($contracts as $c) {
+    $eid = (int)($c['contracts_id'] ?? $c['id']);
+    $rid = (int)$c['id'];
+    if ($eid === $rid) continue;
+    if (isset($hasUnfulfilledByContractMonth[$eid]) && !isset($hasUnfulfilledByContractMonth[$rid])) {
+        $hasUnfulfilledByContractMonth[$rid] = $hasUnfulfilledByContractMonth[$eid];
+    }
+    if (isset($hasUnfulfilledByContractMonth[$rid]) && !isset($hasUnfulfilledByContractMonth[$eid])) {
+        $hasUnfulfilledByContractMonth[$eid] = $hasUnfulfilledByContractMonth[$rid];
+    }
+}
+
 $stmtPrMonth = db()->query("
     SELECT id, payment_requests_id, contracts_id, due_date, amount, type, note
     FROM payment_requests
@@ -427,10 +453,12 @@ foreach ($properties as $p) {
                     'request_type' => $req['type'],
                 ];
             }
+            $hasUnfulfilledRequests = !empty($hasUnfulfilledByContractMonth[$entityId][$monthKey]);
             $heatmap[$propId . '_' . $monthKey] = [
                 'type'                 => $type,
                 'isPast'               => $isPast,
                 'is_contract_start_month' => $isContractStartMonth,
+                'has_unfulfilled_requests' => $hasUnfulfilledRequests,
                 'contract'             => ['id'=>$entityId, 'contracts_id'=>$entityId, 'monthly_rent'=>$fullMonthRent, 'tenant_name'=>$contract['tenant_name']],
                 'monthKey'             => $monthKey,
                 'amount'               => $expectedTotal,

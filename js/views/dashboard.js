@@ -160,6 +160,7 @@ async function loadDashboard(year) {
 
                 let cls = 'heatmap-cell ' + (cell.type || 'empty');
                 if (cell.is_contract_start_month) cls += ' heatmap-cell-start-month';
+                if (cell.has_unfulfilled_requests) cls += ' heatmap-cell-has-requests';
                 if (isFuture && (cell.type === 'unpaid' || cell.type === 'overdue')) {
                     cls = (isCurrentMonth ? 'heatmap-cell current-month-unpaid' : 'heatmap-cell future-unpaid') + (cell.is_contract_start_month ? ' heatmap-cell-start-month' : '');
                 } else if (isFuture && isPaid) {
@@ -218,6 +219,9 @@ async function loadDashboard(year) {
                         tipParts.push('Přeplaceno o ' + UI.fmt(paidAmt - prescribedTotal) + ' Kč');
                     } else {
                         tipParts.push('Uhrazeno v plné výši.');
+                    }
+                    if (cell.has_unfulfilled_requests) {
+                        tipParts.push('Oranžový okraj: neuhrazený požadavek (např. vrácení kauce).');
                     }
                     titleAttr = ' title="' + UI.esc(tipParts.join('\n')) + '"';
                 }
