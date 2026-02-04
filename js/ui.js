@@ -271,6 +271,95 @@ const UI = (() => {
         }
     }
 
+    // ── searchable select (combobox) ─────────────────────────────────────
+    const _searchableSelects = new Map();
+
+    function createSearchableSelect(selectId) {
+        const select = document.getElementById(selectId);
+        if (!select || select.tagName !== 'SELECT' || _searchableSelects.has(selectId)) return;
+        if (select.closest('.searchable-select-wrap')) return;
+        const parent = select.parentNode;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'searchable-select-wrap';
+        wrapper.setAttribute('data-for', selectId);
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'searchable-select-input';
+        input.autocomplete = 'off';
+        input.placeholder = 'Vyhledat…';
+        input.setAttribute('aria-label', select.getAttribute('aria-label') || 'Vyhledat');
+        const dropdown = document.createElement('div');
+        dropdown.className = 'searchable-select-dropdown';
+        dropdown.setAttribute('role', 'listbox');
+        dropdown.setAttribute('aria-hidden', 'true');
+        select.classList.add('searchable-select-native');
+        wrapper.appendChild(input);
+        wrapper.appendChild(dropdown);
+        wrapper.appendChild(select);
+        parent.appendChild(wrapper);
+
+        function getOptions() {
+            const opts = [];
+            for (let i = 0; i < select.options.length; i++) {
+                const o = select.options[i];
+                if (o.value === '' && !o.textContent.trim()) continue;
+                opts.push({ value: o.value, text: o.textContent.trim() });
+            }
+            return opts;
+        }
+
+        function renderDropdown(filter) {
+            const opts = getOptions();
+            const q = (filter || '').toLowerCase().trim();
+            const filtered = q
+                ? opts.filter(o => o.text.toLowerCase().includes(q))
+                : opts;
+            dropdown.innerHTML = filtered.length
+                ? filtered.map(o => '<div class="searchable-select-option" role="option" data-value="' + esc(o.value) + '">' + esc(o.text) + '</div>').join('')
+                : '<div class="searchable-select-empty">Žádný výsledek</div>';
+            dropdown.setAttribute('aria-hidden', 'false');
+        }
+
+        function setDisplayFromSelect() {
+            const opt = select.options[select.selectedIndex];
+            input.value = opt ? opt.textContent.trim() : '';
+        }
+
+        function closeDropdown() {
+            dropdown.classList.remove('show');
+            dropdown.setAttribute('aria-hidden', 'true');
+        }
+
+        input.addEventListener('focus', () => {
+            renderDropdown(input.value);
+            dropdown.classList.add('show');
+        });
+        input.addEventListener('input', () => {
+            renderDropdown(input.value);
+            dropdown.classList.add('show');
+        });
+        input.addEventListener('blur', () => {
+            setTimeout(closeDropdown, 180);
+        });
+        dropdown.addEventListener('mousedown', (e) => e.preventDefault());
+        dropdown.addEventListener('click', (e) => {
+            const opt = e.target.closest('.searchable-select-option');
+            if (!opt) return;
+            const val = opt.getAttribute('data-value');
+            select.value = val;
+            input.value = opt.textContent.trim();
+            closeDropdown();
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        setDisplayFromSelect();
+        _searchableSelects.set(selectId, { input, setDisplayFromSelect });
+    }
+
+    function updateSearchableSelectDisplay(selectId) {
+        const rec = _searchableSelects.get(selectId);
+        if (rec && rec.setDisplayFromSelect) rec.setDisplayFromSelect();
+    }
+
     // ── public ──────────────────────────────────────────────────────────
     return {
         esc, fmt, fmtDate, isDateValid, MONTHS,
@@ -281,5 +370,7 @@ const UI = (() => {
         confirmDelete,
         getDrivePreviewUrl,
         initContractPreview,
+        createSearchableSelect,
+        updateSearchableSelectDisplay,
     };
 })();

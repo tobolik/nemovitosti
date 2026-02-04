@@ -406,6 +406,64 @@ footer .footer-version { opacity: .8; }
 }
 .select-with-btn select, .input-with-btn input { flex: 1; min-width: 0; }
 
+/* Searchable select (combobox) – nájemník, nemovitost */
+.searchable-select-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.searchable-select-wrap .searchable-select-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+  pointer-events: none;
+}
+.searchable-select-wrap .searchable-select-input {
+  width: 100%;
+  cursor: pointer;
+}
+.searchable-select-dropdown {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--slate-900);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r);
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  z-index: 100;
+}
+.searchable-select-dropdown.show {
+  display: block;
+}
+.searchable-select-option {
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: .88rem;
+  color: var(--txt);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.searchable-select-option:last-child { border-bottom: none; }
+.searchable-select-option:hover,
+.searchable-select-option:focus {
+  background: var(--purple-700);
+  outline: none;
+}
+.searchable-select-empty {
+  padding: 12px;
+  color: var(--txt3);
+  font-size: .85rem;
+}
+
 /* ============================================================
    BUTTONS – Purple primary, Green success
    ============================================================ */

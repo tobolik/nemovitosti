@@ -18,22 +18,28 @@ const ContractsView = (() => {
 
         if (!btnAdd) return;
 
+        const wrapIcDic = document.getElementById('modal-tenant-ic-dic-wrap');
+        const wrapBirth = document.getElementById('modal-tenant-birth-wrap');
+
         btnAdd.addEventListener('click', () => {
-            ['modal-tenant-name','modal-tenant-email','modal-tenant-phone','modal-tenant-address','modal-tenant-ic','modal-tenant-dic','modal-tenant-note'].forEach(id => {
+            ['modal-tenant-name','modal-tenant-email','modal-tenant-phone','modal-tenant-address','modal-tenant-ic','modal-tenant-dic','modal-tenant-note','modal-tenant-birth'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
             if (typeEl) typeEl.value = 'person';
             if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
-            toggleAresButton();
+            toggleTenantTypeVisibility();
             UI.modalOpen('modal-tenant');
         });
 
-        function toggleAresButton() {
-            if (wrapAres) wrapAres.style.display = (typeEl && typeEl.value === 'company') ? 'block' : 'none';
+        function toggleTenantTypeVisibility() {
+            const isCompany = typeEl && typeEl.value === 'company';
+            if (wrapAres) wrapAres.style.display = isCompany ? 'block' : 'none';
+            if (wrapIcDic) wrapIcDic.style.display = isCompany ? 'flex' : 'none';
+            if (wrapBirth) wrapBirth.style.display = !isCompany ? 'block' : 'none';
         }
-        if (typeEl) typeEl.addEventListener('change', toggleAresButton);
-        toggleAresButton();
+        if (typeEl) typeEl.addEventListener('change', toggleTenantTypeVisibility);
+        toggleTenantTypeVisibility();
 
         if (btnAres) btnAres.addEventListener('click', async () => {
             const ic = (document.getElementById('modal-tenant-ic')?.value || '').replace(/\D/g, '');
@@ -68,21 +74,28 @@ const ContractsView = (() => {
                 UI.alertShow('modal-tenant-alert', 'Jméno / Název je povinné.', 'err');
                 return;
             }
+            const isCompany = (typeEl?.value) === 'company';
+            const birthVal = (document.getElementById('modal-tenant-birth')?.value || '').trim() || null;
+            const icVal = isCompany ? ((document.getElementById('modal-tenant-ic')?.value || '').trim() || null) : null;
+            const dicVal = isCompany ? ((document.getElementById('modal-tenant-dic')?.value || '').trim() || null) : null;
             btnSave.disabled = true;
             try {
                 const data = await Api.crudAdd('tenants', {
                     name:    name,
                     type:   (typeEl?.value) || 'person',
+                    birth_date: !isCompany ? birthVal : null,
                     email:  (document.getElementById('modal-tenant-email')?.value || '').trim(),
                     phone:  (document.getElementById('modal-tenant-phone')?.value || '').trim(),
                     address: (document.getElementById('modal-tenant-address')?.value || '').trim(),
-                    ic:     (document.getElementById('modal-tenant-ic')?.value || '').trim() || null,
-                    dic:    (document.getElementById('modal-tenant-dic')?.value || '').trim() || null,
+                    ic:     icVal,
+                    dic:    dicVal,
                     note:   (document.getElementById('modal-tenant-note')?.value || '').trim(),
                 });
                 await fillDropdowns();
                 const tenantSel = document.getElementById('con-tenant');
-                if (tenantSel) tenantSel.value = data.id;
+                const newId = data.tenants_id ?? data.id;
+                if (tenantSel) tenantSel.value = String(newId);
+                if (typeof UI.updateSearchableSelectDisplay === 'function') UI.updateSearchableSelectDisplay('con-tenant');
                 UI.modalClose('modal-tenant');
             } catch (e) {
                 UI.alertShow('modal-tenant-alert', e.message || 'Chyba při ukládání.', 'err');
@@ -289,6 +302,10 @@ const ContractsView = (() => {
                 document.getElementById('con-deposit-paid-date').value = row.deposit_paid_date ? row.deposit_paid_date.slice(0, 10) : '';
                 document.getElementById('con-deposit-return-date').value = row.deposit_return_date ? row.deposit_return_date.slice(0, 10) : '';
                 document.getElementById('con-note').value     = row.note           || '';
+                if (typeof UI.updateSearchableSelectDisplay === 'function') {
+                    UI.updateSearchableSelectDisplay('con-property');
+                    UI.updateSearchableSelectDisplay('con-tenant');
+                }
                 toggleFirstMonthRentVisibility();
                 const contractsId = row.contracts_id ?? row.id;
                 loadRentChanges(contractsId);
@@ -418,6 +435,10 @@ const ContractsView = (() => {
         initRentChangesHandlers();
         _cache = [];
         await fillDropdowns();
+        if (typeof UI.createSearchableSelect === 'function') {
+            UI.createSearchableSelect('con-property');
+            UI.createSearchableSelect('con-tenant');
+        }
         await loadList();
         prefillFromCalendarIfPending();
         try {

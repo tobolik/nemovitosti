@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=1.1.99">
+<link rel="stylesheet" href="css/style.css?v=1.1.100">
 </head>
 <body>
 
@@ -147,7 +147,7 @@
               </select>
             </div>
           </div>
-          <div class="form-row">
+          <div class="form-row" id="ten-ic-dic-wrap" style="display:none">
             <div class="fg"><label>IČO</label><input type="text" id="ten-ic" placeholder="12345678"></div>
             <div class="fg"><label>DIČ</label><input type="text" id="ten-dic" placeholder="CZ12345678"></div>
           </div>
@@ -392,7 +392,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v1.1.99</span>
+    <span class="footer-version">v1.1.100</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -550,7 +550,7 @@
           </select>
         </div>
       </div>
-      <div class="form-row fg-ic-row">
+      <div class="form-row fg-ic-row" id="modal-tenant-ic-dic-wrap" style="display:none">
         <div class="fg"><label>IČO</label><input type="text" id="modal-tenant-ic" placeholder="12345678"></div>
         <div class="fg"><label>DIČ</label><input type="text" id="modal-tenant-dic" placeholder="CZ12345678"></div>
       </div>
@@ -558,6 +558,10 @@
         <button type="button" class="btn btn-ares btn-sm" id="modal-tenant-ares-btn" title="Vyplní název, adresu a DIČ podle IČ">Načíst z ARES</button>
       </div>
       <div class="fg"><label>Jméno / Název *</label><input type="text" id="modal-tenant-name"></div>
+      <div class="fg" id="modal-tenant-birth-wrap" style="display:none">
+        <label>Datum narození</label>
+        <input type="date" id="modal-tenant-birth">
+      </div>
       <div class="fg"><label>Adresa</label><input type="text" id="modal-tenant-address" placeholder="Začněte psát ulici..." autocomplete="off"></div>
       <div class="form-row">
         <div class="fg"><label>E-mail</label><input type="email" id="modal-tenant-email"></div>
@@ -593,16 +597,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=1.1.99"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=1.1.99"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=1.1.99"></script>
-<script src="js/app.js?v=1.1.99"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=1.1.99"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=1.1.99"></script>
-<script src="js/views/tenants.js?v=1.1.99"></script>
-<script src="js/views/contracts.js?v=1.1.99"></script>
-<script src="js/views/payments.js?v=1.1.99"></script>
-<script src="js/views/bank_accounts.js?v=1.1.99"></script>
-<script src="js/views/users.js?v=1.1.99"></script>
+<script src="js/api.js?v=1.1.100"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=1.1.100"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=1.1.100"></script>
+<script src="js/app.js?v=1.1.100"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=1.1.100"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=1.1.100"></script>
+<script src="js/views/tenants.js?v=1.1.100"></script>
+<script src="js/views/contracts.js?v=1.1.100"></script>
+<script src="js/views/payments.js?v=1.1.100"></script>
+<script src="js/views/bank_accounts.js?v=1.1.100"></script>
+<script src="js/views/users.js?v=1.1.100"></script>
 </body>
 </html>

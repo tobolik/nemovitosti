@@ -11,16 +11,16 @@ const TenantsView = (() => {
         const alertEl = document.getElementById('ten-alert');
         if (!btnAres || !wrapAres) return;
 
-        function toggleAresButton() {
-            wrapAres.style.display = typeEl.value === 'company' ? 'block' : 'none';
-        }
+        const wrapIcDic = document.getElementById('ten-ic-dic-wrap');
         const birthDateWrap = document.getElementById('ten-birth-date-wrap');
-        function toggleBirthDate() {
-            if (birthDateWrap) birthDateWrap.style.display = typeEl.value === 'person' ? 'block' : 'none';
+        function toggleTenantTypeVisibility() {
+            const isCompany = typeEl.value === 'company';
+            wrapAres.style.display = isCompany ? 'block' : 'none';
+            if (wrapIcDic) wrapIcDic.style.display = isCompany ? 'flex' : 'none';
+            if (birthDateWrap) birthDateWrap.style.display = !isCompany ? 'block' : 'none';
         }
-        typeEl.addEventListener('change', () => { toggleAresButton(); toggleBirthDate(); });
-        toggleAresButton();
-        toggleBirthDate();
+        typeEl.addEventListener('change', toggleTenantTypeVisibility);
+        toggleTenantTypeVisibility();
 
         btnAres.addEventListener('click', async () => {
             const ic = document.getElementById('ten-ic').value.replace(/\D/g, '');
@@ -64,15 +64,16 @@ const TenantsView = (() => {
             successEditMsg: 'Nájemník byl úspěšně aktualizován.',
             getValues() {
                 const type = document.getElementById('ten-type').value;
+                const isCompany = type === 'company';
                 return {
                     name:    document.getElementById('ten-name').value.trim(),
                     type,
-                    birth_date: type === 'person' ? (document.getElementById('ten-birth-date').value || null) : null,
+                    birth_date: !isCompany ? (document.getElementById('ten-birth-date').value || null) : null,
                     email:   document.getElementById('ten-email').value.trim(),
                     phone:   document.getElementById('ten-phone').value.trim(),
                     address: document.getElementById('ten-address').value.trim(),
-                    ic:      document.getElementById('ten-ic').value.trim() || null,
-                    dic:     document.getElementById('ten-dic').value.trim() || null,
+                    ic:      isCompany ? (document.getElementById('ten-ic').value.trim() || null) : null,
+                    dic:     isCompany ? (document.getElementById('ten-dic').value.trim() || null) : null,
                     note:    document.getElementById('ten-note').value.trim(),
                 };
             },
@@ -87,10 +88,13 @@ const TenantsView = (() => {
                 document.getElementById('ten-dic').value     = row.dic     || '';
                 document.getElementById('ten-edit-id').value = String(row.tenants_id ?? row.id);
                 document.getElementById('ten-note').value    = row.note    || '';
-                const wrap = document.getElementById('ten-ares-wrap');
-                if (wrap) wrap.style.display = (row.type === 'company') ? 'block' : 'none';
+                const wrapAresF = document.getElementById('ten-ares-wrap');
+                const wrapIcDicF = document.getElementById('ten-ic-dic-wrap');
                 const birthWrap = document.getElementById('ten-birth-date-wrap');
-                if (birthWrap) birthWrap.style.display = (row.type === 'person') ? 'block' : 'none';
+                const isCo = row.type === 'company';
+                if (wrapAresF) wrapAresF.style.display = isCo ? 'block' : 'none';
+                if (wrapIcDicF) wrapIcDicF.style.display = isCo ? 'flex' : 'none';
+                if (birthWrap) birthWrap.style.display = !isCo ? 'block' : 'none';
             },
             resetForm() {
                 ['ten-name','ten-birth-date','ten-email','ten-phone','ten-address','ten-ic','ten-dic','ten-note'].forEach(id => {
@@ -98,10 +102,12 @@ const TenantsView = (() => {
                     if (el) el.value = '';
                 });
                 document.getElementById('ten-type').value = 'person';
-                const wrap = document.getElementById('ten-ares-wrap');
-                if (wrap) wrap.style.display = 'none';
-                const birthWrap = document.getElementById('ten-birth-date-wrap');
-                if (birthWrap) birthWrap.style.display = 'block';
+                const wrapAresR = document.getElementById('ten-ares-wrap');
+                const wrapIcDicR = document.getElementById('ten-ic-dic-wrap');
+                const birthWrapR = document.getElementById('ten-birth-date-wrap');
+                if (wrapAresR) wrapAresR.style.display = 'none';
+                if (wrapIcDicR) wrapIcDicR.style.display = 'none';
+                if (birthWrapR) birthWrapR.style.display = 'block';
             },
             onSaved: loadList,
         });
