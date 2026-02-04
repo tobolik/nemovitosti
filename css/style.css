@@ -948,6 +948,17 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 
 /* FILTER BAR */
 .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.filter-bar-payments .filter-row { display: flex; align-items: center; gap: 6px; }
+.filter-bar-payments .filter-row-search .filter-search-input {
+  min-width: 180px; max-width: 320px;
+  padding: 6px 10px;
+  background-color: rgba(30,41,59,.95);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r);
+  color: var(--txt);
+  font-size: .9rem;
+}
+.filter-bar-payments .filter-row-search .filter-search-input::placeholder { color: var(--txt3); }
 .filter-bar label { color: var(--txt3); font-size: .78rem; font-weight: 500; }
 .filter-bar select {
   min-width: 300px; max-width: min(100%, 480px);

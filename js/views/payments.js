@@ -4,7 +4,8 @@ const PaymentsView = (() => {
     let form = null;
     let contractsCache = [];   // all active contracts (with names)
     let bankAccountsCache = []; // bank accounts for select
-    let filterContractId = 0;  // current filter
+    let filterContractId = 0;  // current filter (API)
+    let _payCache = [];        // last loaded rows (before client-side filters)
 
     // ── init form (once) ────────────────────────────────────────────────
     function initForm() {
@@ -187,11 +188,24 @@ const PaymentsView = (() => {
             }
         });
 
-        // Filter dropdown change
+        // Filter: smlouva (API) – refetch
         document.getElementById('pay-filter-contract').addEventListener('change', function () {
             filterContractId = Number(this.value);
-            renderPayments();
+            renderPayments(true);
         });
+        // Filtry rok, měsíc, typ, vyhledávání – jen přefiltrovat načtená data
+        ['pay-filter-year', 'pay-filter-month', 'pay-filter-type'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', () => renderPayments(false));
+        });
+        const searchEl = document.getElementById('pay-filter-search');
+        if (searchEl) {
+            let searchDebounce = null;
+            searchEl.addEventListener('input', () => {
+                clearTimeout(searchDebounce);
+                searchDebounce = setTimeout(() => renderPayments(false), 200);
+            });
+        }
 
         // Způsob platby: zobrazit/skrýt číslo účtu
         document.getElementById('pay-method').addEventListener('change', function () {
@@ -304,18 +318,73 @@ const PaymentsView = (() => {
                 return '<option value="' + cid(c) + '" title="' + label + '"' + (filterContractId === cid(c) ? ' selected' : '') + '>' + label + '</option>';
             }).join('');
         document.getElementById('pay-filter-contract').innerHTML = fOpts;
+        // Našeptávač u výběru smlouvy (jen při prvním naplnění)
+        if (typeof UI.createSearchableSelect === 'function' && !document.querySelector('.searchable-select-wrap[data-for="pay-filter-contract"]')) {
+            UI.createSearchableSelect('pay-filter-contract');
+        }
+        if (typeof UI.updateSearchableSelectDisplay === 'function') {
+            UI.updateSearchableSelectDisplay('pay-filter-contract');
+        }
+        // Roky do filtru (posledních 15 + aktuální)
+        const yearSel = document.getElementById('pay-filter-year');
+        if (yearSel) {
+            const now = new Date().getFullYear();
+            const existing = yearSel.querySelectorAll('option');
+            if (existing.length <= 1) {
+                let opts = '<option value="">— Všechny —</option>';
+                for (let y = now; y >= now - 15; y--) opts += '<option value="' + y + '">' + y + '</option>';
+                yearSel.innerHTML = opts;
+            }
+        }
         updateYearSelects();
     }
 
-    // ── render payments table ───────────────────────────────────────────
-    async function renderPayments() {
-        const params = filterContractId ? { contracts_id: filterContractId } : {};
-        let data;
-        try { data = await Api.crudList('payments', params); }
-        catch (e) { return; }
+    function getPaymentsEmptyMsg(filteredToZero) {
+        if (filteredToZero) return 'Žádné platby nevyhovují filtrům.';
+        return filterContractId ? 'Žádné platby pro tuto smlouvu.' : 'Žádné platby.';
+    }
 
-        // cache pro edit()
-        _payCache = data;
+    // ── apply client-side filters (rok, měsíc, typ, vyhledávání) ─────────
+    function applyPaymentFilters(rows) {
+        const year = document.getElementById('pay-filter-year');
+        const month = document.getElementById('pay-filter-month');
+        const type = document.getElementById('pay-filter-type');
+        const search = document.getElementById('pay-filter-search');
+        let out = rows || [];
+        if (year && year.value) {
+            const y = parseInt(year.value, 10);
+            out = out.filter(p => Number(p.period_year) === y);
+        }
+        if (month && month.value) {
+            const m = parseInt(month.value, 10);
+            out = out.filter(p => Number(p.period_month) === m);
+        }
+        if (type && type.value) {
+            out = out.filter(p => (p.payment_type || 'rent') === type.value);
+        }
+        if (search && search.value.trim()) {
+            const q = search.value.trim().toLowerCase();
+            out = out.filter(p => {
+                const tenant = (p.tenant_name || '').toLowerCase();
+                const property = (p.property_name || '').toLowerCase();
+                const note = (p.note || '').toLowerCase();
+                const counterpart = (p.counterpart_account || '').toLowerCase();
+                const amountStr = String(p.amount || '');
+                return tenant.includes(q) || property.includes(q) || note.includes(q) || counterpart.includes(q) || amountStr.includes(q);
+            });
+        }
+        return out;
+    }
+
+    // ── render payments table ───────────────────────────────────────────
+    async function renderPayments(forceRefetch = true) {
+        if (forceRefetch) {
+            const params = filterContractId ? { contracts_id: filterContractId } : {};
+            try {
+                _payCache = await Api.crudList('payments', params);
+            } catch (e) { return; }
+        }
+        const data = applyPaymentFilters(_payCache);
 
         const rowsWithClass = data.map(p => ({ ...p, _rowClass: 'pay-type-' + (p.payment_type || 'rent') }));
         UI.renderTable('pay-table',
@@ -357,7 +426,7 @@ const PaymentsView = (() => {
                     '<td>' + UI.MONTHS[p.period_month] + ' ' + p.period_year + batchHint + '</td>' +
                     '<td class="col-hide-mobile">' + UI.esc(typeLabel) + '</td>' +
                     '<td>' + UI.fmt(amt) + ' Kč</td>' +
-                    '<td class="col-hide-mobile">' + UI.esc(p.payment_date) + '</td>' +
+                    '<td class="col-hide-mobile">' + (p.payment_date ? UI.fmtDate(p.payment_date) : '—') + '</td>' +
                     '<td class="col-hide-mobile">' + UI.esc(methodLabel) + '</td>' +
                     '<td class="col-hide-mobile">' + (p.counterpart_account ? UI.esc(p.counterpart_account) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="col-hide-mobile">' + diffHtml + '</td>' +
@@ -368,7 +437,7 @@ const PaymentsView = (() => {
                     '</td>'
                 );
             },
-            { emptyMsg: filterContractId ? 'Žádné platby pro tuto smlouvu.' : 'Žádné platby.' }
+            { emptyMsg: getPaymentsEmptyMsg(data.length === 0 && _payCache.length > 0) }
         );
 
         if (data.length > 0) {
@@ -388,7 +457,6 @@ const PaymentsView = (() => {
     }
 
     // ── exposed actions ─────────────────────────────────────────────────
-    let _payCache = [];
 
     function edit(id) {
         const row = _payCache.find(r => (r.payments_id ?? r.id) == id);

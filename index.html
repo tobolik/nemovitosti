@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=1.2.2">
+<link rel="stylesheet" href="css/style.css?v=1.2.3">
 </head>
 <body>
 
@@ -333,9 +333,36 @@
             <button class="btn btn-ghost" id="btn-pay-cancel" style="display:none">Zrušit</button>
           </div>
         </div>
-        <div class="filter-bar">
-          <label>Filtr:</label>
-          <select id="pay-filter-contract"><option value="">— Všechny smlouvy —</option></select>
+        <div class="filter-bar filter-bar-payments">
+          <div class="filter-row">
+            <label>Smlouva:</label>
+            <select id="pay-filter-contract"><option value="">— Všechny smlouvy —</option></select>
+          </div>
+          <div class="filter-row">
+            <label>Rok:</label>
+            <select id="pay-filter-year"><option value="">— Všechny —</option></select>
+          </div>
+          <div class="filter-row">
+            <label>Měsíc:</label>
+            <select id="pay-filter-month">
+              <option value="">— Všechny —</option>
+              <option value="1">Leden</option><option value="2">Únor</option><option value="3">Březen</option><option value="4">Duben</option>
+              <option value="5">Květen</option><option value="6">Červen</option><option value="7">Červenec</option><option value="8">Srpen</option>
+              <option value="9">Září</option><option value="10">Říjen</option><option value="11">Listopad</option><option value="12">Prosinec</option>
+            </select>
+          </div>
+          <div class="filter-row">
+            <label>Typ:</label>
+            <select id="pay-filter-type">
+              <option value="">— Všechny —</option>
+              <option value="rent">Nájem</option><option value="deposit">Kauce</option><option value="deposit_return">Vrácení kauce</option>
+              <option value="energy">Doplatek energie</option><option value="other">Jiné</option>
+            </select>
+          </div>
+          <div class="filter-row filter-row-search">
+            <label>Vyhledat:</label>
+            <input type="text" id="pay-filter-search" placeholder="nájemník, nemovitost, poznámka, protiúčet, částka…" class="filter-search-input">
+          </div>
         </div>
         <div id="pay-table"></div>
       </div>
@@ -401,7 +428,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v1.2.2</span>
+    <span class="footer-version">v1.2.3</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -610,16 +637,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=1.2.2"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=1.2.2"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=1.2.2"></script>
-<script src="js/app.js?v=1.2.2"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=1.2.2"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=1.2.2"></script>
-<script src="js/views/tenants.js?v=1.2.2"></script>
-<script src="js/views/contracts.js?v=1.2.2"></script>
-<script src="js/views/payments.js?v=1.2.2"></script>
-<script src="js/views/bank_accounts.js?v=1.2.2"></script>
-<script src="js/views/users.js?v=1.2.2"></script>
+<script src="js/api.js?v=1.2.3"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=1.2.3"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=1.2.3"></script>
+<script src="js/app.js?v=1.2.3"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=1.2.3"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=1.2.3"></script>
+<script src="js/views/tenants.js?v=1.2.3"></script>
+<script src="js/views/contracts.js?v=1.2.3"></script>
+<script src="js/views/payments.js?v=1.2.3"></script>
+<script src="js/views/bank_accounts.js?v=1.2.3"></script>
+<script src="js/views/users.js?v=1.2.3"></script>
 </body>
 </html>
