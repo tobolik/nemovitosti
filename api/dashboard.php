@@ -465,7 +465,67 @@ foreach ($properties as $p) {
         }
 
         if (count($candidates) === 0) {
-            $heatmap[$propId . '_' . $monthKey] = ['type' => 'empty', 'monthKey' => $monthKey];
+            // Může být platba (např. kauce) v měsíci, kdy smlouva ještě neběžela – zobrazit buňku „jen platba“
+            $contractsForProperty = array_filter($contracts, function ($c) use ($propEntityId) {
+                return (int)$c['properties_id'] === $propEntityId;
+            });
+            $paidTotalOnly = 0.0;
+            $paymentDetailsOnly = [];
+            foreach ($contractsForProperty as $c) {
+                $entityId = (int)($c['contracts_id'] ?? $c['id']);
+                $paid = $paymentsByContract[$entityId][$monthKey] ?? null;
+                if ($paid && ((float)($paid['amount'] ?? 0) > 0)) {
+                    $paidTotalOnly += (float)($paid['amount'] ?? 0);
+                    $paymentDetailsOnly = array_merge($paymentDetailsOnly, $paymentsListByContract[$entityId][$monthKey] ?? []);
+                }
+            }
+            $requestsForPropertyMonth = $paymentRequestsByPropertyMonth[$propEntityId][$monthKey] ?? 0.0;
+            if ($paidTotalOnly > 0 || $requestsForPropertyMonth != 0) {
+                $expectedTotalOnly = round($requestsForPropertyMonth, 2);
+                $primaryContract = reset($contractsForProperty) ?: null;
+                $primaryEntityId = $primaryContract ? (int)($primaryContract['contracts_id'] ?? $primaryContract['id']) : 0;
+                $monthBreakdownOnly = [];
+                foreach ($contractsForProperty as $c) {
+                    $eid = (int)($c['contracts_id'] ?? $c['id']);
+                    $monthRequests = $paymentRequestsListByContractMonth[$eid][$monthKey] ?? [];
+                    foreach ($monthRequests as $req) {
+                        $monthBreakdownOnly[] = [
+                            'type'   => 'request',
+                            'id'     => (int)$req['id'],
+                            'label'  => $req['note'] ?: ($req['type'] === 'energy' ? 'Energie' : ($req['type'] === 'settlement' ? 'Vyúčtování' : ($req['type'] === 'deposit' ? 'Kauce' : 'Požadavek'))),
+                            'amount' => (float)$req['amount'],
+                            'request_type' => $req['type'],
+                        ];
+                    }
+                }
+                $paymentDateOnly = null;
+                foreach ($paymentDetailsOnly as $pd) {
+                    if (!empty($pd['payment_date']) && ($paymentDateOnly === null || $pd['payment_date'] > $paymentDateOnly)) {
+                        $paymentDateOnly = $pd['payment_date'];
+                    }
+                }
+                $diffOnly = round($paidTotalOnly - $expectedTotalOnly, 2);
+                $typeOnly = $diffOnly >= 0 ? ($diffOnly > 0 ? 'overpaid' : 'exact') : 'overdue';
+                $heatmap[$propId . '_' . $monthKey] = [
+                    'type'                 => $typeOnly,
+                    'isPast'               => ($year < $nowY) || ($year == $nowY && $m < $nowM),
+                    'is_contract_start_month' => false,
+                    'has_unfulfilled_requests' => !empty($hasUnfulfilledByPropertyMonth[$propEntityId][$monthKey]),
+                    'unfulfilled_requests'  => $unfulfilledRequestsByPropertyMonth[$propEntityId][$monthKey] ?? [],
+                    'contract'             => $primaryContract ? ['id' => $primaryEntityId, 'contracts_id' => $primaryEntityId, 'monthly_rent' => 0, 'tenant_name' => $primaryContract['tenant_name'] ?? ''] : null,
+                    'monthKey'             => $monthKey,
+                    'amount'               => $expectedTotalOnly,
+                    'amount_full'          => $expectedTotalOnly,
+                    'payment'              => $paymentDateOnly ? ['amount' => $paidTotalOnly, 'date' => $paymentDateOnly, 'count' => count($paymentDetailsOnly)] : null,
+                    'paid_amount'          => $paidTotalOnly,
+                    'payment_count'        => count($paymentDetailsOnly),
+                    'remaining'            => max(0, $expectedTotalOnly - $paidTotalOnly),
+                    'payment_details'      => $paymentDetailsOnly,
+                    'month_breakdown'      => $monthBreakdownOnly,
+                ];
+            } else {
+                $heatmap[$propId . '_' . $monthKey] = ['type' => 'empty', 'monthKey' => $monthKey];
+            }
         } else {
             // V jednom měsíci může být více smluv (např. jedna končí 13.3., druhá začíná 14.3.) – sčítáme očekávaný nájem i platby ze všech
             $expectedRent = 0.0;
