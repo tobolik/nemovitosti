@@ -512,7 +512,17 @@ foreach ($properties as $p) {
                     'is_contract_start_month' => false,
                     'has_unfulfilled_requests' => !empty($hasUnfulfilledByPropertyMonth[$propEntityId][$monthKey]),
                     'unfulfilled_requests'  => $unfulfilledRequestsByPropertyMonth[$propEntityId][$monthKey] ?? [],
-                    'contract'             => $primaryContract ? ['id' => $primaryEntityId, 'contracts_id' => $primaryEntityId, 'monthly_rent' => 0, 'tenant_name' => $primaryContract['tenant_name'] ?? ''] : null,
+                    'contract'             => $primaryContract ? [
+                    'id' => $primaryEntityId,
+                    'contracts_id' => $primaryEntityId,
+                    'monthly_rent' => (float)($primaryContract['monthly_rent'] ?? 0),
+                    'tenant_name' => $primaryContract['tenant_name'] ?? '',
+                    'contract_start' => $primaryContract['contract_start'] ?? null,
+                    'contract_end' => $primaryContract['contract_end'] ?? null,
+                    'rent_changes' => array_map(function ($rc) {
+                        return ['effective_from' => $rc['effective_from'] ?? '', 'amount' => (float)($rc['amount'] ?? 0)];
+                    }, $rentChangesByContract[$primaryEntityId] ?? []),
+                ] : null,
                     'monthKey'             => $monthKey,
                     'amount'               => $expectedTotalOnly,
                     'amount_full'          => $expectedTotalOnly,
@@ -565,6 +575,20 @@ foreach ($properties as $p) {
                     $isContractStartMonth = true;
                 }
             }
+            // Při zvýšení nájmu v tomto měsíci přidat do „Co uhradit“ i variantu nového nájmu (od data)
+            foreach ($candidates as $c) {
+                $eid = (int)($c['contracts_id'] ?? $c['id']);
+                $changes = $rentChangesByContract[$eid] ?? [];
+                foreach ($changes as $rc) {
+                    $eff = $rc['effective_from'] ?? '';
+                    if ($eff === '') continue;
+                    if ($eff >= $firstOfMonth && $eff <= $lastDayOfMonth) {
+                        $amt = (float)($rc['amount'] ?? 0);
+                        $dateStr = date('j.n.Y', strtotime($eff));
+                        $monthBreakdown[] = ['type' => 'rent', 'label' => 'Nájem (od ' . $dateStr . ')', 'amount' => round($amt, 2)];
+                    }
+                }
+            }
 
             $requestsForPropertyMonth = $paymentRequestsByPropertyMonth[$propEntityId][$monthKey] ?? 0.0;
             $expectedTotal = round($expectedRent + $requestsForPropertyMonth, 2);
@@ -599,7 +623,17 @@ foreach ($properties as $p) {
                 'is_contract_start_month' => $isContractStartMonth,
                 'has_unfulfilled_requests' => $hasUnfulfilledRequests,
                 'unfulfilled_requests'  => $unfulfilledRequests,
-                'contract'             => ['id'=>$primaryEntityId, 'contracts_id'=>$primaryEntityId, 'monthly_rent'=>$fullMonthRent, 'tenant_name'=>$primaryContract['tenant_name']],
+                'contract'             => [
+                    'id' => $primaryEntityId,
+                    'contracts_id' => $primaryEntityId,
+                    'monthly_rent' => (float)($primaryContract['monthly_rent'] ?? 0),
+                    'tenant_name' => $primaryContract['tenant_name'] ?? '',
+                    'contract_start' => $primaryContract['contract_start'] ?? null,
+                    'contract_end' => $primaryContract['contract_end'] ?? null,
+                    'rent_changes' => array_map(function ($rc) {
+                        return ['effective_from' => $rc['effective_from'] ?? '', 'amount' => (float)($rc['amount'] ?? 0)];
+                    }, $rentChangesByContract[$primaryEntityId] ?? []),
+                ],
                 'monthKey'             => $monthKey,
                 'amount'               => $expectedTotal,
                 'amount_full'          => $expectedTotal,

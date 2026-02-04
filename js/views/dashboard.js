@@ -199,9 +199,15 @@ async function loadDashboard(year) {
                 const breakdownJson = (cell.month_breakdown && cell.month_breakdown.length > 0)
                     ? JSON.stringify(cell.month_breakdown).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
                     : '';
+                const contractStart = contract && contract.contract_start ? String(contract.contract_start).slice(0, 10) : '';
+                const contractEnd = contract && contract.contract_end ? String(contract.contract_end).slice(0, 10) : '';
+                const rentChangesJson = (contract && contract.rent_changes && contract.rent_changes.length > 0)
+                    ? JSON.stringify(contract.rent_changes).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+                    : '';
+                const monthlyRent = contract && (contract.monthly_rent != null) ? parseFloat(contract.monthly_rent) : 0;
                 const propIdForCell = prop.properties_id ?? prop.id;
                 const dataAttrs = cell.type !== 'empty'
-                    ? ' data-property-id="' + propIdForCell + '" data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"' + (breakdownJson ? ' data-month-breakdown="' + breakdownJson + '"' : '')
+                    ? ' data-property-id="' + propIdForCell + '" data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"' + (breakdownJson ? ' data-month-breakdown="' + breakdownJson + '"' : '') + (contractStart ? ' data-contract-start="' + contractStart.replace(/"/g, '&quot;') + '"' : '') + (contractEnd ? ' data-contract-end="' + contractEnd.replace(/"/g, '&quot;') + '"' : '') + (rentChangesJson ? ' data-rent-changes="' + rentChangesJson + '"' : '') + (monthlyRent > 0 ? ' data-monthly-rent="' + monthlyRent + '"' : '')
                     : ' data-property-id="' + propIdForCell + '" data-month-key="' + monthKey + '"';
 
                 let titleAttr = '';
@@ -824,8 +830,15 @@ async function openPaymentModal(el) {
     bulkCheckbox.checked = false;
     rangeRow.style.display = 'none';
     const nowY = new Date().getFullYear();
+    const contractStart = (el.dataset.contractStart || '').trim();
+    const contractEnd = (el.dataset.contractEnd || '').trim();
+    let startYear = contractStart ? parseInt(contractStart.slice(0, 4), 10) : (nowY - 10);
+    let endYear = contractEnd ? parseInt(contractEnd.slice(0, 4), 10) : (nowY + 2);
+    if (isNaN(startYear)) startYear = nowY - 10;
+    if (isNaN(endYear)) endYear = nowY + 2;
+    if (endYear < startYear) endYear = startYear;
     const yearOpts = [];
-    for (let y = nowY - 2; y <= nowY + 2; y++) {
+    for (let y = startYear; y <= endYear; y++) {
         yearOpts.push('<option value="' + y + '"' + (y === parseInt(year, 10) ? ' selected' : '') + '>' + y + '</option>');
     }
     yearFromEl.innerHTML = yearOpts.join('');
@@ -834,6 +847,63 @@ async function openPaymentModal(el) {
     monthToEl.value = month;
     yearFromEl.value = year;
     yearToEl.value = year;
+    if (typeof UI.updateSearchableSelectDisplay === 'function') {
+        ['pay-modal-year-from', 'pay-modal-year-to'].forEach(UI.updateSearchableSelectDisplay);
+    }
+    if (!window._payModalSearchableInited) {
+        window._payModalSearchableInited = true;
+        ['pay-modal-month-from', 'pay-modal-year-from', 'pay-modal-month-to', 'pay-modal-year-to'].forEach(id => {
+            if (document.getElementById(id) && typeof UI.createSearchableSelect === 'function') UI.createSearchableSelect(id);
+        });
+    }
+    if (typeof UI.updateSearchableSelectDisplay === 'function') {
+        ['pay-modal-month-from', 'pay-modal-month-to'].forEach(UI.updateSearchableSelectDisplay);
+    }
+
+    let rentChanges = [];
+    try {
+        if (el.dataset.rentChanges) rentChanges = JSON.parse(el.dataset.rentChanges);
+    } catch (_) {}
+    const monthlyRentVal = el.dataset.monthlyRent ? parseFloat(el.dataset.monthlyRent) : 0;
+
+    function getRentForMonthInRange(baseRent, changes, y, m) {
+        const firstOfMonth = y + '-' + String(m).padStart(2, '0') + '-01';
+        if (!changes || changes.length === 0) return baseRent;
+        let rent = baseRent;
+        for (let i = 0; i < changes.length; i++) {
+            const ef = (changes[i].effective_from || '').slice(0, 10);
+            if (ef && ef <= firstOfMonth) rent = changes[i].amount;
+        }
+        return rent;
+    }
+    function calcRentForRange() {
+        if (!bulkCheckbox.checked) return null;
+        const yFrom = parseInt(yearFromEl.value, 10);
+        const mFrom = parseInt(monthFromEl.value, 10);
+        const yTo = parseInt(yearToEl.value, 10);
+        const mTo = parseInt(monthToEl.value, 10);
+        if (isNaN(yFrom) || isNaN(mFrom) || isNaN(yTo) || isNaN(mTo)) return null;
+        const tsFrom = yFrom * 12 + mFrom;
+        const tsTo = yTo * 12 + mTo;
+        if (tsFrom > tsTo) return null;
+        const cStart = contractStart ? new Date(contractStart) : null;
+        const cEnd = contractEnd ? new Date(contractEnd) : null;
+        let total = 0;
+        for (let y = yFrom, m = mFrom; y < yTo || (y === yTo && m <= mTo); m++) {
+            if (m > 12) { m = 1; y++; }
+            const firstOfMonth = new Date(y, m - 1, 1);
+            const lastOfMonth = new Date(y, m, 0);
+            if (cStart && lastOfMonth < cStart) { if (y === yTo && m === mTo) break; continue; }
+            if (cEnd && firstOfMonth > cEnd) { if (y === yTo && m === mTo) break; continue; }
+            total += getRentForMonthInRange(monthlyRentVal, rentChanges, y, m);
+            if (y === yTo && m === mTo) break;
+        }
+        return Math.round(total * 100) / 100;
+    }
+    function updateAmountFromRange() {
+        const sum = calcRentForRange();
+        if (sum != null) amount.value = sum;
+    }
 
     let infoHtml = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
         '<div><strong>Nájemce:</strong> ' + UI.esc(tenantName) + '</div>' +
@@ -1209,10 +1279,21 @@ async function openPaymentModal(el) {
     };
     bulkCheckbox.onchange = () => {
         rangeRow.style.display = bulkCheckbox.checked ? '' : 'none';
-        if (bulkCheckbox.checked && !amount.value) {
-            amount.value = Math.round(amountVal * 12);
+        if (bulkCheckbox.checked) {
+            updateAmountFromRange();
+            if (!amount.value) amount.value = amountVal || '';
         }
     };
+    function addRangeChangeListeners() {
+        [monthFromEl, yearFromEl, monthToEl, yearToEl].forEach(el => {
+            el.removeEventListener('change', _payModalRangeChange);
+            el.addEventListener('change', _payModalRangeChange);
+        });
+    }
+    function _payModalRangeChange() {
+        updateAmountFromRange();
+    }
+    addRangeChangeListeners();
 
     document.getElementById('btn-pay-modal-save').onclick = async () => {
         const editId = (editIdEl.value || '').trim();
