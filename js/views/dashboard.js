@@ -222,7 +222,14 @@ async function loadDashboard(year) {
                         tipParts.push('Uhrazeno v plné výši.');
                     }
                     if (cell.has_unfulfilled_requests) {
-                        tipParts.push('Oranžový okraj: neuhrazený požadavek (např. vrácení kauce).');
+                        if (cell.unfulfilled_requests && cell.unfulfilled_requests.length > 0) {
+                            tipParts.push('Neuhrazené požadavky:');
+                            cell.unfulfilled_requests.forEach(function (req) {
+                                tipParts.push('• ' + (req.label || 'Požadavek') + ' ' + UI.fmt(req.amount != null ? req.amount : 0) + ' Kč');
+                            });
+                        } else {
+                            tipParts.push('Oranžový okraj: neuhrazený požadavek (např. vrácení kauce).');
+                        }
                     }
                     titleAttr = ' title="' + UI.esc(tipParts.join('\n')) + '"';
                 }

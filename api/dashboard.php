@@ -161,10 +161,11 @@ foreach ($contracts as $c) {
     if ($eid !== $rid) $contractToProperty[$rid] = $pid;
 }
 $paymentRequestsListByContractMonth = [];
-// Nevyřízené požadavky (paid_at IS NULL) podle smlouvy a měsíce – pro oranžový okraj buňky
+// Nevyřízené požadavky (paid_at IS NULL) podle smlouvy a měsíce – pro oranžový okraj buňky a tooltip
 $hasUnfulfilledByContractMonth = [];
+$unfulfilledListByContractMonth = []; // [contractId][monthKey] => [ ['label'=>..., 'amount'=>...], ... ]
 $stmtUnfulfilled = db()->query("
-    SELECT contracts_id, due_date FROM payment_requests
+    SELECT contracts_id, due_date, amount, type, note FROM payment_requests
     WHERE valid_to IS NULL AND due_date IS NOT NULL AND paid_at IS NULL
 ");
 foreach ($stmtUnfulfilled->fetchAll() as $pr) {
@@ -174,6 +175,15 @@ foreach ($stmtUnfulfilled->fetchAll() as $pr) {
         $hasUnfulfilledByContractMonth[$cid] = [];
     }
     $hasUnfulfilledByContractMonth[$cid][$monthKey] = true;
+    $amt = (float)$pr['amount'];
+    if (($pr['type'] ?? '') === 'deposit_return' && $amt > 0) $amt = -$amt;
+    $label = trim($pr['note'] ?? '') !== '' ? $pr['note'] : (
+        ($pr['type'] ?? '') === 'deposit' ? 'Kauce' :
+        (($pr['type'] ?? '') === 'deposit_return' ? 'Vrácení kauce' : (($pr['type'] ?? '') === 'energy' ? 'Energie' : 'Požadavek'))
+    );
+    if (!isset($unfulfilledListByContractMonth[$cid])) $unfulfilledListByContractMonth[$cid] = [];
+    if (!isset($unfulfilledListByContractMonth[$cid][$monthKey])) $unfulfilledListByContractMonth[$cid][$monthKey] = [];
+    $unfulfilledListByContractMonth[$cid][$monthKey][] = ['label' => $label, 'amount' => $amt];
 }
 foreach ($contracts as $c) {
     $eid = (int)($c['contracts_id'] ?? $c['id']);
@@ -185,9 +195,16 @@ foreach ($contracts as $c) {
     if (isset($hasUnfulfilledByContractMonth[$rid]) && !isset($hasUnfulfilledByContractMonth[$eid])) {
         $hasUnfulfilledByContractMonth[$eid] = $hasUnfulfilledByContractMonth[$rid];
     }
+    if (isset($unfulfilledListByContractMonth[$eid]) && !isset($unfulfilledListByContractMonth[$rid])) {
+        $unfulfilledListByContractMonth[$rid] = $unfulfilledListByContractMonth[$eid];
+    }
+    if (isset($unfulfilledListByContractMonth[$rid]) && !isset($unfulfilledListByContractMonth[$eid])) {
+        $unfulfilledListByContractMonth[$eid] = $unfulfilledListByContractMonth[$rid];
+    }
 }
-// Pro oranžový okraj buňky: neuhrazený požadavek u JAKÉKOLIV smlouvy dané nemovitosti v daném měsíci
+// Pro oranžový okraj a tooltip: neuhrazené požadavky u JAKÉKOLIV smlouvy dané nemovitosti v daném měsíci
 $hasUnfulfilledByPropertyMonth = [];
+$unfulfilledRequestsByPropertyMonth = [];
 foreach ($hasUnfulfilledByContractMonth as $cid => $months) {
     $pid = $contractToProperty[$cid] ?? null;
     if ($pid === null) continue;
@@ -196,6 +213,14 @@ foreach ($hasUnfulfilledByContractMonth as $cid => $months) {
     }
     foreach ($months as $monthKey => $_) {
         $hasUnfulfilledByPropertyMonth[$pid][$monthKey] = true;
+        $list = $unfulfilledListByContractMonth[$cid][$monthKey] ?? [];
+        if (!empty($list)) {
+            if (!isset($unfulfilledRequestsByPropertyMonth[$pid])) $unfulfilledRequestsByPropertyMonth[$pid] = [];
+            if (!isset($unfulfilledRequestsByPropertyMonth[$pid][$monthKey])) $unfulfilledRequestsByPropertyMonth[$pid][$monthKey] = [];
+            foreach ($list as $item) {
+                $unfulfilledRequestsByPropertyMonth[$pid][$monthKey][] = $item;
+            }
+        }
     }
 }
 
@@ -466,11 +491,13 @@ foreach ($properties as $p) {
                 ];
             }
             $hasUnfulfilledRequests = !empty($hasUnfulfilledByPropertyMonth[$propEntityId][$monthKey]);
+            $unfulfilledRequests = $unfulfilledRequestsByPropertyMonth[$propEntityId][$monthKey] ?? [];
             $heatmap[$propId . '_' . $monthKey] = [
                 'type'                 => $type,
                 'isPast'               => $isPast,
                 'is_contract_start_month' => $isContractStartMonth,
                 'has_unfulfilled_requests' => $hasUnfulfilledRequests,
+                'unfulfilled_requests'  => $unfulfilledRequests,
                 'contract'             => ['id'=>$entityId, 'contracts_id'=>$entityId, 'monthly_rent'=>$fullMonthRent, 'tenant_name'=>$contract['tenant_name']],
                 'monthKey'             => $monthKey,
                 'amount'               => $expectedTotal,
