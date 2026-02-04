@@ -482,6 +482,13 @@ function initPaymentRequestModal() {
             try {
                 if (editId) {
                     await Api.crudEdit('payment_requests', parseInt(editId, 10), payload);
+                    const linkedSel = document.getElementById('pay-req-linked-payment');
+                    const oldLinked = window._payReqLinkedPaymentId != null ? window._payReqLinkedPaymentId : 0;
+                    const newLinked = (linkedSel && linkedSel.value) ? parseInt(linkedSel.value, 10) : 0;
+                    if (newLinked !== oldLinked) {
+                        if (oldLinked) await Api.paymentRequestUnlink(parseInt(editId, 10));
+                        if (newLinked) await Api.paymentRequestLink(parseInt(editId, 10), newLinked);
+                    }
                 } else {
                     await Api.crudAdd('payment_requests', payload);
                 }
@@ -495,6 +502,33 @@ function initPaymentRequestModal() {
                 if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = err.message || 'Chyba uložení.'; }
             } finally {
                 btnSave.disabled = false;
+            }
+        });
+    }
+
+    const btnUnlink = document.getElementById('btn-pay-req-unlink');
+    if (btnUnlink && !btnUnlink.dataset.bound) {
+        btnUnlink.dataset.bound = '1';
+        btnUnlink.addEventListener('click', async () => {
+            const editIdEl = document.getElementById('pay-req-edit-id');
+            const linkedSel = document.getElementById('pay-req-linked-payment');
+            const editId = (editIdEl && editIdEl.value) ? editIdEl.value.trim() : '';
+            if (!editId || !linkedSel || !linkedSel.value) return;
+            try {
+                btnUnlink.disabled = true;
+                await Api.paymentRequestUnlink(parseInt(editId, 10));
+                linkedSel.value = '';
+                window._payReqLinkedPaymentId = null;
+                const yearBtn = document.querySelector('#dash-year .heatmap-year-btn.active');
+                const y = yearBtn ? parseInt(yearBtn.dataset.year, 10) : new Date().getFullYear();
+                loadDashboard(y);
+                const onSaved = window._paymentRequestEditOnSaved;
+                if (typeof onSaved === 'function') { onSaved(); }
+            } catch (err) {
+                const alertEl = document.getElementById('pay-req-alert');
+                if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = err.message || 'Chyba odpojení.'; }
+            } finally {
+                btnUnlink.disabled = false;
             }
         });
     }
@@ -517,6 +551,8 @@ async function openAddPaymentRequestModal(contractId) {
         contractSel.innerHTML = '<option value="">— Vyberte smlouvu —</option>' +
             contracts.map(c => '<option value="' + (c.contracts_id ?? c.id) + '">' + UI.esc(c.tenant_name) + ' – ' + UI.esc(c.property_name) + '</option>').join('');
         editIdEl.value = '';
+        const linkWrapAdd = document.getElementById('pay-req-link-wrap');
+        if (linkWrapAdd) linkWrapAdd.style.display = 'none';
         if (titleEl) titleEl.textContent = 'Přidat požadavek na platbu';
         if (saveBtn) saveBtn.textContent = 'Přidat';
         contractSel.value = String(contractId || '');
@@ -544,6 +580,8 @@ async function openPaymentRequestEdit(paymentRequestId, onSaved) {
     const noteEl = document.getElementById('pay-req-note');
     const dueDateEl = document.getElementById('pay-req-due-date');
     const alertEl = document.getElementById('pay-req-alert');
+    const linkWrap = document.getElementById('pay-req-link-wrap');
+    const linkedPaymentSel = document.getElementById('pay-req-linked-payment');
     if (!editIdEl || !contractSel) return;
     try {
         const contracts = await Api.crudList('contracts');
@@ -551,7 +589,8 @@ async function openPaymentRequestEdit(paymentRequestId, onSaved) {
             contracts.map(c => '<option value="' + (c.contracts_id ?? c.id) + '">' + UI.esc(c.tenant_name) + ' – ' + UI.esc(c.property_name) + '</option>').join('');
         const pr = await Api.crudGet('payment_requests', paymentRequestId);
         if (!pr) return;
-        editIdEl.value = String(pr.payment_requests_id ?? pr.id);
+        const prEntityId = parseInt(pr.payment_requests_id ?? pr.id, 10);
+        editIdEl.value = String(prEntityId);
         if (titleEl) titleEl.textContent = 'Upravit požadavek na platbu';
         if (btnSave) btnSave.textContent = 'Uložit';
         contractSel.value = pr.contracts_id ?? '';
@@ -560,6 +599,24 @@ async function openPaymentRequestEdit(paymentRequestId, onSaved) {
         noteEl.value = pr.note ?? '';
         if (dueDateEl) dueDateEl.value = (pr.due_date || '').toString().slice(0, 10);
         if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
+
+        // Sekce „Propojená platba“ – jen v režimu úpravy, platby této smlouvy
+        if (linkWrap) linkWrap.style.display = '';
+        const cid = parseInt(pr.contracts_id, 10) || 0;
+        window._payReqLinkedPaymentId = pr.payments_id ? parseInt(pr.payments_id, 10) : null;
+        if (linkedPaymentSel && cid) {
+            const payments = await Api.crudList('payments', { contracts_id: cid });
+            const payId = p => p.payments_id ?? p.id;
+            linkedPaymentSel.innerHTML = '<option value="">— Žádná —</option>' +
+                payments.map(p => {
+                    const id = payId(p);
+                    const amt = UI.fmt(parseFloat(p.amount) || 0);
+                    const date = p.payment_date ? UI.fmtDate(p.payment_date) : (p.period_year && p.period_month ? p.period_year + '-' + String(p.period_month).padStart(2, '0') : '—');
+                    return '<option value="' + id + '">' + amt + ' Kč (' + date + ')</option>';
+                }).join('');
+            linkedPaymentSel.value = window._payReqLinkedPaymentId ? String(window._payReqLinkedPaymentId) : '';
+        }
+
         window._paymentRequestEditOnSaved = onSaved || null;
         UI.modalOpen('modal-payment-request');
     } catch (err) {
@@ -567,6 +624,7 @@ async function openPaymentRequestEdit(paymentRequestId, onSaved) {
     }
 }
 window.openPaymentRequestEdit = openPaymentRequestEdit;
+window.initPaymentRequestModal = initPaymentRequestModal;
 
 // Delegace změn přepínačů (funguje i po překreslení obsahu)
 function initDashboardCheckboxDelegation() {
@@ -745,6 +803,10 @@ async function openPaymentModal(el) {
 
     let payments = await Api.crudList('payments', { contracts_id: contractsId });
     let forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
+    const paymentRequests = await Api.crudList('payment_requests', { contracts_id: contractsId });
+
+    const requestLinkWrap = document.getElementById('pay-modal-request-link-wrap');
+    const linkedRequestSel = document.getElementById('pay-modal-linked-request');
 
     function renderExisting() {
         if (!forMonth.length) {
@@ -763,9 +825,10 @@ async function openPaymentModal(el) {
             const batchTag = p.payment_batch_id ? ' <span class="tag tag-batch" title="Součást jedné platby za více měsíců">dávka</span>' : '';
             const payEntityId = p.payments_id ?? p.id;
             const noteAttr = (p.note != null && p.note !== '') ? (' data-note="' + String(p.note).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"') : '';
+            const linkedReqId = (p.linked_payment_request_id != null && p.linked_payment_request_id !== '') ? p.linked_payment_request_id : '';
             html += '<li class="pay-modal-existing-item">' +
                 '<span>' + typeBadge + ' ' + amt + ' Kč (' + dt + ')' + batchTag + '</span> ' +
-                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '"' + noteAttr + '>Upravit</button> ' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '" data-linked-request-id="' + linkedReqId + '"' + noteAttr + '>Upravit</button> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + payEntityId + '" data-batch-id="' + (p.payment_batch_id || '') + '">Smazat</button>' +
                 '</li>';
         });
@@ -780,9 +843,11 @@ async function openPaymentModal(el) {
         const p = forMonth[0];
         const method = p.payment_method || 'account';
         const pt = p.payment_type || 'rent';
-        editIdEl.value = String((p.payments_id ?? p.id) || '');
+        const payEntityId = String((p.payments_id ?? p.id) || '');
+        editIdEl.value = payEntityId;
         editIdEl.dataset.batchId = String(p.payment_batch_id || '');
         editIdEl.dataset.originalAmount = String(p.amount ?? '');
+        editIdEl.dataset.linkedRequestId = String(p.linked_payment_request_id || '');
         amount.value = p.amount ?? '';
         dateInput.value = p.payment_date ? p.payment_date.slice(0, 10) : new Date().toISOString().slice(0, 10);
         methodSelect.value = method === 'cash' ? 'cash' : 'account';
@@ -797,8 +862,25 @@ async function openPaymentModal(el) {
         bulkWrap.style.display = 'none';
         if (breakdownWrap) breakdownWrap.style.display = 'none';
         noteEl.value = p.note ?? '';
+        if (requestLinkWrap && linkedRequestSel) {
+            requestLinkWrap.style.display = '';
+            const prId = r => r.payment_requests_id ?? r.id;
+            const options = ['<option value="">— Žádný —</option>'];
+            paymentRequests.forEach(r => {
+                const rid = prId(r);
+                const isUnoccupied = !r.paid_at;
+                const isThisPayment = (r.payments_id != null && String(r.payments_id) === payEntityId);
+                if (isUnoccupied || isThisPayment) {
+                    const label = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč' + (isThisPayment ? ' (tato platba)' : ' (nevyřízeno)');
+                    options.push('<option value="' + rid + '">' + UI.esc(label) + '</option>');
+                }
+            });
+            linkedRequestSel.innerHTML = options.join('');
+            linkedRequestSel.value = editIdEl.dataset.linkedRequestId || '';
+        }
     } else {
         bulkWrap.style.display = editIdEl.value ? 'none' : 'block';
+        if (requestLinkWrap) requestLinkWrap.style.display = 'none';
     }
 
     existingWrap.onclick = async (e) => {
@@ -807,22 +889,40 @@ async function openPaymentModal(el) {
         const addLink = e.target.closest('[data-action="add"]');
         if (editBtn) {
             const pt = editBtn.dataset.type || 'rent';
-            editIdEl.value = String(editBtn.dataset.id || '');
+            const payId = String(editBtn.dataset.id || '');
+            editIdEl.value = payId;
             editIdEl.dataset.batchId = String(editBtn.dataset.batchId || '');
             editIdEl.dataset.originalAmount = String(editBtn.dataset.amount || '');
+            editIdEl.dataset.linkedRequestId = String(editBtn.dataset.linkedRequestId || '');
             amount.value = editBtn.dataset.amount || '';
             dateInput.value = editBtn.dataset.date || new Date().toISOString().slice(0, 10);
             methodSelect.value = editBtn.dataset.method === 'cash' ? 'cash' : 'account';
             accountSelect.value = editBtn.dataset.account || '';
             accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
             noteEl.value = editBtn.dataset.note ?? '';
-        typeSelect.value = ['rent','deposit','deposit_return','energy','other'].includes(pt) ? pt : 'rent';
-        setTypeWrapClass(typeSelect.value);
-        paid.checked = true;
-        dateWrap.style.display = 'block';
-        methodWrap.style.display = 'flex';
-        batchHintEl.style.display = editBtn.dataset.batchId ? 'block' : 'none';
-        bulkWrap.style.display = 'none';
+            typeSelect.value = ['rent','deposit','deposit_return','energy','other'].includes(pt) ? pt : 'rent';
+            setTypeWrapClass(typeSelect.value);
+            paid.checked = true;
+            dateWrap.style.display = 'block';
+            methodWrap.style.display = 'flex';
+            batchHintEl.style.display = editBtn.dataset.batchId ? 'block' : 'none';
+            bulkWrap.style.display = 'none';
+            if (requestLinkWrap && linkedRequestSel) {
+                requestLinkWrap.style.display = '';
+                const prId = r => r.payment_requests_id ?? r.id;
+                const options = ['<option value="">— Žádný —</option>'];
+                paymentRequests.forEach(r => {
+                    const rid = prId(r);
+                    const isUnoccupied = !r.paid_at;
+                    const isThisPayment = (r.payments_id != null && String(r.payments_id) === payId);
+                    if (isUnoccupied || isThisPayment) {
+                        const label = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč' + (isThisPayment ? ' (tato platba)' : ' (nevyřízeno)');
+                        options.push('<option value="' + rid + '">' + UI.esc(label) + '</option>');
+                    }
+                });
+                linkedRequestSel.innerHTML = options.join('');
+                linkedRequestSel.value = editBtn.dataset.linkedRequestId || '';
+            }
         } else if (delBtn) {
             const batchId = (delBtn.dataset.batchId || '').trim();
             if (batchId) {
@@ -847,6 +947,8 @@ async function openPaymentModal(el) {
             editIdEl.value = '';
             delete editIdEl.dataset.batchId;
             delete editIdEl.dataset.originalAmount;
+            delete editIdEl.dataset.linkedRequestId;
+            if (requestLinkWrap) requestLinkWrap.style.display = 'none';
             document.getElementById('pay-modal-payment-request-id').value = '';
             amount.value = hasBreakdown ? totalForMonth : remaining;
             typeSelect.value = 'rent';
@@ -933,6 +1035,12 @@ async function openPaymentModal(el) {
                         note: (noteEl.value || '').trim() || null,
                     };
                     await Api.crudEdit('payments', parseInt(editId, 10), payData);
+                    const newReqId = (linkedRequestSel && linkedRequestSel.value) ? parseInt(linkedRequestSel.value, 10) : 0;
+                    const oldReqId = (editIdEl.dataset.linkedRequestId && editIdEl.dataset.linkedRequestId !== '') ? parseInt(editIdEl.dataset.linkedRequestId, 10) : 0;
+                    if (newReqId !== oldReqId) {
+                        if (oldReqId) await Api.paymentRequestUnlink(oldReqId);
+                        if (newReqId) await Api.paymentRequestLink(newReqId, parseInt(editId, 10));
+                    }
                 } else {
                     const bulk = bulkCheckbox.checked;
                     const payData = {

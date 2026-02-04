@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=1.1.81">
+<link rel="stylesheet" href="css/style.css?v=1.1.83">
 </head>
 <body>
 
@@ -392,7 +392,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v1.1.81</span>
+    <span class="footer-version">v1.1.83</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -475,6 +475,11 @@
         <label>Poznámka k platbě</label>
         <textarea id="pay-modal-note" rows="2" placeholder="Volitelná poznámka…"></textarea>
       </div>
+      <div class="fg" id="pay-modal-request-link-wrap" style="display:none">
+        <label>Propojit s požadavkem</label>
+        <p class="text-muted" style="font-size:.8rem;margin-bottom:6px">Přiřaďte tuto platbu k nevyřízenému požadavku (doplatek energie, vrácení kauce…).</p>
+        <select id="pay-modal-linked-request" style="min-width:220px"><option value="">— Žádný —</option></select>
+      </div>
     </div>
     <div class="form-actions">
       <button type="button" class="btn btn-success" id="btn-pay-modal-save">Uložit</button>
@@ -500,6 +505,14 @@
     <div class="fg"><label>Typ</label><select id="pay-req-type"><option value="energy">Doplatek energie</option><option value="settlement">Vyúčtování</option><option value="deposit">Kauce</option><option value="deposit_return">Vrácení kauce</option><option value="other">Jiné</option></select></div>
     <div class="fg"><label>Splatnost (volitelně)</label><input type="date" id="pay-req-due-date"></div>
     <div class="fg"><label>Poznámka</label><input type="text" id="pay-req-note" placeholder="např. Vyúčtování 2025"></div>
+    <div class="fg" id="pay-req-link-wrap" style="display:none">
+      <label>Propojená platba</label>
+      <p class="text-muted" style="font-size:.8rem;margin-bottom:6px">Přiřaďte platbu k tomuto požadavku (jen platby této smlouvy). Požadavek pak bude považován za vyřízený.</p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="pay-req-linked-payment" style="min-width:200px"><option value="">— Žádná —</option></select>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-pay-req-unlink" title="Odpojit platbu od požadavku">Odpojit</button>
+      </div>
+    </div>
     <div class="form-actions">
       <button type="button" class="btn btn-success" id="btn-pay-req-save">Přidat</button>
       <button type="button" class="btn btn-ghost" onclick="UI.modalClose('modal-payment-request')">Zrušit</button>
@@ -569,16 +582,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=1.1.81"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=1.1.81"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=1.1.81"></script>
-<script src="js/app.js?v=1.1.81"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=1.1.81"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=1.1.81"></script>
-<script src="js/views/tenants.js?v=1.1.81"></script>
-<script src="js/views/contracts.js?v=1.1.81"></script>
-<script src="js/views/payments.js?v=1.1.81"></script>
-<script src="js/views/bank_accounts.js?v=1.1.81"></script>
-<script src="js/views/users.js?v=1.1.81"></script>
+<script src="js/api.js?v=1.1.83"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=1.1.83"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=1.1.83"></script>
+<script src="js/app.js?v=1.1.83"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=1.1.83"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=1.1.83"></script>
+<script src="js/views/tenants.js?v=1.1.83"></script>
+<script src="js/views/contracts.js?v=1.1.83"></script>
+<script src="js/views/payments.js?v=1.1.83"></script>
+<script src="js/views/bank_accounts.js?v=1.1.83"></script>
+<script src="js/views/users.js?v=1.1.83"></script>
 </body>
 </html>

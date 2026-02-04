@@ -75,6 +75,8 @@ const App = (() => {
         if (typeof UI !== 'undefined' && UI.initContractPreview) UI.initContractPreview();
         // Globální vyhledávání
         initGlobalSearch();
+        // Modal požadavku na platbu (propojení s platbou) – aby fungoval i ze Smlouvy
+        if (typeof window.initPaymentRequestModal === 'function') window.initPaymentRequestModal();
         // Sidebar: collapsed on mobile
         const sb = document.getElementById('sidebar');
         if (window.innerWidth <= 768) sb.classList.add('collapsed');
