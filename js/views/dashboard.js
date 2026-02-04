@@ -199,9 +199,10 @@ async function loadDashboard(year) {
                 const breakdownJson = (cell.month_breakdown && cell.month_breakdown.length > 0)
                     ? JSON.stringify(cell.month_breakdown).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
                     : '';
+                const propIdForCell = prop.properties_id ?? prop.id;
                 const dataAttrs = cell.type !== 'empty'
-                    ? ' data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"' + (breakdownJson ? ' data-month-breakdown="' + breakdownJson + '"' : '')
-                    : ' data-property-id="' + (prop.properties_id ?? prop.id) + '" data-month-key="' + monthKey + '"';
+                    ? ' data-property-id="' + propIdForCell + '" data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"' + (breakdownJson ? ' data-month-breakdown="' + breakdownJson + '"' : '')
+                    : ' data-property-id="' + propIdForCell + '" data-month-key="' + monthKey + '"';
 
                 let titleAttr = '';
                 if (cell.type !== 'empty') {
