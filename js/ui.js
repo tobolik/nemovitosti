@@ -371,12 +371,10 @@ const UI = (() => {
         input.addEventListener('focus', () => {
             renderDropdown(input.value);
             dropdown.classList.add('show');
-            /* Kliknutím do pole se nesmí označit celý text – při „select all“ posunout kurzor na konec */
-            setTimeout(function () {
-                if (input.selectionStart === 0 && input.selectionEnd === input.value.length && input.value.length > 0) {
-                    input.selectionStart = input.selectionEnd = input.value.length;
-                }
-            }, 0);
+            /* Kliknutím do pole označit celý text, aby šel hned přepsat */
+            if (input.value.length > 0) {
+                setTimeout(function () { input.select(); }, 0);
+            }
         });
         input.addEventListener('input', () => {
             renderDropdown(input.value);

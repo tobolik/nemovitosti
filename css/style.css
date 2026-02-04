@@ -590,7 +590,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 /* Typ platby – decentní barevné odlišení */
 .tbl tr.pay-type-rent { border-left: 3px solid transparent; }
 .tbl tr.pay-type-deposit { border-left: 3px solid rgba(59, 130, 246, .6); }
-.tbl tr.pay-type-energy { border-left: 3px solid rgba(34, 197, 94, .5); }
+.tbl tr.pay-type-energy { border-left: 3px solid rgba(6, 182, 212, .5); }
 .tbl tr.pay-type-other { border-left: 3px solid rgba(148, 163, 184, .5); }
 .tbl tr.tbl-total-row td { border-top: 2px solid rgba(255,255,255,.12); padding-top: 14px; }
 .td-act { display: flex; gap: 5px; justify-content: flex-end; white-space: nowrap; }
@@ -789,12 +789,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .pay-modal-type-wrap { padding-left: 12px; border-left: 3px solid transparent; border-radius: 0 var(--r) var(--r) 0; }
 .pay-modal-type-wrap.pay-type-rent { border-left-color: transparent; }
 .pay-modal-type-wrap.pay-type-deposit { border-left-color: rgba(59, 130, 246, .6); }
-.pay-modal-type-wrap.pay-type-energy { border-left-color: rgba(34, 197, 94, .5); }
+.pay-modal-type-wrap.pay-type-energy { border-left-color: rgba(6, 182, 212, .5); }
 .pay-modal-type-wrap.pay-type-other { border-left-color: rgba(148, 163, 184, .5); }
 .pay-modal-type-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: .75rem; font-weight: 600; margin-right: 6px; }
 .pay-modal-type-badge.pay-type-rent { background: transparent; color: var(--txt2); }
 .pay-modal-type-badge.pay-type-deposit { background: rgba(59, 130, 246, .2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, .4); }
-.pay-modal-type-badge.pay-type-energy { background: rgba(34, 197, 94, .2); color: #86efac; border: 1px solid rgba(34, 197, 94, .4); }
+.pay-modal-type-badge.pay-type-energy { background: rgba(6, 182, 212, .25); color: #67e8f9; border: 1px solid rgba(6, 182, 212, .45); }
 .pay-modal-type-badge.pay-type-other { background: rgba(148, 163, 184, .2); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, .4); }
 .heatmap-property { font-weight: 500; color: var(--txt); padding-right: 12px; font-size: .9rem; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -891,6 +891,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .dash-link:hover { text-decoration: underline; }
 #dash-table .tbl-wrap { overflow-x: visible; }
 #dash-table .tbl { min-width: 0; width: 100%; }
+/* Štítky: zelená/červená vyhrazeny systémově. Modrá = dávka, Kauce, Úhrada pož.; tyrkys = Energie; šedá = Jiné; oranžová = neuhrazené požadavky. */
 .tag {
   display: inline-flex;
   align-items: center;
@@ -923,6 +924,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   background: rgba(59,130,246,.2);
   color: #93c5fd;
   margin-left: 4px;
+}
+/* Úhrada požadavku v platbách – modrá (koresponduje s Kauce, bez kolize se zelenou/červenou) */
+.tag-request-linked {
+  background: rgba(59,130,246,.2);
+  color: #93c5fd;
 }
 
 /* ============================================================

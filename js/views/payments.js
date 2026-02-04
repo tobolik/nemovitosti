@@ -90,7 +90,7 @@ const PaymentsView = (() => {
                     const payId = row.payments_id ?? row.id;
                     if (row.linked_payment_request_id) {
                         const note = row.linked_request_note || (UI.fmt(Number(row.linked_request_amount)) + ' Kč');
-                        linkedEl.innerHTML = '<span class="tag tag-request">' + UI.esc(note) + '</span> ' +
+                        linkedEl.innerHTML = '<span class="tag tag-request-linked">' + UI.esc(note) + '</span> ' +
                             '<button type="button" class="btn btn-ghost btn-sm" id="btn-pay-edit-request" title="Upravit požadavek">Upravit požadavek</button> ' +
                             '<button type="button" class="btn btn-ghost btn-sm" id="btn-pay-unlink-request">Odpojit</button>';
                         if (linkRow) linkRow.style.display = 'none';
@@ -424,7 +424,7 @@ const PaymentsView = (() => {
 
                 const methodLabel = p.payment_method === 'cash' ? 'Hotovost' : (p.account_number ? 'Účet ' + UI.esc(p.account_number) : 'Na účet');
                 const batchHint = p.payment_batch_id ? '<br><span class="tag tag-batch" title="Součást jedné platby">dávka</span>' : '';
-                const linkedReq = p.linked_payment_request_id ? ('<br><span class="tag tag-request" title="Úhrada požadavku">Úhrada pož.: ' + (p.linked_request_note ? UI.esc(p.linked_request_note) : (UI.fmt(Number(p.linked_request_amount)) + ' Kč')) + '</span>') : '';
+                const linkedReq = p.linked_payment_request_id ? ('<br><span class="tag tag-request-linked" title="Úhrada požadavku">Úhrada pož.: ' + (p.linked_request_note ? UI.esc(p.linked_request_note) : (UI.fmt(Number(p.linked_request_amount)) + ' Kč')) + '</span>') : '';
                 return (
                     '<td><strong>' + UI.esc(p.tenant_name) + '</strong><br><span style="color:var(--txt3);font-size:.8em">' + UI.esc(p.property_name) + '</span></td>' +
                     '<td>' + UI.MONTHS[p.period_month] + ' ' + p.period_year + batchHint + '</td>' +
