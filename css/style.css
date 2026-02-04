@@ -680,6 +680,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
 .dash-add-request { font-size: .85rem; color: var(--purple-300); text-decoration: none; }
 .dash-add-request:hover { text-decoration: underline; }
 .dash-unpaid-tags .tag-request { background: rgba(249, 115, 22, .2); color: var(--orange-500); }
+.dash-unpaid-tags .tag-request.tag-request-paid { background: rgba(255,255,255,.08); color: var(--txt3); opacity: .85; }
+.dash-unpaid-tags .tag-request.tag-request-paid .tag-plus, .dash-unpaid-tags .tag-request.tag-request-paid .tag-edit-req { color: var(--txt3); }
+.tag-paid-badge { font-size: .65rem; opacity: .9; margin-left: 4px; padding: 1px 5px; border-radius: 4px; background: rgba(22,163,74,.2); color: #86efac; font-weight: 600; white-space: nowrap; }
+.dash-unpaid-tags .tag-request.tag-request-paid .tag-paid-badge { background: rgba(22,163,74,.15); color: #86efac; }
 .heatmap-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .heatmap-header h3 { font-size: 1rem; font-weight: 600; color: var(--txt); }
 .heatmap-year-btns { display: flex; gap: 4px; }

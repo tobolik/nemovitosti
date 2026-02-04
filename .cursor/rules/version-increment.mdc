@@ -19,4 +19,6 @@ Na konci práce (po dokončení úkolů, před ukončením odpovědi) **vždy** 
 1. **Aktuální verze:** např. „Verze: v1.0.2“
 2. **Push:** „Projekt byl pushnut“ nebo „Projekt nebyl pushnut – spusť `git add -A && git commit -m \"...\" && git push`“
 
+**Po push:** Pokaždé po provedení push **vždy** oznam aktuální verzi aplikace (např. „Aktuální verze: v1.2.1“).
+
 Pokud byly provedeny změny a projekt nebyl pushnut, nabídni push nebo ho proveď.

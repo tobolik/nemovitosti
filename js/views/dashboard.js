@@ -350,7 +350,15 @@ async function loadDashboard(year) {
                 const dueDate = (pr.due_date || '').slice(0, 10);
                 const dueAttr = dueDate ? ' data-due-date="' + dueDate.replace(/"/g, '&quot;') + '"' : '';
                 const prId = pr.payment_requests_id ?? pr.id;
-                tags += '<span class="tag tag-request">' + typeLabel + ' ' + UI.fmt(pr.amount) + ' Kč' +
+                const isPaid = !!(pr.paid_at && String(pr.paid_at).trim());
+                const paidDate = isPaid && pr.paid_at ? (function () {
+                    const s = String(pr.paid_at).slice(0, 10);
+                    if (s.length === 10) return s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4);
+                    return '';
+                })() : '';
+                const paidClass = isPaid ? ' tag-request-paid' : '';
+                const paidBadge = isPaid ? '<span class="tag-paid-badge" title="' + (paidDate ? 'Uhrazeno ' + paidDate : 'Uhrazeno') + '">uhrazeno' + (paidDate ? ' ' + paidDate : '') + '</span>' : '';
+                tags += '<span class="tag tag-request' + paidClass + '">' + typeLabel + ' ' + UI.fmt(pr.amount) + ' Kč' + paidBadge +
                     ' <span class="tag-edit-req" data-payment-request-id="' + prId + '" title="Upravit požadavek">✎</span>' +
                     ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-property-id="' + (d.properties_id ?? '') + '" data-amount="' + (pr.amount || 0) + '" data-request-type="' + (pr.type || 'energy') + '" data-payment-request-id="' + prId + '" data-tenant="' + tenant + '" data-property="' + prop + '"' + dueAttr + ' title="Zapsat platbu">+</span></span>';
             });
@@ -808,6 +816,8 @@ async function openPaymentModal(el) {
     document.getElementById('pay-modal-payment-request-id').value = '';
     editIdEl.value = '';
     noteEl.value = '';
+    const counterpartInit = document.getElementById('pay-modal-counterpart-account');
+    if (counterpartInit) counterpartInit.value = '';
     batchHintEl.style.display = 'none';
     bulkCheckbox.checked = false;
     rangeRow.style.display = 'none';
@@ -928,6 +938,7 @@ async function openPaymentModal(el) {
             const batchTag = p.payment_batch_id ? ' <span class="tag tag-batch" title="Součást jedné platby za více měsíců">dávka</span>' : '';
             const payEntityId = p.payments_id ?? p.id;
             const noteAttr = (p.note != null && p.note !== '') ? (' data-note="' + String(p.note).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"') : '';
+            const counterpartAttr = (p.counterpart_account != null && String(p.counterpart_account).trim() !== '') ? (' data-counterpart-account="' + String(p.counterpart_account).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"') : '';
             const linkedReqId = (p.linked_payment_request_id != null && p.linked_payment_request_id !== '') ? p.linked_payment_request_id : '';
             const cid = String(p.contracts_id ?? '');
             const contractIndex = contractIdToIndex[cid] ?? 0;
@@ -1017,6 +1028,8 @@ async function openPaymentModal(el) {
         bulkWrap.style.display = 'none';
         if (breakdownWrap) breakdownWrap.style.display = 'none';
         noteEl.value = p.note ?? '';
+        const counterpartInput = document.getElementById('pay-modal-counterpart-account');
+        if (counterpartInput) counterpartInput.value = p.counterpart_account ?? '';
         if (requestLinkWrap && linkedRequestSel) {
             requestLinkWrap.style.display = '';
             const prId = r => r.payment_requests_id ?? r.id;
@@ -1082,6 +1095,8 @@ async function openPaymentModal(el) {
             accountSelect.value = editBtn.dataset.account || '';
             accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
             noteEl.value = editBtn.dataset.note ?? '';
+            const counterpartInput = document.getElementById('pay-modal-counterpart-account');
+            if (counterpartInput) counterpartInput.value = editBtn.dataset.counterpartAccount ?? '';
             typeSelect.value = ['rent','deposit','deposit_return','energy','other'].includes(pt) ? pt : 'rent';
             setTypeWrapClass(typeSelect.value);
             paid.checked = true;
@@ -1169,6 +1184,8 @@ async function openPaymentModal(el) {
             bulkCheckbox.checked = false;
             rangeRow.style.display = 'none';
             noteEl.value = '';
+            const counterpartAdd = document.getElementById('pay-modal-counterpart-account');
+            if (counterpartAdd) counterpartAdd.value = '';
             if (hasBreakdown && breakdownWrap && breakdownBtns && breakdownBtns.innerHTML) {
                 breakdownWrap.style.display = 'block';
                 breakdownBtns.querySelectorAll('.pay-breakdown-btn').forEach(b => b.classList.remove('active'));
@@ -1251,6 +1268,7 @@ async function openPaymentModal(el) {
                     }
                 } else {
                     const bulk = bulkCheckbox.checked;
+                    const counterpartEl = document.getElementById('pay-modal-counterpart-account');
                     const payData = {
                         contracts_id: parseInt(contractsId, 10),
                         amount: amt,
@@ -1259,6 +1277,7 @@ async function openPaymentModal(el) {
                         bank_accounts_id: accountId || null,
                         payment_type: paymentType,
                         note: (noteEl.value || '').trim() || null,
+                        counterpart_account: counterpartEl && (counterpartEl.value || '').trim() ? counterpartEl.value.trim() : null,
                     };
                     if (bulk) {
                         const yFrom = parseInt(yearFromEl.value, 10);

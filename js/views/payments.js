@@ -48,6 +48,7 @@ const PaymentsView = (() => {
                     amount:       document.getElementById('pay-amount').value,
                     payment_date: document.getElementById('pay-date').value,
                     note:         document.getElementById('pay-note').value.trim(),
+                    counterpart_account: document.getElementById('pay-counterpart-account').value.trim() || null,
                     payment_method: method,
                     bank_accounts_id: accId || null,
                     payment_type: document.getElementById('pay-type').value || 'rent',
@@ -158,6 +159,7 @@ const PaymentsView = (() => {
                 document.getElementById('pay-contract').value = '';
                 document.getElementById('pay-amount').value   = '';
                 document.getElementById('pay-note').value     = '';
+                document.getElementById('pay-counterpart-account').value = '';
                 document.getElementById('pay-date').value     = todayISO();
                 document.getElementById('pay-method').value   = 'account';
                 document.getElementById('pay-type').value     = 'rent';
@@ -324,6 +326,7 @@ const PaymentsView = (() => {
                 { label: 'Částka' },
                 { label: 'Datum', hideMobile: true },
                 { label: 'Způsob', hideMobile: true },
+                { label: 'Protiúčet', hideMobile: true },
                 { label: 'Vs. nájemné', hideMobile: true },
                 { label: 'Poznámka', hideMobile: true },
                 { label: 'Akce', act: true },
@@ -356,6 +359,7 @@ const PaymentsView = (() => {
                     '<td>' + UI.fmt(amt) + ' Kč</td>' +
                     '<td class="col-hide-mobile">' + UI.esc(p.payment_date) + '</td>' +
                     '<td class="col-hide-mobile">' + UI.esc(methodLabel) + '</td>' +
+                    '<td class="col-hide-mobile">' + (p.counterpart_account ? UI.esc(p.counterpart_account) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="col-hide-mobile">' + diffHtml + '</td>' +
                     '<td class="col-note col-hide-mobile">' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + linkedReq + '</td>' +
                     '<td class="td-act">' +
@@ -376,7 +380,7 @@ const PaymentsView = (() => {
                     '<tr class="tbl-total-row">' +
                     '<td colspan="3"><strong>Celkem</strong></td>' +
                     '<td><strong>' + UI.fmt(sum) + ' Kč</strong></td>' +
-                    '<td colspan="5" class="col-hide-mobile"></td>' +
+                    '<td colspan="6" class="col-hide-mobile"></td>' +
                     '</tr>';
                 table.appendChild(tfoot);
             }

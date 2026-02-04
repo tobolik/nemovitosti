@@ -388,10 +388,10 @@ foreach ($contractsForView as $c) {
     ];
 }
 
-// Požadované platby (nezaplacené) – seskupeno podle contracts_id (pro tagy u smluv)
+// Požadované platby (všechny platné, včetně uhrazených) – seskupeno podle contracts_id (pro tagy u smluv)
 $paymentRequestsRaw = db()->query("
     SELECT * FROM payment_requests
-    WHERE valid_to IS NULL AND paid_at IS NULL
+    WHERE valid_to IS NULL
     ORDER BY contracts_id, id ASC
 ")->fetchAll();
 $paymentRequestsByContract = [];
