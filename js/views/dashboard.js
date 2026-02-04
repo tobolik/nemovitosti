@@ -842,7 +842,7 @@ async function openPaymentModal(el) {
     prefillMsgEl && (prefillMsgEl.textContent = '');
 
     // Chytré předvyplnění při přidání platby: neuhrazený požadavek nebo zbývající nájem
-    if (!paymentRequestId && !editIdEl.value && forMonth.length !== 1) {
+    if (!paymentRequestId && !editIdEl.value) {
         const requestsInMonth = paymentRequests.filter(r => {
             const d = r.due_date;
             return d && String(d).slice(0, 7) === monthKey;
@@ -886,9 +886,8 @@ async function openPaymentModal(el) {
         prefillMsgEl.style.display = 'block';
     }
 
-    // Předvyplnění z jediné platby za měsíc – NEPOUŽÍT při přidání platby z požadavku (Energie +),
-    // jinak by se formulář převzal z nájmu v dávce a uložení by změnilo celou dávku na energii.
-    if (!paymentRequestId && forMonth.length === 1) {
+    // Předvyplnění z jediné platby za měsíc – NEPOUŽÍT při přidání z tabulky (3/2025 +) ani z požadavku (Energie +).
+    if (!paymentRequestId && forMonth.length === 1 && !el.dataset.forceAddNew) {
         const p = forMonth[0];
         const method = p.payment_method || 'account';
         const pt = p.payment_type || 'rent';
@@ -929,7 +928,27 @@ async function openPaymentModal(el) {
         }
     } else {
         bulkWrap.style.display = editIdEl.value ? 'none' : 'block';
-        if (requestLinkWrap) requestLinkWrap.style.display = 'none';
+        if (requestLinkWrap && linkedRequestSel) {
+            if (!editIdEl.value) {
+                requestLinkWrap.style.display = '';
+                const prId = r => r.payment_requests_id ?? r.id;
+                const options = ['<option value="">— Žádný —</option>'];
+                paymentRequests.forEach(r => {
+                    if (!r.paid_at) {
+                        const rid = prId(r);
+                        const label = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč (nevyřízeno)';
+                        options.push('<option value="' + rid + '">' + UI.esc(label) + '</option>');
+                    }
+                });
+                linkedRequestSel.innerHTML = options.join('');
+                linkedRequestSel.value = document.getElementById('pay-modal-payment-request-id').value || '';
+                linkedRequestSel.onchange = function () {
+                    document.getElementById('pay-modal-payment-request-id').value = linkedRequestSel.value || '';
+                };
+            } else {
+                requestLinkWrap.style.display = 'none';
+            }
+        }
     }
 
     existingWrap.onclick = async (e) => {
@@ -997,10 +1016,26 @@ async function openPaymentModal(el) {
             delete editIdEl.dataset.batchId;
             delete editIdEl.dataset.originalAmount;
             delete editIdEl.dataset.linkedRequestId;
-            if (requestLinkWrap) requestLinkWrap.style.display = 'none';
             const prefillMsg = document.getElementById('pay-modal-prefill-msg');
             if (prefillMsg) { prefillMsg.style.display = 'none'; prefillMsg.textContent = ''; }
             document.getElementById('pay-modal-payment-request-id').value = '';
+            if (requestLinkWrap && linkedRequestSel) {
+                requestLinkWrap.style.display = '';
+                const prId = r => r.payment_requests_id ?? r.id;
+                const options = ['<option value="">— Žádný —</option>'];
+                paymentRequests.forEach(r => {
+                    if (!r.paid_at) {
+                        const rid = prId(r);
+                        const label = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč (nevyřízeno)';
+                        options.push('<option value="' + rid + '">' + UI.esc(label) + '</option>');
+                    }
+                });
+                linkedRequestSel.innerHTML = options.join('');
+                linkedRequestSel.value = '';
+                linkedRequestSel.onchange = function () {
+                    document.getElementById('pay-modal-payment-request-id').value = linkedRequestSel.value || '';
+                };
+            }
             amount.value = hasBreakdown ? totalForMonth : remaining;
             typeSelect.value = 'rent';
             setTypeWrapClass('rent');
@@ -1226,6 +1261,7 @@ const DashboardView = {
         fakeEl.dataset.paymentAmount = '0';
         fakeEl.dataset.remaining = String(rent);
         fakeEl.dataset.propertyName = propertyName || '';
+        fakeEl.dataset.forceAddNew = '1'; // vždy otevřít režim „Přidat platbu“, ne úpravu jediné
         await openPaymentModal(fakeEl);
     },
     async quickPayFromRequest(contractsId, amount, requestType, requestId, tenantName, propertyName, dueDateStr) {
