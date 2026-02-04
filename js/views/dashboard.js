@@ -689,6 +689,13 @@ function initDashboardCheckboxDelegation() {
 
 App.registerView('dashboard', () => { loadDashboard(); initDashboardCheckboxDelegation(); initQuickPayDelegation(); initPayModalShortcut(); });
 
+// Cache bank_accounts v rámci relace – modal je pak rychlejší (méně requestů)
+let _payModalBankAccountsCache = null;
+function getBankAccountsForModal() {
+    if (_payModalBankAccountsCache) return Promise.resolve(_payModalBankAccountsCache);
+    return Api.crudList('bank_accounts').then(list => { _payModalBankAccountsCache = list || []; return _payModalBankAccountsCache; });
+}
+
 // ── PaymentModal ─────────────────────────────────────────────────────────
 async function openPaymentModal(el) {
     const contractId = el.dataset.contractId;
@@ -738,7 +745,7 @@ async function openPaymentModal(el) {
         ? Api.crudList('payment_requests', { properties_id: propertyId })
         : Api.crudList('payment_requests', { contracts_id: contractsId });
     const [bankAccounts, paymentsResult, paymentRequests] = await Promise.all([
-        Api.crudList('bank_accounts'),
+        getBankAccountsForModal(),
         paymentsPromise,
         requestsPromise
     ]);
