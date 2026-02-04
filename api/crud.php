@@ -11,7 +11,7 @@ requireLogin();
 $FIELDS = [
     'properties' => ['name','address','size_m2','purchase_price','purchase_date','purchase_contract_url','valuation_date','valuation_amount','type','note'],
     'tenants'    => ['name','type','birth_date','email','phone','address','ic','dic','note'],
-    'contracts'  => ['properties_id','tenants_id','contract_start','contract_end','monthly_rent','first_month_rent','contract_url','deposit_amount','deposit_paid_date','deposit_return_date','note'],
+    'contracts'  => ['properties_id','tenants_id','contract_start','contract_end','monthly_rent','first_month_rent','last_month_rent','contract_url','deposit_amount','deposit_paid_date','deposit_return_date','note'],
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','payment_batch_id','payment_method','bank_accounts_id','payment_type'],
     'bank_accounts' => ['name','account_number','is_primary','sort_order'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
@@ -57,7 +57,7 @@ $REQUIRED = [
 $FIELD_LABELS = [
     'properties' => ['name'=>'Název','address'=>'Adresa','valuation_date'=>'K odhadu ke dni','valuation_amount'=>'Odhadní cena'],
     'tenants'    => ['name'=>'Jméno / Název','birth_date'=>'Datum narození'],
-    'contracts'  => ['properties_id'=>'Nemovitost','tenants_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','first_month_rent'=>'Nájem za první měsíc (poměrná část)','deposit_amount'=>'Kauce','deposit_paid_date'=>'Datum přijetí kauce','deposit_return_date'=>'Datum vrácení kauce','note'=>'Poznámka'],
+    'contracts'  => ['properties_id'=>'Nemovitost','tenants_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','first_month_rent'=>'Nájem za první měsíc (poměrná část)','last_month_rent'=>'Nájem za poslední měsíc (poměrná část)','deposit_amount'=>'Kauce','deposit_paid_date'=>'Datum přijetí kauce','deposit_return_date'=>'Datum vrácení kauce','note'=>'Poznámka'],
     'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','payment_method'=>'Způsob platby','bank_accounts_id'=>'Bankovní účet','payment_type'=>'Typ platby'],
     'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu'],
     'contract_rent_changes' => ['contracts_id'=>'Smlouva','amount'=>'Částka','effective_from'=>'Platné od'],
@@ -304,6 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($table === 'contracts' && ($data['deposit_paid_date']??'') === '') $data['deposit_paid_date'] = null;
     if ($table === 'contracts' && ($data['deposit_return_date']??'') === '') $data['deposit_return_date'] = null;
     if ($table === 'contracts' && ($data['first_month_rent']??'') === '') $data['first_month_rent'] = null;
+    if ($table === 'contracts' && ($data['last_month_rent']??'') === '') $data['last_month_rent'] = null;
     if ($table === 'tenants' && ($data['birth_date']??'') === '') $data['birth_date'] = null;
 
     // Validace dat – neplatné datum nesmí být tiše převedeno na null

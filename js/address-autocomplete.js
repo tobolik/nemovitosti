@@ -80,6 +80,12 @@ const AddressAutocomplete = (() => {
         }
 
         function onKeydown(e) {
+            if (e.key === 'ArrowDown' && !dropdown) {
+                e.preventDefault();
+                const q = input.value.trim();
+                if (q.length >= MIN_CHARS) fetchSuggestions(q);
+                return;
+            }
             if (!dropdown) return;
             const items = dropdown.querySelectorAll('.address-autocomplete-item');
             if (e.key === 'ArrowDown') {
@@ -94,6 +100,7 @@ const AddressAutocomplete = (() => {
                 e.preventDefault();
                 if (items[selectedIndex]) selectItem({ address: items[selectedIndex].dataset.address, label: items[selectedIndex].textContent, postcode: items[selectedIndex].dataset.postcode });
             } else if (e.key === 'Escape') {
+                e.preventDefault();
                 hideDropdown();
             }
         }

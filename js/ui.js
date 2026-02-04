@@ -119,11 +119,11 @@ const UI = (() => {
 
     // ── generic table renderer ──────────────────────────────────────────
     // Vloží <table> do elementu `containerId`.
-    // headers: [{ label, key?, width?, act?, hideMobile? }]
+    // headers: [{ label, key?, width?, act?, hideMobile?, sortKey? }]
     // rows: array of objects
     // rowFn: (item) => string of <td>...</td> (celý řádek)
-    // hideMobile: adds 'col-hide-mobile' class to column (hidden on mobile)
-    function renderTable(containerId, headers, rows, rowFn, { emptyMsg = 'Žádné záznamy.' } = {}) {
+    // opts: { emptyMsg, sortable?: { currentKey, currentDir }, striped?: boolean }
+    function renderTable(containerId, headers, rows, rowFn, { emptyMsg = 'Žádné záznamy.', sortable, striped } = {}) {
         const el = document.getElementById(containerId);
         if (!el) return;
 
@@ -136,8 +136,15 @@ const UI = (() => {
             let cls = [];
             if (h.act) cls.push('th-act');
             if (h.hideMobile) cls.push('col-hide-mobile');
+            if (h.sortKey) {
+                cls.push('th-sortable');
+                if (sortable && sortable.currentKey === h.sortKey) {
+                    cls.push(sortable.currentDir === 'asc' ? 'th-sort-asc' : 'th-sort-desc');
+                }
+            }
             const titleAttr = h.title ? ' title="' + esc(h.title) + '"' : '';
-            return '<th' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + titleAttr + '>' + esc(h.label) + '</th>';
+            const sortAttr = h.sortKey ? ' data-sort="' + esc(h.sortKey) + '"' : '';
+            return '<th' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + titleAttr + sortAttr + '>' + esc(h.label) + '</th>';
         }).join('');
 
         const trs = rows.map(item => {
@@ -145,8 +152,9 @@ const UI = (() => {
             return '<tr' + (cls ? ' class="' + cls + '"' : '') + '>' + rowFn(item) + '</tr>';
         }).join('');
 
+        const tableCls = 'tbl' + (striped ? ' tbl-striped' : '');
         el.innerHTML =
-            '<div class="tbl-wrap"><table class="tbl">' +
+            '<div class="tbl-wrap"><table class="' + tableCls + '">' +
             '<thead><tr>' + ths + '</tr></thead>' +
             '<tbody>' + trs + '</tbody>' +
             '</table></div>';
@@ -308,6 +316,8 @@ const UI = (() => {
             return opts;
         }
 
+        let selectedIndex = -1;
+
         function renderDropdown(filter) {
             const opts = getOptions();
             const q = (filter || '').toLowerCase().trim();
@@ -318,6 +328,15 @@ const UI = (() => {
                 ? filtered.map(o => '<div class="searchable-select-option" role="option" data-value="' + esc(o.value) + '">' + esc(o.text) + '</div>').join('')
                 : '<div class="searchable-select-empty">Žádný výsledek</div>';
             dropdown.setAttribute('aria-hidden', 'false');
+            selectedIndex = filtered.length ? 0 : -1;
+            highlightSearchableOption();
+        }
+
+        function highlightSearchableOption() {
+            const options = dropdown.querySelectorAll('.searchable-select-option');
+            options.forEach((el, i) => el.classList.toggle('active', i === selectedIndex));
+            const opt = options[selectedIndex];
+            if (opt) opt.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }
 
         function setDisplayFromSelect() {
@@ -328,6 +347,18 @@ const UI = (() => {
         function closeDropdown() {
             dropdown.classList.remove('show');
             dropdown.setAttribute('aria-hidden', 'true');
+            selectedIndex = -1;
+        }
+
+        function selectOptionByIndex() {
+            const options = dropdown.querySelectorAll('.searchable-select-option');
+            const opt = options[selectedIndex];
+            if (!opt) return;
+            const val = opt.getAttribute('data-value');
+            select.value = val;
+            input.value = opt.textContent.trim();
+            closeDropdown();
+            select.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
         input.addEventListener('focus', () => {
@@ -340,6 +371,33 @@ const UI = (() => {
         });
         input.addEventListener('blur', () => {
             setTimeout(closeDropdown, 180);
+        });
+        input.addEventListener('keydown', (e) => {
+            if (!dropdown.classList.contains('show')) {
+                if (e.key === 'ArrowDown' || e.key === 'Enter') {
+                    e.preventDefault();
+                    renderDropdown(input.value);
+                    dropdown.classList.add('show');
+                    if (e.key === 'Enter' && selectedIndex >= 0) selectOptionByIndex();
+                }
+                return;
+            }
+            const options = dropdown.querySelectorAll('.searchable-select-option');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, options.length - 1);
+                highlightSearchableOption();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, 0);
+                highlightSearchableOption();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                selectOptionByIndex();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeDropdown();
+            }
         });
         dropdown.addEventListener('mousedown', (e) => e.preventDefault());
         dropdown.addEventListener('click', (e) => {

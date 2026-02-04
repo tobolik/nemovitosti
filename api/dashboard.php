@@ -56,13 +56,20 @@ function getExpectedRentForMonth(array $c, int $year, int $m, array $rentChanges
             return $firstRent;
         }
     }
+    $end = $c['contract_end'] ?? null;
+    if ($end && $end !== '' && (int)date('Y', strtotime($end)) === $year && (int)date('n', strtotime($end)) === $m && $end < $lastDayOfMonth) {
+        $lastRent = isset($c['last_month_rent']) && $c['last_month_rent'] !== null && $c['last_month_rent'] !== '' ? (float)$c['last_month_rent'] : null;
+        if ($lastRent !== null) {
+            return $lastRent;
+        }
+    }
     $fullRent = getRentForMonth((float)$c['monthly_rent'], (int)($c['contracts_id'] ?? $c['id']), $year, $m, $rentChangesByContract);
-    $end = $c['contract_end'] ?? $lastDayOfMonth;
-    if ($start <= $firstOfMonth && $end >= $lastDayOfMonth) {
+    $endForFull = $end ?? $lastDayOfMonth;
+    if ($start <= $firstOfMonth && $endForFull >= $lastDayOfMonth) {
         return $fullRent;
     }
     $from = max($start, $firstOfMonth);
-    $to = min($end, $lastDayOfMonth);
+    $to = min($end ?? $lastDayOfMonth, $lastDayOfMonth);
     if ($from > $to) return 0.0;
     $daysInMonth = (int)date('t', strtotime($firstOfMonth));
     $daysCovered = (int)((strtotime($to) - strtotime($from)) / 86400) + 1;

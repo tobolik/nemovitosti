@@ -275,6 +275,7 @@ const ContractsView = (() => {
             getValues() {
                 const depAmt = document.getElementById('con-deposit-amount').value.trim();
                 const firstMonthVal = document.getElementById('con-first-month-rent').value.trim();
+                const lastMonthVal = document.getElementById('con-last-month-rent').value.trim();
                 return {
                     properties_id: Number(document.getElementById('con-property').value),
                     tenants_id:    Number(document.getElementById('con-tenant').value),
@@ -282,6 +283,7 @@ const ContractsView = (() => {
                     contract_end:   document.getElementById('con-end').value || '',
                     monthly_rent:   document.getElementById('con-rent').value,
                     first_month_rent: firstMonthVal ? parseFloat(firstMonthVal) : null,
+                    last_month_rent: lastMonthVal ? parseFloat(lastMonthVal) : null,
                     contract_url:   document.getElementById('con-contract-url').value.trim() || null,
                     deposit_amount: depAmt ? parseFloat(depAmt) : null,
                     deposit_paid_date: document.getElementById('con-deposit-paid-date').value || null,
@@ -297,6 +299,7 @@ const ContractsView = (() => {
                 document.getElementById('con-end').value      = row.contract_end   || '';
                 document.getElementById('con-rent').value     = row.monthly_rent   || '';
                 document.getElementById('con-first-month-rent').value = row.first_month_rent ?? '';
+                document.getElementById('con-last-month-rent').value = row.last_month_rent ?? '';
                 document.getElementById('con-contract-url').value = row.contract_url || '';
                 document.getElementById('con-deposit-amount').value = row.deposit_amount ?? '';
                 document.getElementById('con-deposit-paid-date').value = row.deposit_paid_date ? row.deposit_paid_date.slice(0, 10) : '';
@@ -307,6 +310,7 @@ const ContractsView = (() => {
                     UI.updateSearchableSelectDisplay('con-tenant');
                 }
                 toggleFirstMonthRentVisibility();
+                toggleLastMonthRentVisibility();
                 const contractsId = row.contracts_id ?? row.id;
                 loadRentChanges(contractsId);
                 loadPaymentRequests(contractsId);
@@ -335,7 +339,28 @@ const ContractsView = (() => {
         const day = parseInt(startVal.slice(8, 10), 10);
         wrap.style.display = day !== 1 ? 'block' : 'none';
     }
+
+    function isLastDayOfMonth(dateStr) {
+        if (!dateStr || dateStr.length < 10) return false;
+        const d = new Date(dateStr + 'T12:00:00');
+        if (isNaN(d.getTime())) return false;
+        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        return d.getDate() === lastDay;
+    }
+
+    function toggleLastMonthRentVisibility() {
+        const endVal = document.getElementById('con-end').value;
+        const wrap = document.getElementById('con-last-month-wrap');
+        if (!wrap) return;
+        if (!endVal || endVal.length < 10) {
+            wrap.style.display = 'none';
+            return;
+        }
+        wrap.style.display = isLastDayOfMonth(endVal) ? 'none' : 'block';
+    }
+
     document.getElementById('con-start').addEventListener('change', toggleFirstMonthRentVisibility);
+    document.getElementById('con-end').addEventListener('change', toggleLastMonthRentVisibility);
 
     // ── fill dropdowns ──────────────────────────────────────────────────
     async function fillDropdowns() {
@@ -359,25 +384,57 @@ const ContractsView = (() => {
             ).join('');
     }
 
-    // ── table ───────────────────────────────────────────────────────────
-    async function loadList() {
-        let data;
-        try { data = await Api.crudList('contracts'); _cache = data; }
-        catch (e) { return; }
+    // ── řazení tabulky smluv ──────────────────────────────────────────────
+    let _sortState = { key: 'property_name', dir: 'asc' };
 
+    function getContractSortValue(c, key) {
+        switch (key) {
+            case 'property_name': return (c.property_name || '').toLowerCase();
+            case 'tenant_name':
+                const name = (c.tenant_name || '').trim();
+                const lastWord = name.split(/\s+/).pop() || '';
+                return [(lastWord || name).toLowerCase(), name.toLowerCase()];
+            case 'contract_start': return c.contract_start || '';
+            case 'contract_end': return c.contract_end || '9999-99-99';
+            case 'monthly_rent': return parseFloat(c.monthly_rent) || 0;
+            case 'deposit_amount': return parseFloat(c.deposit_amount) || 0;
+            default: return '';
+        }
+    }
+
+    function sortContracts(data, state) {
+        const key = state.key;
+        const dir = state.dir === 'asc' ? 1 : -1;
+        return [...data].sort((a, b) => {
+            const va = getContractSortValue(a, key);
+            const vb = getContractSortValue(b, key);
+            let cmp = 0;
+            if (Array.isArray(va) && Array.isArray(vb)) {
+                cmp = (va[0] || '').localeCompare(vb[0] || '') || (va[1] || '').localeCompare(vb[1] || '');
+            } else {
+                cmp = va < vb ? -1 : (va > vb ? 1 : 0);
+            }
+            return cmp * dir;
+        });
+    }
+
+    function applySortAndRender() {
+        const sorted = sortContracts(_cache, _sortState);
+        const conTable = document.getElementById('con-table');
+        if (!conTable) return;
         UI.renderTable('con-table',
             [
-                { label: 'Nemovitost' },
-                { label: 'Nájemník' },
-                { label: 'Od', hideMobile: true },
-                { label: 'Do', hideMobile: true },
-                { label: 'Nájemné' },
-                { label: 'Kauce', hideMobile: true },
+                { label: 'Nemovitost', sortKey: 'property_name' },
+                { label: 'Nájemník', sortKey: 'tenant_name' },
+                { label: 'Od', sortKey: 'contract_start', hideMobile: true },
+                { label: 'Do', sortKey: 'contract_end', hideMobile: true },
+                { label: 'Nájemné', sortKey: 'monthly_rent' },
+                { label: 'Kauce', sortKey: 'deposit_amount', hideMobile: true },
                 { label: 'Smlouva', hideMobile: true },
                 { label: 'Poznámka', hideMobile: true },
                 { label: 'Akce', act: true },
             ],
-            data,
+            sorted,
             (c) => {
                 const contractUrl = c.contract_url;
                 const contractLink = contractUrl
@@ -396,15 +453,19 @@ const ContractsView = (() => {
                         depositCell = UI.fmt(dep) + ' Kč';
                     }
                 }
+                const noteText = (c.note || '').trim();
+                const noteCell = noteText
+                    ? '<span class="cell-note-truncate" title="' + UI.esc(noteText) + '">' + UI.esc(noteText) + '</span>'
+                    : '<span style="color:var(--txt3)">—</span>';
                 return (
                     '<td>' + UI.esc(c.property_name) + '</td>' +
                     '<td><strong>' + UI.esc(c.tenant_name) + '</strong></td>' +
-                    '<td class="col-hide-mobile">' + UI.esc(c.contract_start) + '</td>' +
-                    '<td class="col-hide-mobile">' + (c.contract_end ? UI.esc(c.contract_end) : '<span style="color:var(--txt3)">neurčitá</span>') + '</td>' +
+                    '<td class="col-hide-mobile">' + (c.contract_start ? UI.fmtDate(c.contract_start) : '—') + '</td>' +
+                    '<td class="col-hide-mobile">' + (c.contract_end ? UI.fmtDate(c.contract_end) : '<span style="color:var(--txt3)">neurčitá</span>') + '</td>' +
                     '<td>' + UI.fmt(c.monthly_rent) + ' Kč</td>' +
                     '<td class="col-hide-mobile">' + depositCell + '</td>' +
                     '<td class="col-hide-mobile">' + contractLink + '</td>' +
-                    '<td class="col-note col-hide-mobile">' + (c.note ? UI.esc(c.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
+                    '<td class="col-note cell-note-wrap col-hide-mobile">' + noteCell + '</td>' +
                     '<td class="td-act">' +
                         '<button class="btn btn-ghost btn-sm" onclick="ContractsView.edit(' + (c.contracts_id ?? c.id) + ')">Úprava</button>' +
                         '<button class="btn btn-ghost btn-sm" onclick="PaymentsView.navigateWithFilter(' + (c.contracts_id ?? c.id) + ')">Platby</button>' +
@@ -412,8 +473,20 @@ const ContractsView = (() => {
                     '</td>'
                 );
             },
-            { emptyMsg: 'Žádné smlouvy.' }
+            { emptyMsg: 'Žádné smlouvy.', sortable: { currentKey: _sortState.key, currentDir: _sortState.dir }, striped: true }
         );
+    }
+
+    async function loadList() {
+        try {
+            const data = await Api.crudList('contracts');
+            _cache = data;
+            if (!_cache || !_cache.length) {
+                document.getElementById('con-table').innerHTML = '<div class="empty">Žádné smlouvy.</div>';
+                return;
+            }
+            applySortAndRender();
+        } catch (e) { return; }
     }
 
     function edit(id) {
@@ -428,11 +501,31 @@ const ContractsView = (() => {
         });
     }
 
+    function initTableSortClick() {
+        const conTable = document.getElementById('con-table');
+        if (!conTable || conTable.dataset.sortBound) return;
+        conTable.dataset.sortBound = '1';
+        conTable.addEventListener('click', (e) => {
+            const th = e.target.closest('th[data-sort]');
+            if (!th) return;
+            const key = th.getAttribute('data-sort');
+            if (!key) return;
+            if (_sortState.key === key) {
+                _sortState.dir = _sortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                _sortState.key = key;
+                _sortState.dir = 'asc';
+            }
+            applySortAndRender();
+        });
+    }
+
     async function load() {
         initForm();
         form.exitEdit();
         initTenantModal();
         initRentChangesHandlers();
+        initTableSortClick();
         _cache = [];
         await fillDropdowns();
         if (typeof UI.createSearchableSelect === 'function') {
