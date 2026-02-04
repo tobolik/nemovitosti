@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=1.1.86">
+<link rel="stylesheet" href="css/style.css?v=1.1.87">
 </head>
 <body>
 
@@ -516,6 +516,7 @@
     </div>
     <div class="form-actions">
       <button type="button" class="btn btn-success" id="btn-pay-req-save">Přidat</button>
+      <button type="button" class="btn btn-ghost" id="btn-pay-req-delete" style="display:none">Smazat požadavek</button>
       <button type="button" class="btn btn-ghost" onclick="UI.modalClose('modal-payment-request')">Zrušit</button>
     </div>
   </div>
@@ -583,16 +584,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=1.1.86"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=1.1.86"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=1.1.86"></script>
-<script src="js/app.js?v=1.1.86"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=1.1.86"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=1.1.86"></script>
-<script src="js/views/tenants.js?v=1.1.86"></script>
-<script src="js/views/contracts.js?v=1.1.86"></script>
-<script src="js/views/payments.js?v=1.1.86"></script>
-<script src="js/views/bank_accounts.js?v=1.1.86"></script>
-<script src="js/views/users.js?v=1.1.86"></script>
+<script src="js/api.js?v=1.1.87"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=1.1.87"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=1.1.87"></script>
+<script src="js/app.js?v=1.1.87"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=1.1.87"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=1.1.87"></script>
+<script src="js/views/tenants.js?v=1.1.87"></script>
+<script src="js/views/contracts.js?v=1.1.87"></script>
+<script src="js/views/payments.js?v=1.1.87"></script>
+<script src="js/views/bank_accounts.js?v=1.1.87"></script>
+<script src="js/views/users.js?v=1.1.87"></script>
 </body>
 </html>

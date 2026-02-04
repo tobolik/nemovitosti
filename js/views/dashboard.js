@@ -415,6 +415,8 @@ function initPaymentRequestModal() {
         }
         if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
         document.getElementById('pay-req-edit-id').value = '';
+        const btnDel = document.getElementById('btn-pay-req-delete');
+        if (btnDel) btnDel.style.display = 'none';
         const titleEl = document.getElementById('pay-req-modal-title');
         if (titleEl) titleEl.textContent = 'Přidat požadavek na platbu';
         const saveBtn = document.getElementById('btn-pay-req-save');
@@ -532,6 +534,32 @@ function initPaymentRequestModal() {
             }
         });
     }
+
+    const btnDelete = document.getElementById('btn-pay-req-delete');
+    if (btnDelete && !btnDelete.dataset.bound) {
+        btnDelete.dataset.bound = '1';
+        btnDelete.addEventListener('click', async () => {
+            const editIdEl = document.getElementById('pay-req-edit-id');
+            const editId = (editIdEl && editIdEl.value) ? editIdEl.value.trim() : '';
+            if (!editId) return;
+            if (!confirm('Opravdu smazat tento požadavek na platbu?')) return;
+            const alertEl = document.getElementById('pay-req-alert');
+            try {
+                btnDelete.disabled = true;
+                await Api.crudDelete('payment_requests', parseInt(editId, 10));
+                UI.modalClose('modal-payment-request');
+                const yearBtn = document.querySelector('#dash-year .heatmap-year-btn.active');
+                const y = yearBtn ? parseInt(yearBtn.dataset.year, 10) : new Date().getFullYear();
+                loadDashboard(y);
+                const onSaved = window._paymentRequestEditOnSaved;
+                if (typeof onSaved === 'function') { onSaved(); window._paymentRequestEditOnSaved = null; }
+            } catch (err) {
+                if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = err.message || 'Chyba smazání.'; }
+            } finally {
+                btnDelete.disabled = false;
+            }
+        });
+    }
 }
 
 /** Otevře modal „Přidat požadavek“ s předvyplněnou smlouvou (voláno ze sloupce P v přehledu smluv). */
@@ -553,6 +581,8 @@ async function openAddPaymentRequestModal(contractId) {
         editIdEl.value = '';
         const linkWrapAdd = document.getElementById('pay-req-link-wrap');
         if (linkWrapAdd) linkWrapAdd.style.display = 'none';
+        const btnDeleteAdd2 = document.getElementById('btn-pay-req-delete');
+        if (btnDeleteAdd2) btnDeleteAdd2.style.display = 'none';
         if (titleEl) titleEl.textContent = 'Přidat požadavek na platbu';
         if (saveBtn) saveBtn.textContent = 'Přidat';
         contractSel.value = String(contractId || '');
@@ -593,6 +623,8 @@ async function openPaymentRequestEdit(paymentRequestId, onSaved) {
         editIdEl.value = String(prEntityId);
         if (titleEl) titleEl.textContent = 'Upravit požadavek na platbu';
         if (btnSave) btnSave.textContent = 'Uložit';
+        const btnDelete = document.getElementById('btn-pay-req-delete');
+        if (btnDelete) btnDelete.style.display = '';
         contractSel.value = pr.contracts_id ?? '';
         amountEl.value = pr.amount ?? '';
         typeEl.value = ['energy', 'settlement', 'other', 'deposit', 'deposit_return'].includes(pr.type) ? pr.type : 'energy';
