@@ -132,20 +132,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     if ($table === 'payment_requests') {
         $cid = isset($_GET['contracts_id']) ? (int)$_GET['contracts_id'] : 0;
+        $pid = isset($_GET['properties_id']) ? (int)$_GET['properties_id'] : 0;
         $unpaidOnly = isset($_GET['unpaid']) && $_GET['unpaid'] !== '0' && $_GET['unpaid'] !== '';
-        $sql = "SELECT * FROM payment_requests WHERE valid_to IS NULL";
         $params = [];
-        if ($cid > 0) {
-            $sql .= " AND contracts_id=?";
-            $params[] = $cid;
+        if ($pid > 0) {
+            $sql = "SELECT pr.* FROM payment_requests pr
+                    JOIN contracts c ON c.contracts_id = pr.contracts_id AND c.valid_to IS NULL
+                    JOIN properties p ON p.properties_id = c.properties_id AND p.valid_to IS NULL
+                    WHERE pr.valid_to IS NULL AND (c.properties_id = ? OR p.properties_id = ? OR p.id = ?)";
+            $params = [$pid, $pid, $pid];
+            if ($unpaidOnly) { $sql .= " AND pr.paid_at IS NULL"; }
+            $sql .= " ORDER BY pr.id ASC";
+            $s = db()->prepare($sql);
+            $s->execute($params);
+            jsonOk($s->fetchAll());
+        } else {
+            $sql = "SELECT * FROM payment_requests WHERE valid_to IS NULL";
+            if ($cid > 0) { $sql .= " AND contracts_id=?"; $params[] = $cid; }
+            if ($unpaidOnly) { $sql .= " AND paid_at IS NULL"; }
+            $sql .= " ORDER BY id ASC";
+            $s = db()->prepare($sql);
+            $s->execute($params);
+            jsonOk($s->fetchAll());
         }
-        if ($unpaidOnly) {
-            $sql .= " AND paid_at IS NULL";
-        }
-        $sql .= " ORDER BY id ASC";
-        $s = db()->prepare($sql);
-        $s->execute($params);
-        jsonOk($s->fetchAll());
     }
 
     if ($table === 'payments') {

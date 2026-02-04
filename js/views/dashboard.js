@@ -704,6 +704,7 @@ async function openPaymentModal(el) {
     const [year, month] = monthKey.split('-');
     const monthName = MONTH_NAMES[parseInt(month, 10) - 1] || month;
     const propName = el.dataset.propertyName || (el.closest('tr') && el.closest('tr').querySelector('.heatmap-property') ? el.closest('tr').querySelector('.heatmap-property').textContent : '') || '';
+    const propertyId = el.dataset.propertyId ? String(el.dataset.propertyId).trim() : '';
 
     const info = document.getElementById('pay-modal-info');
     const amount = document.getElementById('pay-modal-amount');
@@ -730,7 +731,19 @@ async function openPaymentModal(el) {
     const monthToEl = document.getElementById('pay-modal-month-to');
     const yearToEl = document.getElementById('pay-modal-year-to');
 
-    const bankAccounts = await Api.crudList('bank_accounts');
+    const paymentsPromise = propertyId
+        ? Api.crudList('payments', { properties_id: propertyId, period_year: year, period_month: parseInt(month, 10) })
+        : Api.crudList('payments', { contracts_id: contractsId });
+    const requestsPromise = propertyId
+        ? Api.crudList('payment_requests', { properties_id: propertyId })
+        : Api.crudList('payment_requests', { contracts_id: contractsId });
+    const [bankAccounts, paymentsResult, paymentRequests] = await Promise.all([
+        Api.crudList('bank_accounts'),
+        paymentsPromise,
+        requestsPromise
+    ]);
+    let payments = paymentsResult || [];
+    let forMonth = propertyId ? payments : payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
     const primaryAccount = bankAccounts.find(b => b.is_primary);
     const defaultAccId = primaryAccount ? (primaryAccount.bank_accounts_id ?? primaryAccount.id) : '';
     accountSelect.innerHTML = '<option value="">— Vyberte účet —</option>' +
@@ -841,30 +854,6 @@ async function openPaymentModal(el) {
     dateWrap.style.display = isPaid ? 'block' : 'none';
     methodWrap.style.display = isPaid ? 'flex' : 'none';
     accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
-
-    const propertyId = el.dataset.propertyId ? String(el.dataset.propertyId).trim() : '';
-    let payments;
-    let forMonth;
-    if (propertyId) {
-        payments = await Api.crudList('payments', {
-            properties_id: propertyId,
-            period_year: year,
-            period_month: parseInt(month, 10)
-        });
-        forMonth = payments || [];
-    } else {
-        payments = await Api.crudList('payments', { contracts_id: contractsId });
-        forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
-    }
-    let paymentRequests;
-    if (propertyId) {
-        const contractsForProperty = await Api.crudList('contracts', { properties_id: propertyId });
-        const uniqueContractIds = [...new Set((contractsForProperty || []).map(c => String(c.contracts_id ?? c.id ?? '')).filter(Boolean))];
-        const reqs = uniqueContractIds.length ? await Promise.all(uniqueContractIds.map(cid => Api.crudList('payment_requests', { contracts_id: cid }))) : [];
-        paymentRequests = reqs.flat();
-    } else {
-        paymentRequests = await Api.crudList('payment_requests', { contracts_id: contractsId });
-    }
 
     const requestLinkWrap = document.getElementById('pay-modal-request-link-wrap');
     const linkedRequestSel = document.getElementById('pay-modal-linked-request');
