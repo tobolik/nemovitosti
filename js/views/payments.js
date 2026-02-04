@@ -434,7 +434,7 @@ const PaymentsView = (() => {
                     '<td class="col-hide-mobile">' + UI.esc(methodLabel) + '</td>' +
                     '<td class="col-hide-mobile">' + (p.counterpart_account ? UI.esc(p.counterpart_account) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="col-hide-mobile">' + diffHtml + '</td>' +
-                    '<td class="col-note col-hide-mobile">' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + linkedReq + '</td>' +
+                    '<td class="col-note cell-note-wrap col-hide-mobile">' + (p.note ? '<span class="cell-note-truncate" title="' + UI.esc(p.note) + '">' + UI.esc(p.note) + '</span>' : '<span style="color:var(--txt3)">—</span>') + linkedReq + '</td>' +
                     '<td class="td-act">' +
                         '<button class="btn btn-ghost btn-sm" onclick="PaymentsView.edit(' + (p.payments_id ?? p.id) + ')">Úprava</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="PaymentsView.del(' + (p.payments_id ?? p.id) + ')">Smazat</button>' +

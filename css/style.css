@@ -61,6 +61,7 @@ body {
   min-height: 100vh;
   background: linear-gradient(180deg, var(--purple-900) 0%, var(--purple-800) 50%, var(--indigo-900) 100%);
   background-attachment: fixed;
+  overflow-x: hidden;
 }
 a { color: var(--purple-300); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -300,7 +301,7 @@ button, select, input, textarea { font-family: var(--font-ui); }
   flex-direction: column;
   min-height: 100vh;
   min-width: 0;
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 .main {
   flex: 1;
@@ -520,11 +521,10 @@ footer .footer-version { opacity: .8; }
   backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
   border-radius: var(--r-xl);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
   margin-bottom: 22px;
 }
-table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width: max-content; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-layout: fixed; }
 .tbl th {
   text-align: left;
   padding: 12px 16px;
@@ -1114,15 +1114,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
   }
   .stats { grid-template-columns: 1fr; }
   
-  /* Tables - fit content properly */
+  /* Tables - fit content properly, bez vodorovného rolování */
   .tbl-wrap {
     border-radius: var(--r);
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow-x: hidden;
   }
   table.tbl {
     width: 100%;
-    table-layout: auto;
+    table-layout: fixed;
   }
   .tbl th, .tbl td { 
     padding: 10px 8px; 
@@ -1197,12 +1196,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
     width: 100%;
   }
   
-  /* Heatmap scroll */
+  /* Heatmap – bez vodorovného rolování */
   .heatmap-wrap {
     margin-left: -10px;
     margin-right: -10px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow-x: hidden;
   }
   
   /* Filter bar - align with title */
@@ -1300,16 +1298,17 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width
     font-size: .68rem;
   }
   
-  /* Heatmap – pevná výška jen u měsíčních buněk (2.–13. sloupec) */
+  /* Heatmap – pevná výška jen u měsíčních buněk (2.–13. sloupec), písmo na 90 % */
   .heatmap-table tbody td:nth-child(n+2):nth-child(-n+13) { height: 44px; max-height: 44px; overflow: hidden; }
   .heatmap-cell {
     height: 36px;
     min-height: 36px;
     padding: 2px 1px;
-    font-size: .65rem;
+    font-size: .585rem;  /* 90 % z .65rem */
   }
+  .heatmap-cell .heatmap-cell-amount,
   .heatmap-cell .cell-amount {
-    font-size: .6rem;
+    font-size: .54rem;    /* 90 % */
   }
   .heatmap-property {
     font-size: .7rem;

@@ -187,7 +187,7 @@ async function loadDashboard(year) {
                         icon = '<span class="heatmap-cell-icon cell-cross">✗</span>';
                     }
                     content = '<div class="heatmap-cell-content">' +
-                        '<span class="heatmap-cell-amount">' + UI.fmt(prescribedTotal) + ' Kč</span>' + icon +
+                        '<span class="heatmap-cell-amount">' + UI.fmt(prescribedTotal) + '</span>' + icon +
                         '</div>';
                     content = '<div class="heatmap-cell-fill" style="width:' + Math.round(pctPaid) + '%"></div>' + content;
                 }

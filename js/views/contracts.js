@@ -127,13 +127,14 @@ const ContractsView = (() => {
                 const typeLabel = PAYMENT_REQUEST_TYPE_LABELS[pr.type] || pr.type;
                 const amt = UI.fmt(pr.amount ?? 0);
                 const due = pr.due_date ? UI.fmtDate(pr.due_date) : '—';
-                const note = (pr.note || '').trim() ? UI.esc(pr.note) : '—';
+                const noteText = (pr.note || '').trim();
+                const note = noteText ? '<span class="cell-note-truncate" title="' + UI.esc(noteText) + '">' + UI.esc(noteText) + '</span>' : '—';
                 const prId = pr.payment_requests_id ?? pr.id;
                 const paidAtFormatted = pr.paid_at ? UI.fmtDate(pr.paid_at) : '';
                 const paid = pr.paid_at
                     ? ' <span class="badge badge-ok" title="Uhrazeno ' + (paidAtFormatted ? paidAtFormatted : '') + '">uhrazeno' + (paidAtFormatted ? ' (' + paidAtFormatted + ')' : '') + '</span>'
                     : '';
-                html += '<tr><td>' + UI.esc(typeLabel) + paid + '</td><td>' + amt + ' Kč</td><td>' + due + '</td><td class="col-note">' + note + '</td><td class="td-act">' +
+                html += '<tr><td>' + UI.esc(typeLabel) + paid + '</td><td>' + amt + ' Kč</td><td>' + due + '</td><td class="col-note cell-note-wrap">' + note + '</td><td class="td-act">' +
                     '<button type="button" class="btn btn-ghost btn-sm btn-edit-pay-req" data-pr-id="' + prId + '">Upravit</button> ' +
                     '<button type="button" class="btn btn-danger btn-sm btn-del-pay-req" data-pr-id="' + prId + '">Smazat</button></td></tr>';
             });

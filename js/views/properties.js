@@ -110,7 +110,7 @@ const PropertiesView = (() => {
                     '<td class="col-hide-mobile">' + odhadRoiCell + '</td>' +
                     '<td>' + totalRent + '</td>' +
                     '<td class="col-hide-mobile contract-preview-cell">' + contractLink + '</td>' +
-                    '<td class="col-note col-hide-mobile">' + (p.note ? UI.esc(p.note) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
+                    '<td class="col-note cell-note-wrap col-hide-mobile">' + (p.note ? '<span class="cell-note-truncate" title="' + UI.esc(p.note) + '">' + UI.esc(p.note) + '</span>' : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +
                         '<button class="btn btn-ghost btn-sm" onclick="PropertiesView.edit(' + p.id + ')">Úprava</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="PropertiesView.del(' + p.id + ')">Smazat</button>' +

@@ -139,7 +139,7 @@ const TenantsView = (() => {
                 '<td class="col-hide-mobile">' + (t.email ? '<a href="mailto:' + UI.esc(t.email) + '">' + UI.esc(t.email) + '</a>' : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td>' + (t.phone ? '<a href="tel:' + UI.esc(t.phone) + '">' + UI.esc(t.phone) + '</a>' : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td class="col-hide-mobile">' + (t.ic ? UI.esc(t.ic) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
-                '<td class="col-note col-hide-mobile">' + (t.note  ? UI.esc(t.note)  : '<span style="color:var(--txt3)">—</span>') + '</td>' +
+                '<td class="col-note cell-note-wrap col-hide-mobile">' + (t.note ? '<span class="cell-note-truncate" title="' + UI.esc(t.note) + '">' + UI.esc(t.note) + '</span>' : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td class="td-act">' +
                     '<button class="btn btn-ghost btn-sm" onclick="TenantsView.edit(' + t.id + ')">Úprava</button>' +
                     '<button class="btn btn-danger btn-sm" onclick="TenantsView.del(' + t.id + ')">Smazat</button>' +
