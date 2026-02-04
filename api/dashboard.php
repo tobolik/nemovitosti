@@ -85,13 +85,23 @@ function getExpectedTotalForMonth(array $c, int $year, int $m, array $rentChange
     return round($rent + $requests, 2);
 }
 
+// Platby navázané na požadavek: započítat do měsíce splatnosti požadavku (due_date), ne do period – aby kauce uhrazená dle požadavku nezpůsobila „přeplaceno“ v jiném měsíci
+$paymentEntityToRequestMonth = [];
+$prLinkStmt = db()->query("
+    SELECT payments_id, due_date FROM payment_requests
+    WHERE valid_to IS NULL AND payments_id IS NOT NULL AND due_date IS NOT NULL
+");
+foreach ($prLinkStmt->fetchAll() as $pr) {
+    $paymentEntityToRequestMonth[(int)$pr['payments_id']] = date('Y-m', strtotime($pr['due_date']));
+}
+
 // Payments per contract – platby odkazují na contracts_id (entity_id smlouvy)
 // paidRent: jen platby typu rent (pro očekávaný nájem, neuhrazené měsíce)
 // paidTotal: všechny platby (pro součet v sekci Nájemník)
 $paymentsByContract = [];
 $paymentsListByContract = [];
 $s = db()->prepare("
-    SELECT p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type
+    SELECT p.payments_id, p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type
     FROM payments p
     JOIN contracts c ON c.contracts_id = p.contracts_id AND c.valid_to IS NULL
     WHERE p.valid_to IS NULL AND p.contracts_id = ?
@@ -102,7 +112,11 @@ foreach ($contracts as $c) {
     $paymentsByContract[$entityId] = [];
     $paymentsListByContract[$entityId] = [];
     foreach ($s->fetchAll() as $row) {
-        $key = $row['period_year'] . '-' . str_pad((string)$row['period_month'], 2, '0', STR_PAD_LEFT);
+        $periodKey = $row['period_year'] . '-' . str_pad((string)$row['period_month'], 2, '0', STR_PAD_LEFT);
+        $paymentEntityId = isset($row['payments_id']) ? (int)$row['payments_id'] : null;
+        $key = ($paymentEntityId !== null && isset($paymentEntityToRequestMonth[$paymentEntityId]))
+            ? $paymentEntityToRequestMonth[$paymentEntityId]
+            : $periodKey;
         if (!isset($paymentsByContract[$entityId][$key])) {
             $paymentsByContract[$entityId][$key] = ['amount' => 0, 'amount_rent' => 0, 'payment_date' => null, 'payment_count' => 0];
         }

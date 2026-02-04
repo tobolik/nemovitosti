@@ -231,6 +231,8 @@ async function loadDashboard(year) {
                             tipParts.push('Oranžový okraj: neuhrazený požadavek (např. vrácení kauce).');
                         }
                     }
+                    tipParts.push('');
+                    tipParts.push('Platby navázané na požadavek se zobrazují v měsíci splatnosti požadavku.');
                     titleAttr = ' title="' + UI.esc(tipParts.join('\n')) + '"';
                 }
 

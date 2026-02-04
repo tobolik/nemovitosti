@@ -26,7 +26,8 @@ Verze v patičce (`index.html`). Při změnách navýšit podle [Semantic Versio
 | [docs/TESTING.md](docs/TESTING.md) | Automatizované testy (API, E2E) |
 | [docs/DEMO-DATA.md](docs/DEMO-DATA.md) | Demo data pro beta (anonymizace) |
 | [docs/demo-data-instructions.md](docs/demo-data-instructions.md) | Návod: seed-demo.sql a plné demo z dumpu |
-| [docs/PROPMANAGER-RENAME.md](docs/PROPMANAGER-RENAME.md) | Návrh přejmenování projektu na PropManager |
+| [docs/PROPMANAGER-RENAME.md](docs/PROPMANAGER-RENAME.md) | (starší) Návrh přejmenování na PropManager |
+| [docs/DOMLY-RENAME.md](docs/DOMLY-RENAME.md) | Návrh přejmenování na Domly (domly.cz) – repo, branding, design |
 
 - **Testy:** `php tests/run-tests.php` (kontrola přítomnosti soft-update a CSRF; s config + DB běží i kontroly funkcí).
 - **Demo data:** po schema + migracích lze naplnit `seed-demo.sql`; přihlášení `admin@propmanager.demo` / `password`.
