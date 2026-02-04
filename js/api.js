@@ -107,6 +107,11 @@ const Api = (() => {
         return post('/api/crud.php?table=payment_requests', { action: 'unlink_payment_request', table: 'payment_requests', payment_request_id: paymentRequestId });
     }
 
+    /** Uzavřít požadavek bez platby (nastaví paid_at, payments_id = null, note = důvod). Poznámka je povinná. */
+    function paymentRequestCloseWithoutPayment(paymentRequestId, note) {
+        return post('/api/crud.php?table=payment_requests', { action: 'close_request_without_payment', table: 'payment_requests', payment_request_id: paymentRequestId, note: note });
+    }
+
     // ════════════════════════════════════════════════════════════════════
     // DASHBOARD
     // ════════════════════════════════════════════════════════════════════

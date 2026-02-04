@@ -49,8 +49,9 @@ $REQUIRED = [
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date'],
     'bank_accounts' => ['name','account_number'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
-    'payment_requests' => ['contracts_id','amount','type','note'],
+    'payment_requests' => ['contracts_id','amount','type'],
 ];
+// Poznámka u payment_requests je nepovinná při přidání/úpravě; při „uzavřít bez platby“ je důvod povinný
 
 // Lidsky čitelné názvy polí pro chybové hlášky
 $FIELD_LABELS = [
@@ -272,6 +273,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $prRow = findActiveByEntityId('payment_requests', $prEntityId);
         if (!$prRow) jsonErr('Požadavek nenalezen.');
         softUpdate('payment_requests', (int)$prRow['id'], ['payments_id' => null, 'paid_at' => null]);
+        jsonOk(['ok' => true]);
+    }
+    if ($action === 'close_request_without_payment') {
+        $prEntityId = isset($b['payment_request_id']) ? (int)$b['payment_request_id'] : 0;
+        $note = isset($b['note']) ? trim((string)$b['note']) : '';
+        if ($prEntityId <= 0) jsonErr('Zadejte požadavek.');
+        if ($note === '') jsonErr('Důvod uzavření (poznámka) je povinný.');
+        $prRow = findActiveByEntityId('payment_requests', $prEntityId);
+        if (!$prRow) jsonErr('Požadavek nenalezen.');
+        softUpdate('payment_requests', (int)$prRow['id'], [
+            'payments_id' => null,
+            'paid_at' => date('Y-m-d'),
+            'note' => $note,
+        ]);
         jsonOk(['ok' => true]);
     }
 

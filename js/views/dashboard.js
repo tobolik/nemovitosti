@@ -425,6 +425,8 @@ function initPaymentRequestModal() {
         document.getElementById('pay-req-edit-id').value = '';
         const btnDel = document.getElementById('btn-pay-req-delete');
         if (btnDel) btnDel.style.display = 'none';
+        const closeWithoutWrapInit = document.getElementById('pay-req-close-without-wrap');
+        if (closeWithoutWrapInit) closeWithoutWrapInit.style.display = 'none';
         const titleEl = document.getElementById('pay-req-modal-title');
         if (titleEl) titleEl.textContent = 'Přidat požadavek na platbu';
         const saveBtn = document.getElementById('btn-pay-req-save');
@@ -568,6 +570,38 @@ function initPaymentRequestModal() {
             }
         });
     }
+
+    const btnCloseWithout = document.getElementById('btn-pay-req-close-without');
+    if (btnCloseWithout && !btnCloseWithout.dataset.bound) {
+        btnCloseWithout.dataset.bound = '1';
+        btnCloseWithout.addEventListener('click', async () => {
+            const editIdEl = document.getElementById('pay-req-edit-id');
+            const reasonEl = document.getElementById('pay-req-close-reason');
+            const alertEl = document.getElementById('pay-req-alert');
+            const editId = (editIdEl && editIdEl.value) ? editIdEl.value.trim() : '';
+            const reason = (reasonEl && reasonEl.value) ? reasonEl.value.trim() : '';
+            if (!editId) return;
+            if (!reason) {
+                if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Důvod uzavření (poznámka) je povinný.'; }
+                return;
+            }
+            try {
+                btnCloseWithout.disabled = true;
+                if (alertEl) alertEl.className = 'alert'; alertEl.textContent = '';
+                await Api.paymentRequestCloseWithoutPayment(parseInt(editId, 10), reason);
+                UI.modalClose('modal-payment-request');
+                const yearBtn = document.querySelector('#dash-year .heatmap-year-btn.active');
+                const y = yearBtn ? parseInt(yearBtn.dataset.year, 10) : new Date().getFullYear();
+                loadDashboard(y);
+                const onSaved = window._paymentRequestEditOnSaved;
+                if (typeof onSaved === 'function') { onSaved(); window._paymentRequestEditOnSaved = null; }
+            } catch (err) {
+                if (alertEl) alertEl.className = 'alert alert-err show'; alertEl.textContent = err.message || 'Chyba uzavření.';
+            } finally {
+                btnCloseWithout.disabled = false;
+            }
+        });
+    }
 }
 
 /** Otevře modal „Přidat požadavek“ s předvyplněnou smlouvou (voláno ze sloupce P v přehledu smluv). */
@@ -589,6 +623,8 @@ async function openAddPaymentRequestModal(contractId) {
         editIdEl.value = '';
         const linkWrapAdd = document.getElementById('pay-req-link-wrap');
         if (linkWrapAdd) linkWrapAdd.style.display = 'none';
+        const closeWithoutWrapAdd = document.getElementById('pay-req-close-without-wrap');
+        if (closeWithoutWrapAdd) closeWithoutWrapAdd.style.display = 'none';
         const btnDeleteAdd2 = document.getElementById('btn-pay-req-delete');
         if (btnDeleteAdd2) btnDeleteAdd2.style.display = 'none';
         if (titleEl) titleEl.textContent = 'Přidat požadavek na platbu';
@@ -656,6 +692,12 @@ async function openPaymentRequestEdit(paymentRequestId, onSaved) {
                 }).join('');
             linkedPaymentSel.value = window._payReqLinkedPaymentId ? String(window._payReqLinkedPaymentId) : '';
         }
+
+        // „Uzavřít bez platby“ – jen u neuhrazeného požadavku (bez paid_at)
+        const closeWithoutWrap = document.getElementById('pay-req-close-without-wrap');
+        const closeReasonEl = document.getElementById('pay-req-close-reason');
+        if (closeWithoutWrap) closeWithoutWrap.style.display = (pr.paid_at ? 'none' : '');
+        if (closeReasonEl) closeReasonEl.value = '';
 
         window._paymentRequestEditOnSaved = onSaved || null;
         UI.modalOpen('modal-payment-request');
