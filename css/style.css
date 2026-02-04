@@ -540,6 +540,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .tbl td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.06); vertical-align: middle; }
 .tbl td.col-address { max-width: 240px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.35; }
 .tbl td.col-note.cell-note-wrap { max-width: 240px; vertical-align: top; }
+/* Poznámka: max 1 řádek, ořez s ellipsis; celý text při najetí myši v tooltipu (title) */
 .tbl td.col-note .cell-note-truncate {
   display: block;
   max-width: 100%;
@@ -547,11 +548,6 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.35;
-}
-.tbl td.cell-note-wrap:hover .cell-note-truncate {
-  white-space: normal;
-  text-overflow: clip;
-  overflow: visible;
 }
 .tbl th.th-sortable { cursor: pointer; user-select: none; padding-right: 22px; }
 .tbl th.th-sortable:hover { color: var(--txt); }
@@ -699,7 +695,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 }
 .heatmap-year-btn:hover { background: rgba(0,0,0,.3); color: var(--txt); }
 .heatmap-year-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.heatmap-wrap { overflow-x: auto; max-width: 100%; }
+.heatmap-wrap { overflow-x: hidden; max-width: 100%; }
 .heatmap-table { width: 100%; max-width: 100%; border-collapse: collapse; font-size: .96rem; table-layout: fixed; }
 .heatmap-table th { padding: 3px 4px; text-align: center; color: var(--txt2); font-weight: 600; border-bottom: 1px solid var(--glass-border); font-size: .78rem; line-height: 1.2; }
 .heatmap-table th:first-child { width: 20%; }
@@ -1298,17 +1294,18 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
     font-size: .68rem;
   }
   
-  /* Heatmap – pevná výška jen u měsíčních buněk (2.–13. sloupec), písmo na 90 % */
+  /* Heatmap – pevná výška měsíčních buněk, písmo měsíců na 90 %, bez Kč v buňce */
+  .heatmap-table th:nth-child(n+2):nth-child(-n+13) { font-size: 90%; }
   .heatmap-table tbody td:nth-child(n+2):nth-child(-n+13) { height: 44px; max-height: 44px; overflow: hidden; }
   .heatmap-cell {
     height: 36px;
     min-height: 36px;
     padding: 2px 1px;
-    font-size: .585rem;  /* 90 % z .65rem */
+    font-size: .585rem;
   }
   .heatmap-cell .heatmap-cell-amount,
   .heatmap-cell .cell-amount {
-    font-size: .54rem;    /* 90 % */
+    font-size: .54rem;
   }
   .heatmap-property {
     font-size: .7rem;
