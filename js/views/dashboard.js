@@ -219,7 +219,7 @@ async function loadDashboard(year) {
                     } else if (cell.type === 'overpaid' && paidAmt > prescribedTotal) {
                         tipParts.push('Přeplaceno o ' + UI.fmt(paidAmt - prescribedTotal) + ' Kč');
                     } else {
-                        tipParts.push('Uhrazeno v plné výši.');
+                        tipParts.push(cell.has_unfulfilled_requests ? 'Nájem uhrazen v plné výši.' : 'Uhrazeno v plné výši.');
                     }
                     if (cell.has_unfulfilled_requests) {
                         if (cell.unfulfilled_requests && cell.unfulfilled_requests.length > 0) {
@@ -857,9 +857,11 @@ async function openPaymentModal(el) {
         forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
     }
     let paymentRequests;
-    if (propertyId && forMonth.length > 0) {
-        const uniqueContractIds = [...new Set(forMonth.map(p => String(p.contracts_id ?? '')).filter(Boolean))];
-        const reqs = await Promise.all(uniqueContractIds.map(cid => Api.crudList('payment_requests', { contracts_id: cid })));
+    if (propertyId) {
+        const allContracts = await Api.crudList('contracts');
+        const contractsForProperty = allContracts.filter(c => String(c.properties_id ?? '') === String(propertyId));
+        const uniqueContractIds = [...new Set(contractsForProperty.map(c => String(c.contracts_id ?? c.id ?? '')).filter(Boolean))];
+        const reqs = uniqueContractIds.length ? await Promise.all(uniqueContractIds.map(cid => Api.crudList('payment_requests', { contracts_id: cid }))) : [];
         paymentRequests = reqs.flat();
     } else {
         paymentRequests = await Api.crudList('payment_requests', { contracts_id: contractsId });
