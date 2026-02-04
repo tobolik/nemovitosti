@@ -837,6 +837,55 @@ async function openPaymentModal(el) {
     }
     renderExisting();
 
+    const prefillMsgEl = document.getElementById('pay-modal-prefill-msg');
+    if (prefillMsgEl) prefillMsgEl.style.display = 'none';
+    prefillMsgEl && (prefillMsgEl.textContent = '');
+
+    // Chytré předvyplnění při přidání platby: neuhrazený požadavek nebo zbývající nájem
+    if (!paymentRequestId && !editIdEl.value && forMonth.length !== 1) {
+        const requestsInMonth = paymentRequests.filter(r => {
+            const d = r.due_date;
+            return d && String(d).slice(0, 7) === monthKey;
+        });
+        const requestSum = requestsInMonth.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+        const expectedTotal = hasBreakdown ? amountVal : (amountVal + requestSum);
+        const paidTotal = forMonth.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+        const remaining = Math.round((expectedTotal - paidTotal) * 100) / 100;
+        const unfulfilledReqs = paymentRequests.filter(r => {
+            const d = r.due_date;
+            return d && String(d).slice(0, 7) === monthKey && !r.paid_at;
+        });
+        if (unfulfilledReqs.length > 0) {
+            const r = unfulfilledReqs[0];
+            const reqAmt = parseFloat(r.amount) || 0;
+            amount.value = (r.type === 'deposit_return' && reqAmt > 0) ? -reqAmt : reqAmt;
+            const payType = (r.type === 'deposit_return') ? 'deposit_return' : (['rent','deposit','energy','other'].includes(r.type) ? r.type : (r.type === 'settlement' ? 'energy' : 'energy'));
+            typeSelect.value = payType;
+            setTypeWrapClass(payType);
+            document.getElementById('pay-modal-payment-request-id').value = String(r.payment_requests_id ?? r.id);
+            const label = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(reqAmt) + ' Kč';
+            if (prefillMsgEl) {
+                prefillMsgEl.textContent = 'Bylo předvyplněno neuhrazeným požadavkem (' + label + '). Můžete změnit.';
+                prefillMsgEl.style.display = 'block';
+            }
+        } else if (remaining > 0) {
+            amount.value = remaining;
+            typeSelect.value = 'rent';
+            setTypeWrapClass('rent');
+            document.getElementById('pay-modal-payment-request-id').value = '';
+            if (prefillMsgEl) {
+                prefillMsgEl.textContent = 'Bylo předvyplněno zbývajícím nájmem (' + UI.fmt(remaining) + ' Kč). Můžete změnit.';
+                prefillMsgEl.style.display = 'block';
+            }
+        } else if (remaining <= 0 && paidTotal >= expectedTotal && prefillMsgEl) {
+            prefillMsgEl.textContent = 'Měsíc je plně uhrazen. Přidejte platbu navíc (přeplatek, doplatek…).';
+            prefillMsgEl.style.display = 'block';
+        }
+    } else if (paymentRequestId && prefillMsgEl) {
+        prefillMsgEl.textContent = 'Bylo předvyplněno požadavkem. Můžete změnit.';
+        prefillMsgEl.style.display = 'block';
+    }
+
     // Předvyplnění z jediné platby za měsíc – NEPOUŽÍT při přidání platby z požadavku (Energie +),
     // jinak by se formulář převzal z nájmu v dávce a uložení by změnilo celou dávku na energii.
     if (!paymentRequestId && forMonth.length === 1) {
@@ -949,6 +998,8 @@ async function openPaymentModal(el) {
             delete editIdEl.dataset.originalAmount;
             delete editIdEl.dataset.linkedRequestId;
             if (requestLinkWrap) requestLinkWrap.style.display = 'none';
+            const prefillMsg = document.getElementById('pay-modal-prefill-msg');
+            if (prefillMsg) { prefillMsg.style.display = 'none'; prefillMsg.textContent = ''; }
             document.getElementById('pay-modal-payment-request-id').value = '';
             amount.value = hasBreakdown ? totalForMonth : remaining;
             typeSelect.value = 'rent';
