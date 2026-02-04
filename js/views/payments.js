@@ -318,13 +318,6 @@ const PaymentsView = (() => {
                 return '<option value="' + cid(c) + '" title="' + label + '"' + (filterContractId === cid(c) ? ' selected' : '') + '>' + label + '</option>';
             }).join('');
         document.getElementById('pay-filter-contract').innerHTML = fOpts;
-        // Našeptávač u výběru smlouvy (jen při prvním naplnění)
-        if (typeof UI.createSearchableSelect === 'function' && !document.querySelector('.searchable-select-wrap[data-for="pay-filter-contract"]')) {
-            UI.createSearchableSelect('pay-filter-contract');
-        }
-        if (typeof UI.updateSearchableSelectDisplay === 'function') {
-            UI.updateSearchableSelectDisplay('pay-filter-contract');
-        }
         // Roky do filtru (posledních 15 + aktuální)
         const yearSel = document.getElementById('pay-filter-year');
         if (yearSel) {
@@ -335,6 +328,17 @@ const PaymentsView = (() => {
                 for (let y = now; y >= now - 15; y--) opts += '<option value="' + y + '">' + y + '</option>';
                 yearSel.innerHTML = opts;
             }
+        }
+        // Našeptávač u všech filtrů (smlouva, rok, měsíc, typ) – zobrazí možnosti při focusu a vyhledávání
+        if (typeof UI.createSearchableSelect === 'function') {
+            ['pay-filter-contract', 'pay-filter-year', 'pay-filter-month', 'pay-filter-type'].forEach(id => {
+                if (!document.querySelector('.searchable-select-wrap[data-for="' + id + '"]')) {
+                    UI.createSearchableSelect(id);
+                }
+            });
+        }
+        if (typeof UI.updateSearchableSelectDisplay === 'function') {
+            ['pay-filter-contract', 'pay-filter-year', 'pay-filter-month', 'pay-filter-type'].forEach(UI.updateSearchableSelectDisplay);
         }
         updateYearSelects();
     }

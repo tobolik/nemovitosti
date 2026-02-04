@@ -282,7 +282,7 @@ async function loadDashboard(year) {
             { label: 'Nemovitost' },
             { label: 'Nájemné / měs.' },
             { label: 'Uhrazeno / Očekáváno (od zač. smlouvy)', title: 'Očekáváno = nájem + požadavky (energie, kauce, vyúčt.); vrácení kauce = odchod. Uhrazeno = všechny platby.' },
-            { label: 'Neuhrazené měsíce' },
+            { label: 'Neuhrazené měsíce / JINÉ POŽADAVKY' },
             { label: 'Pož.', title: 'Přidat požadavek (energie, vyúčtování, kauce…) k této smlouvě' },
         ],
         contracts,

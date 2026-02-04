@@ -341,7 +341,13 @@ const UI = (() => {
 
         function setDisplayFromSelect() {
             const opt = select.options[select.selectedIndex];
-            input.value = opt ? opt.textContent.trim() : '';
+            if (opt && opt.value === '') {
+                input.value = '';
+                input.placeholder = opt.textContent.trim();
+            } else {
+                input.value = opt ? opt.textContent.trim() : '';
+                input.placeholder = 'Vyhledat…';
+            }
         }
 
         function closeDropdown() {
@@ -373,6 +379,9 @@ const UI = (() => {
             setTimeout(closeDropdown, 180);
         });
         input.addEventListener('keydown', (e) => {
+            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && input.value === input.placeholder) {
+                input.value = '';
+            }
             if (!dropdown.classList.contains('show')) {
                 if (e.key === 'ArrowDown' || e.key === 'Enter') {
                     e.preventDefault();
