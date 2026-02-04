@@ -858,9 +858,8 @@ async function openPaymentModal(el) {
     }
     let paymentRequests;
     if (propertyId) {
-        const allContracts = await Api.crudList('contracts');
-        const contractsForProperty = allContracts.filter(c => String(c.properties_id ?? '') === String(propertyId));
-        const uniqueContractIds = [...new Set(contractsForProperty.map(c => String(c.contracts_id ?? c.id ?? '')).filter(Boolean))];
+        const contractsForProperty = await Api.crudList('contracts', { properties_id: propertyId });
+        const uniqueContractIds = [...new Set((contractsForProperty || []).map(c => String(c.contracts_id ?? c.id ?? '')).filter(Boolean))];
         const reqs = uniqueContractIds.length ? await Promise.all(uniqueContractIds.map(cid => Api.crudList('payment_requests', { contracts_id: cid }))) : [];
         paymentRequests = reqs.flat();
     } else {

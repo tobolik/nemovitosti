@@ -98,14 +98,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Joined queries pro přehledněji zobrazené lists
     // properties_id, tenants_id = odkazy na entity_id (vždy jen entity_id, nikdy fyzické id)
     if ($table === 'contracts') {
-        jsonOk(db()->query("
+        $pid = isset($_GET['properties_id']) ? (int)$_GET['properties_id'] : 0;
+        $sql = "
             SELECT c.*, p.name AS property_name, t.name AS tenant_name
             FROM contracts c
             JOIN properties p ON p.properties_id = c.properties_id AND p.valid_to IS NULL
             JOIN tenants   t ON t.tenants_id = c.tenants_id   AND t.valid_to IS NULL
-            WHERE c.valid_to IS NULL
-            ORDER BY c.contract_start DESC
-        ")->fetchAll());
+            WHERE c.valid_to IS NULL";
+        if ($pid > 0) {
+            $sql .= " AND (c.properties_id = ? OR p.properties_id = ? OR p.id = ?)";
+            $s = db()->prepare($sql . " ORDER BY c.contract_start DESC");
+            $s->execute([$pid, $pid, $pid]);
+            jsonOk($s->fetchAll());
+        } else {
+            $sql .= " ORDER BY c.contract_start DESC";
+            jsonOk(db()->query($sql)->fetchAll());
+        }
     }
 
     if ($table === 'contract_rent_changes') {
