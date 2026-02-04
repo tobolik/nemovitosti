@@ -202,18 +202,16 @@ foreach ($contracts as $c) {
         $unfulfilledListByContractMonth[$eid] = $unfulfilledListByContractMonth[$rid];
     }
 }
-// Pro oranžový okraj a tooltip: neuhrazené požadavky u JAKÉKOLIV smlouvy dané nemovitosti v daném měsíci
+// Pro oranžový okraj a tooltip: neuhrazené požadavky u JAKÉKOLIV smlouvy dané nemovitosti v daném měsíci (každou smlouvu jen jednou)
 $hasUnfulfilledByPropertyMonth = [];
 $unfulfilledRequestsByPropertyMonth = [];
-foreach ($hasUnfulfilledByContractMonth as $cid => $months) {
-    $pid = $contractToProperty[$cid] ?? null;
-    if ($pid === null) continue;
-    if (!isset($hasUnfulfilledByPropertyMonth[$pid])) {
-        $hasUnfulfilledByPropertyMonth[$pid] = [];
-    }
+foreach ($contracts as $c) {
+    $eid = (int)($c['contracts_id'] ?? $c['id']);
+    $pid = (int)$c['properties_id'];
+    $months = $hasUnfulfilledByContractMonth[$eid] ?? [];
     foreach ($months as $monthKey => $_) {
         $hasUnfulfilledByPropertyMonth[$pid][$monthKey] = true;
-        $list = $unfulfilledListByContractMonth[$cid][$monthKey] ?? [];
+        $list = $unfulfilledListByContractMonth[$eid][$monthKey] ?? [];
         if (!empty($list)) {
             if (!isset($unfulfilledRequestsByPropertyMonth[$pid])) $unfulfilledRequestsByPropertyMonth[$pid] = [];
             if (!isset($unfulfilledRequestsByPropertyMonth[$pid][$monthKey])) $unfulfilledRequestsByPropertyMonth[$pid][$monthKey] = [];
