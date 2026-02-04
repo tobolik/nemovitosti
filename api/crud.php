@@ -142,6 +142,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     if ($table === 'payments') {
         $cid = isset($_GET['contracts_id']) ? (int)$_GET['contracts_id'] : 0;
+        $pid = isset($_GET['properties_id']) ? (int)$_GET['properties_id'] : 0;
+        $periodYear = isset($_GET['period_year']) ? (int)$_GET['period_year'] : 0;
+        $periodMonth = isset($_GET['period_month']) ? (int)$_GET['period_month'] : 0;
         // properties_id, tenants_id = odkazy na entity_id; bank_accounts_id → account_number; propojení s požadavkem
         $sql = "
             SELECT pay.*, c.monthly_rent, p.name AS property_name, t.name AS tenant_name,
@@ -159,6 +162,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($cid > 0) {
             $sql .= " AND pay.contracts_id=?";
             $params[] = $cid;
+        }
+        if ($pid > 0) {
+            $sql .= " AND (c.properties_id = ? OR p.properties_id = ?)";
+            $params[] = $pid;
+            $params[] = $pid;
+            if ($periodYear > 0) {
+                $sql .= " AND pay.period_year=?";
+                $params[] = $periodYear;
+            }
+            if ($periodMonth > 0) {
+                $sql .= " AND pay.period_month=?";
+                $params[] = $periodMonth;
+            }
         }
         $sql .= " ORDER BY pay.period_year DESC, pay.period_month DESC";
         $s = db()->prepare($sql); $s->execute($params);

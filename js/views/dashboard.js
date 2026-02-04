@@ -333,7 +333,7 @@ async function loadDashboard(year) {
                 const prop = (d.property_name || '').replace(/"/g, '&quot;');
                 const rent = u.rent != null ? u.rent : d.monthly_rent;
                 tags += '<span class="tag">' + u.month + '/' + u.year +
-                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-year="' + u.year + '" data-month="' + u.month + '" data-rent="' + rent + '" data-tenant="' + tenant + '" data-property="' + prop + '" title="Přidat platbu">+</span></span>';
+                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-property-id="' + (d.properties_id ?? '') + '" data-year="' + u.year + '" data-month="' + u.month + '" data-rent="' + rent + '" data-tenant="' + tenant + '" data-property="' + prop + '" title="Přidat platbu">+</span></span>';
             });
             (d.payment_requests || []).forEach(pr => {
                 const tenant = (d.tenant_name || '').replace(/"/g, '&quot;');
@@ -344,7 +344,7 @@ async function loadDashboard(year) {
                 const prId = pr.payment_requests_id ?? pr.id;
                 tags += '<span class="tag tag-request">' + typeLabel + ' ' + UI.fmt(pr.amount) + ' Kč' +
                     ' <span class="tag-edit-req" data-payment-request-id="' + prId + '" title="Upravit požadavek">✎</span>' +
-                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-amount="' + (pr.amount || 0) + '" data-request-type="' + (pr.type || 'energy') + '" data-payment-request-id="' + prId + '" data-tenant="' + tenant + '" data-property="' + prop + '"' + dueAttr + ' title="Zapsat platbu">+</span></span>';
+                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-property-id="' + (d.properties_id ?? '') + '" data-amount="' + (pr.amount || 0) + '" data-request-type="' + (pr.type || 'energy') + '" data-payment-request-id="' + prId + '" data-tenant="' + tenant + '" data-property="' + prop + '"' + dueAttr + ' title="Zapsat platbu">+</span></span>';
             });
             const tagsHtml = tags ? '<span class="tags dash-unpaid-tags">' + tags + '</span>' : '<span style="color:var(--txt3)">—</span>';
 
@@ -833,8 +833,20 @@ async function openPaymentModal(el) {
     methodWrap.style.display = isPaid ? 'flex' : 'none';
     accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
 
-    let payments = await Api.crudList('payments', { contracts_id: contractsId });
-    let forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
+    const propertyId = el.dataset.propertyId ? String(el.dataset.propertyId).trim() : '';
+    let payments;
+    let forMonth;
+    if (propertyId) {
+        payments = await Api.crudList('payments', {
+            properties_id: propertyId,
+            period_year: year,
+            period_month: parseInt(month, 10)
+        });
+        forMonth = payments || [];
+    } else {
+        payments = await Api.crudList('payments', { contracts_id: contractsId });
+        forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
+    }
     const paymentRequests = await Api.crudList('payment_requests', { contracts_id: contractsId });
 
     const requestLinkWrap = document.getElementById('pay-modal-request-link-wrap');
@@ -1250,6 +1262,7 @@ function initQuickPayDelegation() {
         if (!plus) return;
         e.preventDefault();
         const contractsId = parseInt(plus.dataset.contractsId, 10);
+        const propertyId = plus.dataset.propertyId ? parseInt(plus.dataset.propertyId, 10) : null;
         if (plus.dataset.paymentRequestId) {
             const amount = parseFloat(plus.dataset.amount) || 0;
             const requestType = plus.dataset.requestType || 'energy';
@@ -1257,14 +1270,14 @@ function initQuickPayDelegation() {
             const tenant = plus.dataset.tenant || '';
             const property = plus.dataset.property || '';
             const dueDate = plus.dataset.dueDate || '';
-            DashboardView.quickPayFromRequest(contractsId, amount, requestType, requestId, tenant, property, dueDate);
+            DashboardView.quickPayFromRequest(contractsId, propertyId, amount, requestType, requestId, tenant, property, dueDate);
         } else {
             const year = parseInt(plus.dataset.year, 10);
             const month = parseInt(plus.dataset.month, 10);
             const rent = parseFloat(plus.dataset.rent) || 0;
             const tenant = plus.dataset.tenant || '';
             const property = plus.dataset.property || '';
-            DashboardView.quickPay(contractsId, year, month, rent, tenant, property);
+            DashboardView.quickPay(contractsId, propertyId, year, month, rent, tenant, property);
         }
     });
 }
@@ -1280,11 +1293,12 @@ const DashboardView = {
     openEdit,
     openPaymentModal,
     openNewContract,
-    async quickPay(contractsId, year, month, rent, tenantName, propertyName) {
+    async quickPay(contractsId, propertyId, year, month, rent, tenantName, propertyName) {
         const monthKey = year + '-' + String(month).padStart(2, '0');
         const fakeEl = document.createElement('div');
         fakeEl.dataset.contractId = String(contractsId);
         fakeEl.dataset.contractsId = String(contractsId);
+        if (propertyId) fakeEl.dataset.propertyId = String(propertyId);
         fakeEl.dataset.monthKey = monthKey;
         fakeEl.dataset.amount = String(rent);
         fakeEl.dataset.tenant = tenantName || '';
@@ -1296,7 +1310,7 @@ const DashboardView = {
         fakeEl.dataset.forceAddNew = '1'; // vždy otevřít režim „Přidat platbu“, ne úpravu jediné
         await openPaymentModal(fakeEl);
     },
-    async quickPayFromRequest(contractsId, amount, requestType, requestId, tenantName, propertyName, dueDateStr) {
+    async quickPayFromRequest(contractsId, propertyId, amount, requestType, requestId, tenantName, propertyName, dueDateStr) {
         const now = new Date();
         let year, month, paymentDate;
         if (dueDateStr && /^\d{4}-\d{2}-\d{2}$/.test(dueDateStr)) {
@@ -1313,6 +1327,7 @@ const DashboardView = {
         const fakeEl = document.createElement('div');
         fakeEl.dataset.contractId = String(contractsId);
         fakeEl.dataset.contractsId = String(contractsId);
+        if (propertyId) fakeEl.dataset.propertyId = String(propertyId);
         fakeEl.dataset.monthKey = monthKey;
         fakeEl.dataset.amount = String(amount);
         fakeEl.dataset.tenant = tenantName || '';
