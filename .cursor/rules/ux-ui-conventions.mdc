@@ -1,12 +1,12 @@
 ---
-description: Obecné UX/UI konvence – poznámka, scrollbary, heatmapa, formuláře
+description: Obecné UX/UI konvence – poznámka, scrollbary, formuláře
 globs: css/style.css, js/**/*.js, index.html
 alwaysApply: true
 ---
 
 # Obecné UX/UI konvence – DODRŽOVAT
 
-Při úpravách UI (tabulky, formuláře, heatmapa, styly) vždy dodržuj následující.
+Při úpravách UI (tabulky, formuláře, styly) vždy dodržuj následující.
 
 ## 1. Sloupec / pole Poznámka
 
@@ -18,23 +18,18 @@ Při úpravách UI (tabulky, formuláře, heatmapa, styly) vždy dodržuj násle
 
 - **Nikde** nechceme spodní (vodorovné) postranní rolovátko.
 - **Zajistit:** `overflow-x: hidden` u kontejnerů, které by mohly přetékat (`.heatmap-wrap`, `.tbl-wrap`; `body` už má `overflow-x: hidden`).
-- **Nepřidávat** `overflow-x: auto` pro tabulky/heatmapu – raději zmenšit obsah (ořez poznámky, menší písmo na mobilu) tak, aby vše zůstalo v šířce.
+- **Nepřidávat** `overflow-x: auto` pro tabulky – raději zmenšit obsah (ořez poznámky atd.) tak, aby vše zůstalo v šířce.
 
-## 3. Heatmapa (platební kalendář)
-
-- **V buňkách měsíců:** Zobrazovat **jen číslo** (částka), **bez textu „Kč“**. „Kč“ může být v tooltipu (title).
-- **Na mobilu** (např. `max-width: 480px`): Písmena v hlavičce měsíců (leden, únor, …) zmenšit na **90 %** (`font-size: 90%` pro `.heatmap-table th:nth-child(n+2):nth-child(-n+13)`).
-
-## 4. Verzování a cache busting
+## 3. Verzování a cache busting
 
 - Při každé změně kódu zvýšit verzi v `index.html`: formát `vMAJOR.MINOR.PATCH`, stejná hodnota (bez „v“) u všech `?v=...` u CSS a JS.
 - Viz `.cursor/rules/version-increment.mdc`.
 
-## 5. Barvy štítků (tags)
+## 4. Barvy štítků (tags)
 
 - **Zelená a červená** jsou vyhrazené pro **stav** (úspěch / problém). Pro informační štítky (typ platby, úhrada požadavku, kauce atd.) používat jiné barvy (modrá, tyrkysová, šedá), aby nedocházelo ke kolizi se systémovými stavy.
 
-## 6. Vyhledávací select (searchable select)
+## 5. Vyhledávací select (searchable select)
 
 - Nativní `<select>` uvnitř komponenty má `tabindex="-1"`, aby nebyl v pořadí tabulátoru (tab jde rovnou na viditelný input).
 - Při focusu na input: pokud má pole hodnotu, označit celý text (`input.select()`), aby šel snadno přepsat.

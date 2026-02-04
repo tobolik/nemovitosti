@@ -34,24 +34,11 @@ Odraz v kódu: Cursor pravidlo `.cursor/rules/ux-ui-conventions.mdc` (alwaysAppl
 - **`.tbl-wrap`** (obal tabulek): `overflow-x: hidden` (ne `auto`).
 - **`.heatmap-wrap`** (obal heatmapy): `overflow-x: hidden` (ne `auto`).
 - **Poznámka:** Když poznámka při hoveru nerozbaluje (viz výše), tabulka nezvětší šířku a nevyvolá scroll.
-- Při přidávání nových kontejnerů s širokým obsahem (tabulky, kalendáře) vždy zvolit buď `overflow-x: hidden`, nebo úpravu obsahu (zmenšení písma, ořez), nikoli `overflow-x: auto`.
+- Při přidávání nových kontejnerů s širokým obsahem (tabulky, kalendáře) vždy zvolit buď `overflow-x: hidden`, nebo úpravu obsahu (ořez, zmenšení písma), nikoli `overflow-x: auto`.
 
 ---
 
-## 3. Heatmapa (platební kalendář)
-
-### Buňky měsíců
-
-- V buňce se zobrazuje **pouze číslo** (částka). **Text „Kč“ v buňce není** – šetří místo a na mobilu je to čitelnější. Jednotka „Kč“ může být v tooltipu (title).
-
-### Mobil (malé obrazovky, např. max-width: 480px)
-
-- **Hlavička měsíců** (leden, únor, …): písmo zmenšit na **90 %** oproti výchozí velikosti, aby názvy měsíců nezabíraly zbytečně moc místa.
-- V CSS např.: `.heatmap-table th:nth-child(n+2):nth-child(-n+13) { font-size: 90%; }` v příslušném media query.
-
----
-
-## 4. Verzování a cache busting
+## 3. Verzování a cache busting
 
 - Při každé změně kódu aplikace se zvýší verze v `index.html`.
 - Formát: **vMAJOR.MINOR.PATCH** (např. v1.3.3).
@@ -60,14 +47,14 @@ Odraz v kódu: Cursor pravidlo `.cursor/rules/ux-ui-conventions.mdc` (alwaysAppl
 
 ---
 
-## 5. Barvy štítků (tags)
+## 4. Barvy štítků (tags)
 
 - **Zelená** a **červená** jsou vyhrazené pro **systémový stav** (úspěch / problém, zaplaceno / nezaplaceno atd.).
 - Pro **informační štítky** (typ platby, „Úhrada pož.“, kauce, energie atd.) používat **jiné barvy** (modrá, tyrkysová, šedá), aby nedocházelo ke kolizi se stavem a uživatel neinterpretoval informační štítek jako chybu nebo varování.
 
 ---
 
-## 6. Vyhledávací select (searchable select)
+## 5. Vyhledávací select (searchable select)
 
 - **Tabulátor:** Nativní `<select>` uvnitř komponenty má `tabindex="-1"`, aby při tabulátoru fokus šel na viditelný input, ne na skrytý select.
 - **Focus na input:** Když pole už má hodnotu, při focusu se **označí celý text** (`input.select()`), aby ho uživatel mohl snadno přepsat jedním tahem.
