@@ -764,6 +764,7 @@ async function openPaymentModal(el) {
         infoHtml += '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen' : 'plně uhrazen') + '.</strong> Zrušte zaškrtnutí pro smazání všech plateb.</div>';
     }
     info.innerHTML = infoHtml;
+    const initialInfoHtml = infoHtml;
 
     const typeLabels = { rent: 'Nájem', deposit: 'Kauce', deposit_return: 'Vrácení kauce', energy: 'Doplatek energie', other: 'Jiné' };
     function setTypeWrapClass(t) {
@@ -848,10 +849,21 @@ async function openPaymentModal(el) {
         payments = await Api.crudList('payments', { contracts_id: contractsId });
         forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
     }
-    const paymentRequests = await Api.crudList('payment_requests', { contracts_id: contractsId });
+    let paymentRequests;
+    if (propertyId && forMonth.length > 0) {
+        const uniqueContractIds = [...new Set(forMonth.map(p => String(p.contracts_id ?? '')).filter(Boolean))];
+        const reqs = await Promise.all(uniqueContractIds.map(cid => Api.crudList('payment_requests', { contracts_id: cid })));
+        paymentRequests = reqs.flat();
+    } else {
+        paymentRequests = await Api.crudList('payment_requests', { contracts_id: contractsId });
+    }
 
     const requestLinkWrap = document.getElementById('pay-modal-request-link-wrap');
     const linkedRequestSel = document.getElementById('pay-modal-linked-request');
+
+    const contractIdsInMonth = [...new Set(forMonth.map(p => String(p.contracts_id ?? '')).filter(Boolean))];
+    const contractIdToIndex = {};
+    contractIdsInMonth.forEach((cid, i) => { contractIdToIndex[cid] = i; });
 
     function renderExisting() {
         if (!forMonth.length) {
@@ -871,9 +883,13 @@ async function openPaymentModal(el) {
             const payEntityId = p.payments_id ?? p.id;
             const noteAttr = (p.note != null && p.note !== '') ? (' data-note="' + String(p.note).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"') : '';
             const linkedReqId = (p.linked_payment_request_id != null && p.linked_payment_request_id !== '') ? p.linked_payment_request_id : '';
-            html += '<li class="pay-modal-existing-item">' +
-                '<span>' + typeBadge + ' ' + amt + ' Kč (' + dt + ')' + batchTag + '</span> ' +
-                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '" data-linked-request-id="' + linkedReqId + '"' + noteAttr + '>Upravit</button> ' +
+            const cid = String(p.contracts_id ?? '');
+            const contractIndex = contractIdToIndex[cid] ?? 0;
+            const tenantLabel = (p.tenant_name != null && p.tenant_name !== '') ? (' <span class="pay-modal-tenant-label" title="Smlouva – nájemce">' + UI.esc(p.tenant_name) + '</span>') : '';
+            const tenantAttr = (p.tenant_name != null && p.tenant_name !== '') ? (' data-tenant-name="' + String(p.tenant_name).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"') : '';
+            html += '<li class="pay-modal-existing-item pay-modal-by-contract-' + contractIndex + '">' +
+                '<span>' + typeBadge + ' ' + amt + ' Kč (' + dt + ')' + batchTag + tenantLabel + '</span> ' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-contracts-id="' + cid + '"' + tenantAttr + ' data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '" data-linked-request-id="' + linkedReqId + '"' + noteAttr + '>Upravit</button> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + payEntityId + '" data-batch-id="' + (p.payment_batch_id || '') + '">Smazat</button>' +
                 '</li>';
         });
@@ -1003,6 +1019,13 @@ async function openPaymentModal(el) {
         if (editBtn) {
             const pt = editBtn.dataset.type || 'rent';
             const payId = String(editBtn.dataset.id || '');
+            const paymentTenantName = (editBtn.dataset.tenantName != null && editBtn.dataset.tenantName !== '') ? editBtn.dataset.tenantName : tenantName;
+            if (info && typeof initialInfoHtml !== 'undefined') {
+                const editInfoHtml = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
+                    '<div><strong>Nájemce (smlouva této platby):</strong> ' + UI.esc(paymentTenantName) + '</div>' +
+                    '<div><strong>Období:</strong> ' + monthName + ' ' + year + '</div>';
+                info.innerHTML = editInfoHtml;
+            }
             editIdEl.value = payId;
             editIdEl.dataset.batchId = String(editBtn.dataset.batchId || '');
             editIdEl.dataset.originalAmount = String(editBtn.dataset.amount || '');
@@ -1022,9 +1045,11 @@ async function openPaymentModal(el) {
             bulkWrap.style.display = 'none';
             if (requestLinkWrap && linkedRequestSel) {
                 requestLinkWrap.style.display = '';
+                const payContractId = String(editBtn.dataset.contractsId ?? '');
+                const requestsForThisContract = payContractId ? paymentRequests.filter(r => String(r.contracts_id ?? '') === payContractId) : paymentRequests;
                 const prId = r => r.payment_requests_id ?? r.id;
                 const options = ['<option value="">— Žádný —</option>'];
-                paymentRequests.forEach(r => {
+                requestsForThisContract.forEach(r => {
                     const rid = prId(r);
                     const isUnoccupied = !r.paid_at;
                     const isThisPayment = (r.payments_id != null && String(r.payments_id) === payId);
@@ -1051,12 +1076,18 @@ async function openPaymentModal(el) {
                     await Api.crudDelete('payments', parseInt(delBtn.dataset.id, 10));
                 } catch (err) { alert(err.message); return; }
             }
-            payments = await Api.crudList('payments', { contracts_id: contractsId });
-            forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
+            if (propertyId) {
+                payments = await Api.crudList('payments', { properties_id: propertyId, period_year: year, period_month: parseInt(month, 10) });
+                forMonth = payments || [];
+            } else {
+                payments = await Api.crudList('payments', { contracts_id: contractsId });
+                forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
+            }
             renderExisting();
             await loadDashboard(parseInt(year, 10));
         } else if (addLink) {
             e.preventDefault();
+            if (info && typeof initialInfoHtml !== 'undefined') info.innerHTML = initialInfoHtml;
             editIdEl.value = '';
             delete editIdEl.dataset.batchId;
             delete editIdEl.dataset.originalAmount;
