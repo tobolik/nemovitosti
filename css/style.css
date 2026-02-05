@@ -383,8 +383,8 @@ footer .footer-version { opacity: .8; }
 /* Grafy ve statistikách nemovitosti */
 .prop-stats-table-charts-row { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 24px; align-items: flex-start; }
 .prop-stats-table-charts-row .prop-stats-table-col { flex: 0 1 auto; min-width: 280px; }
-.prop-stats-table-charts-row .prop-stats-charts-side { flex: 1; display: flex; flex-direction: column; gap: 20px; min-width: 220px; }
-.prop-stats-table-charts-row .prop-stats-charts-side .prop-stats-chart-section { margin-top: 0; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.prop-stats-table-charts-row .prop-stats-charts-side { flex: 1; display: flex; flex-direction: column; gap: 20px; min-width: 220px; background: rgba(255,255,255,.04); border: 1px solid var(--glass-border); border-radius: 10px; padding: 16px; }
+.prop-stats-table-charts-row .prop-stats-charts-side .prop-stats-chart-section { margin-top: 0; flex: 1; min-height: 0; display: flex; flex-direction: column; background: rgba(255,255,255,.03); border-radius: 8px; padding: 12px; }
 .prop-stats-table-charts-row .prop-stats-charts-side .prop-stats-chart { flex: 1; min-height: 172px; }
 .prop-stats-charts-row { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 24px; }
 .prop-stats-charts-row .prop-stats-chart-section { flex: 1; min-width: 200px; max-width: calc(50% - 10px); margin-top: 0; }
