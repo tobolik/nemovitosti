@@ -61,6 +61,22 @@ Odraz v kódu: Cursor pravidlo `.cursor/rules/ux-ui-conventions.mdc` (alwaysAppl
 
 ---
 
+## 6. Tabulky – řazení a pruhování
+
+### Řazení
+
+- U tabulek s řazením musí být **graficky jasné**, podle kterého sloupce a v jakém směru je řazeno.
+- **Klik** na záhlaví sloupce: řazení podle tohoto sloupce. První klik = vzestupně (↑), druhý klik = sestupně (↓). Klik na jiný sloupec přepne řazení na ten sloupec.
+- **Ctrl+Klik** (nebo Cmd+Klik): ponechat stávající sloupce v řazení a **přidat** tento sloupec jako další úroveň. Ctrl+Klik na již zařazený sloupec přepne u něj směr (asc/desc).
+- V záhlaví řazeného sloupce zobrazit **šipku** (↑ vzestupně / ↓ sestupně). Při více úrovních řazení zobrazit u každého řazeného sloupce **číslo priority** (1, 2, 3…) vedle šipky.
+- **Implementace:** `UI.renderTable(…, { sortable: { order: [ { key, dir }, … ] }, striped: true })`. Zpětná kompatibilita: `sortable: { currentKey, currentDir }` se převede na jednu úroveň.
+
+### Pruhování řádků
+
+- Tabulky s řazením nebo dlouhým seznamem mají mít **`striped: true`** (třída `tbl-striped`), aby se řádky vizuálně střídaly (každý sudý řádek mírně odlišené pozadí) a zlepšila se čitelnost.
+
+---
+
 ## Související dokumenty
 
 - `ux-ui.md` – celková designová specifikace (barvy, layout, komponenty).

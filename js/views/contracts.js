@@ -385,8 +385,8 @@ const ContractsView = (() => {
             ).join('');
     }
 
-    // ── řazení tabulky smluv ──────────────────────────────────────────────
-    let _sortState = { key: 'property_name', dir: 'asc' };
+    // ── řazení tabulky smluv (jedna úroveň = jeden sloupec; Ctrl+Klik = přidat další) ──────────────────────────────────────────────
+    let _sortState = { order: [{ key: 'property_name', dir: 'asc' }] };
 
     function getContractSortValue(c, key) {
         switch (key) {
@@ -403,19 +403,24 @@ const ContractsView = (() => {
         }
     }
 
+    function compareValues(va, vb) {
+        if (Array.isArray(va) && Array.isArray(vb)) {
+            return (va[0] || '').localeCompare(vb[0] || '') || (va[1] || '').localeCompare(vb[1] || '');
+        }
+        return va < vb ? -1 : (va > vb ? 1 : 0);
+    }
+
     function sortContracts(data, state) {
-        const key = state.key;
-        const dir = state.dir === 'asc' ? 1 : -1;
+        const order = state.order && state.order.length ? state.order : [{ key: 'property_name', dir: 'asc' }];
         return [...data].sort((a, b) => {
-            const va = getContractSortValue(a, key);
-            const vb = getContractSortValue(b, key);
-            let cmp = 0;
-            if (Array.isArray(va) && Array.isArray(vb)) {
-                cmp = (va[0] || '').localeCompare(vb[0] || '') || (va[1] || '').localeCompare(vb[1] || '');
-            } else {
-                cmp = va < vb ? -1 : (va > vb ? 1 : 0);
+            for (let i = 0; i < order.length; i++) {
+                const { key, dir } = order[i];
+                const va = getContractSortValue(a, key);
+                const vb = getContractSortValue(b, key);
+                const cmp = compareValues(va, vb);
+                if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
             }
-            return cmp * dir;
+            return 0;
         });
     }
 
@@ -474,7 +479,7 @@ const ContractsView = (() => {
                     '</td>'
                 );
             },
-            { emptyMsg: 'Žádné smlouvy.', sortable: { currentKey: _sortState.key, currentDir: _sortState.dir }, striped: true }
+            { emptyMsg: 'Žádné smlouvy.', sortable: { order: _sortState.order }, striped: true }
         );
     }
 
@@ -492,7 +497,11 @@ const ContractsView = (() => {
 
     function edit(id) {
         const row = _cache.find(r => (r.contracts_id ?? r.id) == id);
-        if (row) form.startEdit(row);
+        if (row) {
+            const entityId = row.contracts_id ?? row.id;
+            history.replaceState(null, '', '#contracts&edit=' + entityId);
+            form.startEdit(row);
+        }
     }
 
     function del(id) {
@@ -511,11 +520,21 @@ const ContractsView = (() => {
             if (!th) return;
             const key = th.getAttribute('data-sort');
             if (!key) return;
-            if (_sortState.key === key) {
-                _sortState.dir = _sortState.dir === 'asc' ? 'desc' : 'asc';
+            const order = _sortState.order || [];
+            const idx = order.findIndex(o => o.key === key);
+            if (e.ctrlKey || e.metaKey) {
+                if (idx >= 0) {
+                    order[idx].dir = order[idx].dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    order.push({ key, dir: 'asc' });
+                }
+                _sortState.order = order;
             } else {
-                _sortState.key = key;
-                _sortState.dir = 'asc';
+                if (idx >= 0 && order.length === 1) {
+                    _sortState.order = [{ key, dir: order[idx].dir === 'asc' ? 'desc' : 'asc' }];
+                } else {
+                    _sortState.order = [{ key, dir: 'asc' }];
+                }
             }
             applySortAndRender();
         });
@@ -535,6 +554,15 @@ const ContractsView = (() => {
         }
         await loadList();
         prefillFromCalendarIfPending();
+
+        const cancelBtn = document.getElementById('btn-con-cancel');
+        if (cancelBtn && !cancelBtn.dataset.hashListener) {
+            cancelBtn.dataset.hashListener = '1';
+            cancelBtn.addEventListener('click', () => {
+                setTimeout(() => { history.replaceState(null, '', '#contracts'); }, 0);
+            });
+        }
+
         try {
             const raw = sessionStorage.getItem('dashboard-open-edit');
             if (raw) {
@@ -543,9 +571,24 @@ const ContractsView = (() => {
                     sessionStorage.removeItem('dashboard-open-edit');
                     const numId = parseInt(id, 10);
                     if (!isNaN(numId)) setTimeout(() => ContractsView.edit(numId), 0);
+                    return;
                 }
             }
         } catch (_) {}
+
+        const hashRaw = (location.hash.slice(1) || '').toLowerCase();
+        if (hashRaw.startsWith('contracts')) {
+            const parts = hashRaw.split('&').slice(1);
+            let editId = null;
+            parts.forEach(p => {
+                const eq = p.indexOf('=');
+                if (eq > 0 && p.slice(0, eq) === 'edit') editId = decodeURIComponent(p.slice(eq + 1));
+            });
+            if (editId) {
+                const numId = parseInt(editId, 10);
+                if (!isNaN(numId)) setTimeout(() => ContractsView.edit(numId), 0);
+            }
+        }
     }
 
     let _pendingPrefill = null;

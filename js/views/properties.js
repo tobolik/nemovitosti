@@ -67,6 +67,8 @@ const PropertiesView = (() => {
                     const btnUdaje = tabs.querySelector('.prop-tab[data-tab="udaje"]');
                     if (btnUdaje) btnUdaje.classList.add('active');
                 }
+                const editId = document.getElementById('prop-edit-id').value;
+                if (editId) history.replaceState(null, '', '#properties&edit=' + editId + '&tab=udaje');
             },
             resetForm() {
                 ['prop-name','prop-address','prop-size-m2','prop-purchase-price','prop-purchase-date','prop-purchase-contract-url','prop-valuation-date','prop-valuation-amount','prop-note'].forEach(id =>
@@ -154,7 +156,11 @@ const PropertiesView = (() => {
 
     function edit(id) {
         const row = _cache.find(r => (r.properties_id ?? r.id) == id);
-        if (row) form.startEdit(row);
+        if (row) {
+            const entityId = row.properties_id ?? row.id;
+            history.replaceState(null, '', '#properties&edit=' + entityId);
+            form.startEdit(row);
+        }
     }
 
     function del(id) {
@@ -184,6 +190,7 @@ const PropertiesView = (() => {
             });
             tabsEl.querySelectorAll('.prop-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
             const editId = (document.getElementById('prop-edit-id') && document.getElementById('prop-edit-id').value) || '';
+            if (editId) history.replaceState(null, '', '#properties&edit=' + editId + '&tab=' + tabName);
             if (tabName === 'statistiky' && statsContent) {
                 if (!editId) statsContent.innerHTML = '<p class="text-muted">Pro zobrazení statistik nejdříve uložte nemovitost a otevřete ji znovu.</p>';
                 else loadPropertyStats(editId, statsContent);
@@ -356,6 +363,15 @@ const PropertiesView = (() => {
         form.exitEdit();
         _cache = [];
         await loadList();
+
+        const cancelBtn = document.getElementById('btn-prop-cancel');
+        if (cancelBtn && !cancelBtn.dataset.hashListener) {
+            cancelBtn.dataset.hashListener = '1';
+            cancelBtn.addEventListener('click', () => {
+                setTimeout(() => { history.replaceState(null, '', '#properties'); }, 0);
+            });
+        }
+
         try {
             const raw = sessionStorage.getItem('dashboard-open-edit');
             if (raw) {
@@ -364,9 +380,31 @@ const PropertiesView = (() => {
                     sessionStorage.removeItem('dashboard-open-edit');
                     const numId = parseInt(id, 10);
                     if (!isNaN(numId)) setTimeout(() => PropertiesView.edit(numId), 0);
+                    return;
                 }
             }
         } catch (_) {}
+
+        const raw = (location.hash.slice(1) || '').toLowerCase();
+        if (raw.startsWith('properties')) {
+            const params = {};
+            raw.split('&').slice(1).forEach(p => {
+                const eq = p.indexOf('=');
+                if (eq > 0) params[p.slice(0, eq)] = decodeURIComponent(p.slice(eq + 1));
+            });
+            if (params.edit) {
+                const id = parseInt(params.edit, 10);
+                if (!isNaN(id)) {
+                    setTimeout(() => {
+                        PropertiesView.edit(id);
+                        const tab = params.tab;
+                        if (tab && ['udaje', 'statistiky', 'smlouvy', 'platby'].includes(tab)) {
+                            document.querySelector('#prop-tabs .prop-tab[data-tab="' + tab + '"]')?.click();
+                        }
+                    }, 0);
+                }
+            }
+        }
     }
 
     return { load, edit, del };

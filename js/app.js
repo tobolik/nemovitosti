@@ -82,8 +82,9 @@ const App = (() => {
         const sb = document.getElementById('sidebar');
         if (window.innerWidth <= 768) sb.classList.add('collapsed');
         else sb.classList.remove('collapsed');
-        // History: inicializace z hashe, nebo dashboard
-        const initialView = (location.hash.slice(1) || 'dashboard').toLowerCase();
+        // History: inicializace z hashe (view je první segment před &)
+        const raw = (location.hash.slice(1) || 'dashboard').toLowerCase();
+        const initialView = raw.split('&')[0];
         if (views[initialView]) {
             navigate(initialView);
             if (!location.hash) location.hash = initialView;

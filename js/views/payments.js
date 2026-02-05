@@ -383,7 +383,7 @@ const PaymentsView = (() => {
         }
         // Našeptávač u všech filtrů
         if (typeof UI.createSearchableSelect === 'function') {
-            ['pay-filter-property', 'pay-filter-contract', 'pay-filter-year', 'pay-filter-month', 'pay-filter-type'].forEach(id => {
+            ['pay-filter-property', 'pay-filter-tenant', 'pay-filter-contract', 'pay-filter-year', 'pay-filter-month', 'pay-filter-type'].forEach(id => {
                 if (!document.querySelector('.searchable-select-wrap[data-for="' + id + '"]')) {
                     UI.createSearchableSelect(id);
                 }

@@ -122,7 +122,7 @@ const UI = (() => {
     // headers: [{ label, key?, width?, act?, hideMobile?, sortKey? }]
     // rows: array of objects
     // rowFn: (item) => string of <td>...</td> (celý řádek)
-    // opts: { emptyMsg, sortable?: { currentKey, currentDir }, striped?: boolean }
+    // opts: { emptyMsg, sortable?: { currentKey, currentDir } | { order: [{ key, dir }] }, striped?: boolean }
     function renderTable(containerId, headers, rows, rowFn, { emptyMsg = 'Žádné záznamy.', sortable, striped } = {}) {
         const el = document.getElementById(containerId);
         if (!el) return;
@@ -132,19 +132,28 @@ const UI = (() => {
             return;
         }
 
+        const order = sortable && sortable.order && sortable.order.length
+            ? sortable.order
+            : (sortable && sortable.currentKey ? [{ key: sortable.currentKey, dir: sortable.currentDir || 'asc' }] : []);
+
         const ths = headers.map(h => {
             let cls = [];
             if (h.act) cls.push('th-act');
             if (h.hideMobile) cls.push('col-hide-mobile');
+            let sortLevel = '';
             if (h.sortKey) {
                 cls.push('th-sortable');
-                if (sortable && sortable.currentKey === h.sortKey) {
-                    cls.push(sortable.currentDir === 'asc' ? 'th-sort-asc' : 'th-sort-desc');
+                const idx = order.findIndex(o => o.key === h.sortKey);
+                if (idx >= 0) {
+                    const o = order[idx];
+                    cls.push(o.dir === 'asc' ? 'th-sort-asc' : 'th-sort-desc');
+                    if (order.length > 1) sortLevel = ' data-sort-level="' + (idx + 1) + '"';
                 }
             }
             const titleAttr = h.title ? ' title="' + esc(h.title) + '"' : '';
+            const sortTitle = h.sortKey ? ' title="Klik: řazení podle tohoto sloupce (↑/↓). Ctrl+Klik: přidat další úroveň řazení."' : '';
             const sortAttr = h.sortKey ? ' data-sort="' + esc(h.sortKey) + '"' : '';
-            return '<th' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + titleAttr + sortAttr + '>' + esc(h.label) + '</th>';
+            return '<th' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + titleAttr + sortTitle + sortAttr + sortLevel + '>' + esc(h.label) + '</th>';
         }).join('');
 
         const trs = rows.map(item => {
