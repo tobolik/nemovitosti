@@ -181,11 +181,12 @@ $costsStmt = db()->prepare("
 $costsStmt->execute([$propEntityId, $propId]);
 $totalCosts = (float)$costsStmt->fetch()['total'];
 
-// Kauce: ze smluv (deposit_amount, deposit_paid_date, deposit_return_date) + název nájemníka
+// Kauce: jen nevrácené – ze smluv (deposit_amount, deposit_paid_date, deposit_return_date) + název nájemníka
 $deposits = [];
 foreach ($contracts as $c) {
     $amt = (float)($c['deposit_amount'] ?? 0);
     if ($amt <= 0) continue;
+    if (!empty($c['deposit_return_date'])) continue; // vrácené kauce nezobrazovat
     $tenantStmt = db()->prepare("SELECT name, type FROM tenants WHERE (tenants_id = ? OR id = ?) AND valid_to IS NULL LIMIT 1");
     $tenantStmt->execute([$c['tenants_id'] ?? 0, $c['tenants_id'] ?? 0]);
     $tenant = $tenantStmt->fetch();
@@ -194,7 +195,7 @@ foreach ($contracts as $c) {
         'tenant_type' => $tenant['type'] ?? 'person',
         'amount' => round($amt, 2),
         'paid_date' => $c['deposit_paid_date'] ?? null,
-        'return_date' => $c['deposit_return_date'] ?? null,
+        'return_date' => null,
     ];
 }
 

@@ -402,7 +402,7 @@ const PropertiesView = (() => {
             }
 
             if (data.deposits && data.deposits.length > 0) {
-                html += '<h4 style="margin-top:20px;margin-bottom:8px;font-size:.9rem">Kauce</h4><div class="prop-stats-tags">';
+                html += '<h4 style="margin-top:20px;margin-bottom:8px;font-size:.9rem">Kauce (k vrácení)</h4><div class="prop-stats-tags">';
                 data.deposits.forEach(d => {
                     const tenant = (d.tenant_name ? UI.esc(d.tenant_name) + ': ' : '');
                     const paid = d.paid_date ? 'zaplaceno ' + UI.fmtDate(d.paid_date) : 'nezaplaceno';
