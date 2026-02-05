@@ -125,6 +125,12 @@ const Api = (() => {
         return get(url);
     }
 
+    async function propertyStats(propertiesId, year) {
+        let url = '/api/property-stats.php?properties_id=' + encodeURIComponent(propertiesId);
+        if (year) url += '&year=' + encodeURIComponent(year);
+        return get(url);
+    }
+
     // ════════════════════════════════════════════════════════════════════
     // USERS
     // ════════════════════════════════════════════════════════════════════
@@ -168,6 +174,7 @@ const Api = (() => {
         authCheck, authLogin, authLogout,
         crudList, crudGet, crudAdd, crudEdit, crudDelete, paymentsEditBatch, paymentsDeleteBatch, paymentRequestLink, paymentRequestUnlink,
         dashboardLoad,
+        propertyStats,
         search,
         usersList, usersAdd, usersDelete, usersChangePassword,
         aresLookup,

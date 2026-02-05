@@ -668,6 +668,68 @@ foreach ($contractsForView as $c) {
 $roi = $totalInvestment > 0 ? round($yearIncome / $totalInvestment * 100, 1) : 0;
 $collectionRate = $expectedYearIncome > 0 ? round($yearIncome / $expectedYearIncome * 100, 1) : 100;
 
+// Míra vytížení: za vybraný rok a celkově (podíl obsazených měsíců na všech měsících)
+$monthsOccupiedInYear = 0;
+$monthsPeriodInYear = count($properties) * 12;
+$totalMonthsOccupiedOverall = 0;
+$totalMonthsPeriodOverall = 0;
+foreach ($properties as $prop) {
+    $propId = (int)($prop['properties_id'] ?? $prop['id']);
+    $contractsOfProp = array_filter($contracts, function ($c) use ($propId) {
+        return (int)($c['properties_id'] ?? $c['property_row_id'] ?? 0) === $propId;
+    });
+    $monthsInYear = 0;
+    for ($m = 1; $m <= 12; $m++) {
+        $firstOfMonth = sprintf('%04d-%02d-01', $year, $m);
+        $lastOfMonth = date('Y-m-t', strtotime($firstOfMonth));
+        foreach ($contractsOfProp as $c) {
+            if ($c['contract_start'] <= $lastOfMonth && (empty($c['contract_end']) || $c['contract_end'] >= $firstOfMonth)) {
+                $monthsInYear++;
+                break;
+            }
+        }
+    }
+    $monthsOccupiedInYear += $monthsInYear;
+
+    $starts = [];
+    $ends = [];
+    foreach ($contractsOfProp as $c) {
+        $starts[] = $c['contract_start'];
+        $ends[] = $c['contract_end'] ?? $nowY . '-' . str_pad((string)$nowM, 2, '0', STR_PAD_LEFT) . '-' . date('t', mktime(0, 0, 0, $nowM, 1, $nowY));
+    }
+    $purchaseDate = $prop['purchase_date'] ?? null;
+    if ($purchaseDate) $starts[] = $purchaseDate;
+    if (empty($starts)) {
+        $totalMonthsPeriodOverall += 0;
+        continue;
+    }
+    $periodStart = min($starts);
+    $periodEnd = max($ends);
+    if ($periodEnd < $periodStart) $periodEnd = $periodStart;
+    $periodMonths = (int)date('Y', strtotime($periodEnd)) * 12 + (int)date('n', strtotime($periodEnd))
+        - (int)date('Y', strtotime($periodStart)) * 12 - (int)date('n', strtotime($periodStart)) + 1;
+    if ($periodMonths < 1) $periodMonths = 1;
+    $occupiedMonths = 0;
+    $d = new DateTime($periodStart);
+    $endDt = new DateTime($periodEnd);
+    $endDt->modify('last day of this month');
+    while ($d <= $endDt) {
+        $firstOfMonth = $d->format('Y-m') . '-01';
+        $lastOfMonth = $d->format('Y-m-t');
+        foreach ($contractsOfProp as $c) {
+            if ($c['contract_start'] <= $lastOfMonth && (empty($c['contract_end']) || $c['contract_end'] >= $firstOfMonth)) {
+                $occupiedMonths++;
+                break;
+            }
+        }
+        $d->modify('+1 month');
+    }
+    $totalMonthsOccupiedOverall += $occupiedMonths;
+    $totalMonthsPeriodOverall += $periodMonths;
+}
+$utilizationRateYear = $monthsPeriodInYear > 0 ? round($monthsOccupiedInYear / $monthsPeriodInYear * 100, 1) : 0;
+$utilizationRateOverall = $totalMonthsPeriodOverall > 0 ? round($totalMonthsOccupiedOverall / $totalMonthsPeriodOverall * 100, 1) : 0;
+
 // Rozsah let pro tlačítka – podle nejstarší smlouvy a plateb
 $yearMin = $nowY - 2;
 $yearMax = $nowY + 1;
@@ -816,6 +878,8 @@ $payload = [
         'monthlyIncome'  => $monthlyIncome,
         'roi'            => $roi,
         'collectionRate' => $collectionRate,
+        'utilizationRateYear'   => $utilizationRateYear,
+        'utilizationRateOverall'=> $utilizationRateOverall,
         'totalInvestment'=> $totalInvestment,
         'yearIncome'     => $yearIncome,
         'expectedYearIncome' => $expectedYearIncome,

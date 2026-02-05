@@ -53,12 +53,32 @@ const PropertiesView = (() => {
                 document.getElementById('prop-valuation-amount').value       = row.valuation_amount       || '';
                 document.getElementById('prop-type').value                    = row.type                   || 'apartment';
                 document.getElementById('prop-note').value                    = row.note                   || '';
+                const tabUdaje = document.getElementById('prop-tab-udaje');
+                const tabStatistiky = document.getElementById('prop-tab-statistiky');
+                const tabs = document.getElementById('prop-tabs');
+                if (tabUdaje) tabUdaje.style.display = '';
+                if (tabStatistiky) tabStatistiky.style.display = 'none';
+                if (tabs) {
+                    tabs.querySelectorAll('.prop-tab').forEach(b => b.classList.remove('active'));
+                    const btnUdaje = tabs.querySelector('.prop-tab[data-tab="udaje"]');
+                    if (btnUdaje) btnUdaje.classList.add('active');
+                }
             },
             resetForm() {
                 ['prop-name','prop-address','prop-size-m2','prop-purchase-price','prop-purchase-date','prop-purchase-contract-url','prop-valuation-date','prop-valuation-amount','prop-note'].forEach(id =>
                     document.getElementById(id).value = ''
                 );
                 document.getElementById('prop-type').value = 'apartment';
+                const tabUdaje = document.getElementById('prop-tab-udaje');
+                const tabStatistiky = document.getElementById('prop-tab-statistiky');
+                const tabs = document.getElementById('prop-tabs');
+                if (tabUdaje) tabUdaje.style.display = '';
+                if (tabStatistiky) tabStatistiky.style.display = 'none';
+                if (tabs) {
+                    tabs.querySelectorAll('.prop-tab').forEach(b => b.classList.remove('active'));
+                    const btnUdaje = tabs.querySelector('.prop-tab[data-tab="udaje"]');
+                    if (btnUdaje) btnUdaje.classList.add('active');
+                }
             },
             onSaved: loadList,
         });
@@ -136,9 +156,68 @@ const PropertiesView = (() => {
         });
     }
 
+    // ── záložka Statistiky ──────────────────────────────────────────────
+    function initPropertyTabs() {
+        const tabsEl = document.getElementById('prop-tabs');
+        const tabUdaje = document.getElementById('prop-tab-udaje');
+        const tabStatistiky = document.getElementById('prop-tab-statistiky');
+        const statsContent = document.getElementById('prop-stats-content');
+        if (!tabsEl || !tabUdaje || !tabStatistiky) return;
+        tabsEl.querySelectorAll('.prop-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                tabsEl.querySelectorAll('.prop-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (tab === 'udaje') {
+                    tabUdaje.style.display = '';
+                    tabStatistiky.style.display = 'none';
+                } else {
+                    tabUdaje.style.display = 'none';
+                    tabStatistiky.style.display = 'block';
+                    const editId = (document.getElementById('prop-edit-id') && document.getElementById('prop-edit-id').value) || '';
+                    if (!editId) {
+                        statsContent.innerHTML = '<p class="text-muted">Pro zobrazení statistik nejdříve uložte nemovitost a otevřete ji znovu.</p>';
+                    } else {
+                        loadPropertyStats(editId, statsContent);
+                    }
+                }
+            });
+        });
+    }
+
+    async function loadPropertyStats(propEntityId, container) {
+        if (!container) return;
+        container.innerHTML = '<p class="text-muted">Načítám…</p>';
+        const year = new Date().getFullYear();
+        try {
+            const data = await Api.propertyStats(propEntityId, year);
+            let html = '<div class="prop-stats-grid">' +
+                '<div class="stat"><div class="stat-label">Vytížení (' + year + ')</div><div class="stat-val">' + (data.utilization_rate_year ?? 0) + ' %</div></div>' +
+                '<div class="stat"><div class="stat-label">Vytížení (celkem)</div><div class="stat-val">' + (data.utilization_rate_overall ?? 0) + ' %</div></div>' +
+                '<div class="stat"><div class="stat-label">Vybraný nájem celkem</div><div class="stat-val green">' + UI.fmt(data.total_rent_received ?? 0) + ' Kč</div></div>' +
+                '<div class="stat"><div class="stat-label">Roční nájem (aktuální)</div><div class="stat-val">' + UI.fmt(data.annual_rent ?? 0) + ' Kč</div></div>';
+            if (data.roi_pct != null) {
+                html += '<div class="stat"><div class="stat-label">ROI (k odhadu)</div><div class="stat-val">' + data.roi_pct + ' %</div></div>';
+            }
+            html += '</div>';
+            if (data.by_year && data.by_year.length > 0) {
+                html += '<h4 style="margin-top:20px;margin-bottom:8px;font-size:.9rem">Přehled po letech</h4>' +
+                    '<table class="prop-stats-table"><thead><tr><th>Rok</th><th>Obsazené měsíce</th><th>Vybraný nájem</th></tr></thead><tbody>';
+                data.by_year.forEach(row => {
+                    html += '<tr><td>' + row.year + '</td><td>' + (row.months_occupied ?? 0) + '</td><td>' + UI.fmt(row.rent_received ?? 0) + ' Kč</td></tr>';
+                });
+                html += '</tbody></table>';
+            }
+            container.innerHTML = html;
+        } catch (e) {
+            container.innerHTML = '<p class="alert alert-err">' + UI.esc(e.message || 'Chyba načtení statistik.') + '</p>';
+        }
+    }
+
     // ── view loader (volání z routeru) ──────────────────────────────────
     async function load() {
         initForm();
+        initPropertyTabs();
         form.exitEdit();
         _cache = [];
         await loadList();

@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=1.3.6">
+<link rel="stylesheet" href="css/style.css?v=1.3.9">
 </head>
 <body>
 
@@ -95,8 +95,13 @@
         <div class="list-actions" id="prop-list-actions"><button type="button" class="btn btn-pri" id="btn-prop-add">+ Přidat nemovitost</button></div>
         <div class="card" id="prop-form-card" style="display:none">
           <div class="card-title" id="prop-form-title">Přidat nemovitost</div>
+          <div class="prop-tabs" id="prop-tabs">
+            <button type="button" class="prop-tab active" data-tab="udaje">Údaje</button>
+            <button type="button" class="prop-tab" data-tab="statistiky">Statistiky</button>
+          </div>
           <div class="alert" id="prop-alert"></div>
           <input type="hidden" id="prop-edit-id">
+          <div id="prop-tab-udaje">
           <div class="form-row">
             <div class="fg"><label>Název *</label><input type="text" id="prop-name"></div>
             <div class="fg">
@@ -125,6 +130,10 @@
           <div class="form-actions">
             <button class="btn btn-pri" id="btn-prop-save" data-save-btn>Přidat nemovitost</button>
             <button class="btn btn-ghost" id="btn-prop-cancel" style="display:none">Zrušit</button>
+          </div>
+          </div>
+          <div id="prop-tab-statistiky" class="prop-stats-wrap" style="display:none">
+            <div id="prop-stats-content"></div>
           </div>
         </div>
         <div id="prop-table"></div>
@@ -428,7 +437,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v1.3.6</span>
+    <span class="footer-version">v1.3.9</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -637,16 +646,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=1.3.6"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=1.3.6"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=1.3.6"></script>
-<script src="js/app.js?v=1.3.6"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=1.3.6"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=1.3.6"></script>
-<script src="js/views/tenants.js?v=1.3.6"></script>
-<script src="js/views/contracts.js?v=1.3.6"></script>
-<script src="js/views/payments.js?v=1.3.6"></script>
-<script src="js/views/bank_accounts.js?v=1.3.6"></script>
-<script src="js/views/users.js?v=1.3.6"></script>
+<script src="js/api.js?v=1.3.9"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=1.3.9"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=1.3.9"></script>
+<script src="js/app.js?v=1.3.9"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=1.3.9"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=1.3.9"></script>
+<script src="js/views/tenants.js?v=1.3.9"></script>
+<script src="js/views/contracts.js?v=1.3.9"></script>
+<script src="js/views/payments.js?v=1.3.9"></script>
+<script src="js/views/bank_accounts.js?v=1.3.9"></script>
+<script src="js/views/users.js?v=1.3.9"></script>
 </body>
 </html>

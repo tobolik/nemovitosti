@@ -354,6 +354,16 @@ footer .footer-version { opacity: .8; }
   margin-bottom: 22px;
 }
 .card-title { font-size: .95rem; font-weight: 600; color: var(--txt); margin-bottom: 18px; }
+.prop-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--glass-border); }
+.prop-tab { padding: 8px 14px; font-size: .85rem; background: none; border: none; color: var(--txt2); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.prop-tab:hover { color: var(--txt); }
+.prop-tab.active { color: var(--purple-400); border-bottom-color: var(--purple-500); font-weight: 500; }
+.prop-stats-wrap { padding: 8px 0; }
+.prop-stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.prop-stats-wrap .stat { margin-bottom: 0; }
+.prop-stats-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.prop-stats-table th, .prop-stats-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--glass-border); }
+.prop-stats-table th { color: var(--txt2); font-weight: 500; }
 
 .form-row { display: flex; gap: 16px; }
 .form-row .fg { flex: 1; min-width: 0; }
@@ -1041,11 +1051,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
   box-shadow: 0 0 0 3px rgba(147,51,234,.2);
 }
 
-/* Modal Platba – na notebooku širší, více místa pro číslo účtu */
-#modal-payment .modal-box { max-width: 520px; }
+/* Modal Platba – na notebooku širší, více místa pro číslo účtu a protiúčet */
+#modal-payment .modal-box { max-width: 560px; }
 #pay-modal-method-wrap .fg:first-child { flex: 0 0 auto; max-width: 170px; }
 #pay-modal-method-wrap .fg:first-child select { width: 100%; }
-#pay-modal-method-wrap .fg#pay-modal-account-wrap { flex: 1 1 0; min-width: 0; }
+#pay-modal-method-wrap .fg#pay-modal-account-wrap { flex: 1 1 0; min-width: 0; max-width: 55%; }
+#pay-modal-method-wrap .fg:last-child { flex: 1 1 200px; min-width: 200px; }
+#pay-modal-method-wrap .fg:last-child input { min-width: 0; width: 100%; }
 
 /* ============================================================
    SPINNER
