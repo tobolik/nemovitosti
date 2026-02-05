@@ -281,13 +281,24 @@ const PropertiesView = (() => {
                 container.innerHTML = '<p class="text-muted">K této nemovitosti nejsou evidované žádné smlouvy.</p>';
                 return;
             }
-            const thead = '<thead><tr><th>Nájemník</th><th>Období</th><th>Nájem</th><th class="th-act">Akce</th></tr></thead>';
+            function monthsBetween(startStr, endStr) {
+                if (!startStr) return null;
+                const startD = new Date(startStr + 'T12:00:00');
+                const endD = endStr ? new Date(endStr + 'T12:00:00') : new Date();
+                const days = (endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24);
+                if (days < 0) return null;
+                const months = days / 30.44;
+                return Math.round(months * 100) / 100;
+            }
+            const thead = '<thead><tr><th>Nájemník</th><th>Období</th><th>Měsíců</th><th>Nájem</th><th class="th-act">Akce</th></tr></thead>';
             const tbody = rows.map(c => {
                 const cid = c.contracts_id ?? c.id;
                 const start = c.contract_start ? UI.fmtDate(c.contract_start) : '—';
                 const end = c.contract_end ? UI.fmtDate(c.contract_end) : '—';
+                const monthsVal = monthsBetween(c.contract_start, c.contract_end);
+                const monthsFmt = monthsVal != null ? (monthsVal % 1 === 0 ? monthsVal : monthsVal.toFixed(2).replace('.', ',')) : '—';
                 const rent = c.monthly_rent != null ? UI.fmt(c.monthly_rent) + ' Kč' : '—';
-                return '<tr><td><strong>' + UI.esc(c.tenant_name || '') + '</strong></td><td>' + start + ' – ' + end + '</td><td>' + rent + '</td><td class="td-act"><a href="#contracts&edit=' + cid + '" class="btn btn-ghost btn-sm">Upravit</a></td></tr>';
+                return '<tr><td><strong>' + UI.esc(c.tenant_name || '') + '</strong></td><td>' + start + ' – ' + end + '</td><td>' + monthsFmt + '</td><td>' + rent + '</td><td class="td-act"><a href="#contracts&edit=' + cid + '" class="btn btn-ghost btn-sm">Upravit</a></td></tr>';
             }).join('');
             container.innerHTML = '<div class="tbl-wrap"><table class="tbl tbl-striped">' + thead + '<tbody>' + tbody + '</tbody></table></div>';
         } catch (e) {
