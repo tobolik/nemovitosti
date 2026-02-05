@@ -425,7 +425,7 @@ const PropertiesView = (() => {
                 const avgUtilPct = totalMonthsPossible > 0 ? Math.round((sumMonthsOccupied / totalMonthsPossible) * 100) : 0;
                 html += '<div class="prop-stats-table-charts-row">' +
                     '<div class="prop-stats-table-col">' +
-                    '<h4 style="margin-top:20px;margin-bottom:8px;font-size:.9rem">Přehled po letech</h4>' +
+                    '<h4 style="margin-top:0;margin-bottom:8px;font-size:.9rem">Přehled po letech</h4>' +
                     '<table class="prop-stats-table"><thead><tr><th>Rok</th><th class="col-num">Obs. měs.</th><th class="col-num">Vytížení</th><th class="col-num">Vybraný nájem</th><th class="col-num">Prům./měs.</th></tr></thead><tbody>';
                 byYear.forEach(row => {
                     const mo = row.months_occupied ?? 0;
