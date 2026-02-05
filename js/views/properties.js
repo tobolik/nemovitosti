@@ -416,6 +416,14 @@ const PropertiesView = (() => {
 
             if (byYear && byYear.length > 0) {
                 const propId = propEntityId;
+                let sumRent = 0;
+                let sumMonthsOccupied = 0;
+                byYear.forEach(row => {
+                    sumRent += row.rent_received ?? 0;
+                    sumMonthsOccupied += Number(row.months_occupied) || 0;
+                });
+                const totalMonthsPossible = byYear.length * 12;
+                const avgUtilPct = totalMonthsPossible > 0 ? Math.round((sumMonthsOccupied / totalMonthsPossible) * 100) : 0;
                 html += '<h4 style="margin-top:20px;margin-bottom:8px;font-size:.9rem">Přehled po letech</h4>' +
                     '<table class="prop-stats-table"><thead><tr><th>Rok</th><th class="col-num">Obs. měs.</th><th class="col-num">Vytížení</th><th class="col-num">Vybraný nájem</th><th class="col-num">Prům./měs.</th></tr></thead><tbody>';
                 byYear.forEach(row => {
@@ -427,6 +435,7 @@ const PropertiesView = (() => {
                     const link = '<a href="#payments&year=' + row.year + '&properties_id=' + propId + '" class="prop-year-link">' + row.year + '</a>';
                     html += '<tr><td>' + link + '</td><td class="col-num">' + moFmt + '</td><td class="col-num">' + utilPct + ' %</td><td class="col-num">' + fmtKc(rent) + '</td><td class="col-num">' + (mo > 0 ? fmtKc(avgMonth) : '—') + '</td></tr>';
                 });
+                html += '<tr class="prop-stats-table-total"><td>Celkem</td><td class="col-num">' + (typeof sumMonthsOccupied === 'number' && sumMonthsOccupied % 1 !== 0 ? sumMonthsOccupied.toFixed(2).replace('.', ',') : sumMonthsOccupied) + '</td><td class="col-num">' + avgUtilPct + ' %</td><td class="col-num">' + fmtKc(sumRent) + '</td><td class="col-num">—</td></tr>';
                 html += '</tbody></table>';
             }
             container.innerHTML = html;

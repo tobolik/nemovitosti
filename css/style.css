@@ -374,6 +374,7 @@ footer .footer-version { opacity: .8; }
 .prop-stats-table th, .prop-stats-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--glass-border); }
 .prop-stats-table th { color: var(--txt2); font-weight: 500; }
 .prop-stats-table .col-num { text-align: right; }
+.prop-stats-table tr.prop-stats-table-total td { border-top: 1px solid var(--glass-border); font-weight: 600; color: var(--txt); }
 .prop-stats-tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .prop-stats-tags .prop-deposit-tag { white-space: nowrap; }
 
