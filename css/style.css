@@ -8,8 +8,10 @@
   /* Purple gradient palette */
   --purple-900: #581c87;
   --purple-800: #6b21a8;
-  --purple-600: #9333ea;
   --purple-700: #7e22ce;
+  --purple-600: #9333ea;
+  --purple-500: #a855f7;
+  --purple-400: #c084fc;
   --purple-300: #d8b4fe;
   --purple-200: #e9d5ff;
   --indigo-900: #312e81;
@@ -387,12 +389,12 @@ footer .footer-version { opacity: .8; }
 .prop-stats-chart-bar-wrap { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; position: relative; }
 .prop-stats-chart-bar { width: 70%; max-width: 40px; min-height: 8px; flex-shrink: 0; border-radius: 3px 3px 0 0; }
 .prop-stats-chart-bar.rent { background: var(--green-600); }
-.prop-stats-chart-bar.util { background: var(--purple-500); }
+.prop-stats-chart-bar.util { background: var(--purple-400); min-height: 8px; box-shadow: 0 0 0 1px rgba(255,255,255,.15); }
 .prop-stats-chart-label { font-size: .7rem; color: var(--txt3); margin-top: 6px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .prop-stats-chart-legend { font-size: .75rem; color: var(--txt2); margin-bottom: 8px; }
 .prop-stats-chart-legend span { margin-right: 12px; }
 .prop-stats-chart-legend .dot-rent { color: var(--green-500); }
-.prop-stats-chart-legend .dot-util::before { content: ''; display: inline-block; width: 10px; height: 10px; background: var(--purple-500); border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.prop-stats-chart-legend .dot-util::before { content: ''; display: inline-block; width: 10px; height: 10px; background: var(--purple-400); border-radius: 2px; margin-right: 4px; vertical-align: middle; }
 .prop-stats-chart-legend .dot-rent::before { content: ''; display: inline-block; width: 10px; height: 10px; background: var(--green-600); border-radius: 2px; margin-right: 4px; vertical-align: middle; }
 .prop-stats-summary-bar { margin-top: 16px; display: flex; gap: 12px; align-items: stretch; height: 32px; border-radius: 6px; overflow: hidden; background: var(--glass-border); }
 .prop-stats-summary-bar .seg-rent { background: var(--green-600); }

@@ -287,7 +287,7 @@ const PropertiesView = (() => {
                 const start = c.contract_start ? UI.fmtDate(c.contract_start) : '—';
                 const end = c.contract_end ? UI.fmtDate(c.contract_end) : '—';
                 const rent = c.monthly_rent != null ? UI.fmt(c.monthly_rent) + ' Kč' : '—';
-                return '<tr><td><strong>' + UI.esc(c.tenant_name || '') + '</strong></td><td>' + start + ' – ' + end + '</td><td>' + rent + '</td><td class="td-act"><button type="button" class="btn btn-ghost btn-sm" onclick="ContractsView.edit(' + cid + ')">Upravit</button></td></tr>';
+                return '<tr><td><strong>' + UI.esc(c.tenant_name || '') + '</strong></td><td>' + start + ' – ' + end + '</td><td>' + rent + '</td><td class="td-act"><a href="#contracts&edit=' + cid + '" class="btn btn-ghost btn-sm">Upravit</a></td></tr>';
             }).join('');
             container.innerHTML = '<div class="tbl-wrap"><table class="tbl tbl-striped">' + thead + '<tbody>' + tbody + '</tbody></table></div>';
         } catch (e) {
