@@ -94,28 +94,57 @@ const PropertiesView = (() => {
         });
     }
 
-    // ── list loader ─────────────────────────────────────────────────────
-    async function loadList() {
-        let data;
-        try { data = await Api.crudList('properties'); }
-        catch (e) { return; }
-        _cache = data;
+    // ── řazení tabulky (stejný model jako Smlouvy) ───────────────────────
+    let _sortState = { order: [{ key: 'name', dir: 'asc' }] };
 
+    function getPropSortValue(p, key) {
+        switch (key) {
+            case 'name': return (p.name || '').toLowerCase();
+            case 'type': return (p.type || '').toLowerCase();
+            case 'address': return (p.address || '').toLowerCase();
+            case 'size_m2': return parseFloat(p.size_m2) || 0;
+            case 'purchase_price': return parseFloat(p.purchase_price) || 0;
+            case 'purchase_date': return p.purchase_date || '';
+            case 'total_rent_received': return parseFloat(p.total_rent_received) || 0;
+            case 'note': return (p.note || '').toLowerCase();
+            default: return '';
+        }
+    }
+
+    function compareValues(va, vb) {
+        if (typeof va === 'string' && typeof vb === 'string') return va.localeCompare(vb);
+        return va < vb ? -1 : (va > vb ? 1 : 0);
+    }
+
+    function sortProperties(data, state) {
+        const order = state.order && state.order.length ? state.order : [{ key: 'name', dir: 'asc' }];
+        return [...data].sort((a, b) => {
+            for (let i = 0; i < order.length; i++) {
+                const { key, dir } = order[i];
+                const cmp = compareValues(getPropSortValue(a, key), getPropSortValue(b, key));
+                if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
+            }
+            return 0;
+        });
+    }
+
+    function applySortAndRender() {
+        const sorted = sortProperties(_cache, _sortState);
         UI.renderTable('prop-table',
             [
-                { label: 'Název' },
-                { label: 'Typ' },
-                { label: 'Adresa', hideMobile: true },
-                { label: 'Výměra', hideMobile: true },
-                { label: 'Kupní cena', hideMobile: true },
-                { label: 'Datum koupě', hideMobile: true },
+                { label: 'Název', sortKey: 'name' },
+                { label: 'Typ', sortKey: 'type' },
+                { label: 'Adresa', sortKey: 'address', hideMobile: true },
+                { label: 'Výměra', sortKey: 'size_m2', hideMobile: true },
+                { label: 'Kupní cena', sortKey: 'purchase_price', hideMobile: true },
+                { label: 'Datum koupě', sortKey: 'purchase_date', hideMobile: true },
                 { label: 'Odhad / ROI', hideMobile: true, title: 'Odhadní cena k datu; ROI = roční nájem / odhadní cena' },
-                { label: 'Vybraný nájem', title: 'Celkem vybraný nájem (platby typu nájem) za celou dobu' },
+                { label: 'Vybraný nájem', sortKey: 'total_rent_received', title: 'Celkem vybraný nájem (platby typu nájem) za celou dobu' },
                 { label: 'Smlouva', hideMobile: true },
-                { label: 'Poznámka', hideMobile: true },
+                { label: 'Poznámka', sortKey: 'note', hideMobile: true },
                 { label: 'Akce', act: true },
             ],
-            data,
+            sorted,
             (p) => {
                 const url = p.purchase_contract_url;
                 const contractLink = url
@@ -142,13 +171,46 @@ const PropertiesView = (() => {
                     '<td class="col-hide-mobile contract-preview-cell">' + contractLink + '</td>' +
                     '<td class="col-note cell-note-wrap col-hide-mobile">' + (p.note ? '<span class="cell-note-truncate" title="' + UI.esc(p.note) + '">' + UI.esc(p.note) + '</span>' : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="td-act">' +
-                        '<button class="btn btn-ghost btn-sm" onclick="PropertiesView.edit(' + p.id + ')">Úprava</button>' +
-                        '<button class="btn btn-danger btn-sm" onclick="PropertiesView.del(' + p.id + ')">Smazat</button>' +
+                        '<button class="btn btn-ghost btn-sm" onclick="PropertiesView.edit(' + (p.properties_id ?? p.id) + ')">Úprava</button>' +
+                        '<button class="btn btn-danger btn-sm" onclick="PropertiesView.del(' + (p.properties_id ?? p.id) + ')">Smazat</button>' +
                     '</td>'
                 );
             },
-            { emptyMsg: 'Žádné nemovitosti. Přidejte první výše.' }
+            { emptyMsg: 'Žádné nemovitosti. Přidejte první výše.', sortable: { order: _sortState.order }, striped: true }
         );
+    }
+
+    function initPropTableSortClick() {
+        const el = document.getElementById('prop-table');
+        if (!el || el.dataset.sortBound) return;
+        el.dataset.sortBound = '1';
+        el.addEventListener('click', (e) => {
+            const th = e.target.closest('th[data-sort]');
+            if (!th) return;
+            const key = th.getAttribute('data-sort');
+            if (!key) return;
+            const order = _sortState.order || [];
+            const idx = order.findIndex(o => o.key === key);
+            if (e.ctrlKey || e.metaKey) {
+                if (idx >= 0) order[idx].dir = order[idx].dir === 'asc' ? 'desc' : 'asc';
+                else order.push({ key, dir: 'asc' });
+                _sortState.order = order;
+            } else {
+                _sortState.order = idx >= 0 && order.length === 1
+                    ? [{ key, dir: order[idx].dir === 'asc' ? 'desc' : 'asc' }]
+                    : [{ key, dir: 'asc' }];
+            }
+            applySortAndRender();
+        });
+    }
+
+    // ── list loader ─────────────────────────────────────────────────────
+    async function loadList() {
+        let data;
+        try { data = await Api.crudList('properties'); }
+        catch (e) { return; }
+        _cache = data;
+        applySortAndRender();
     }
 
     // ── exposed actions (volané z onclick) ──────────────────────────────
@@ -360,6 +422,7 @@ const PropertiesView = (() => {
     async function load() {
         initForm();
         initPropertyTabs();
+        initPropTableSortClick();
         form.exitEdit();
         _cache = [];
         await loadList();

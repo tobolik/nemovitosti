@@ -113,23 +113,52 @@ const TenantsView = (() => {
         });
     }
 
-    async function loadList() {
-        let data;
-        try { data = await Api.crudList('tenants'); _cache = data; }
-        catch (e) { return; }
+    let _sortState = { order: [{ key: 'name', dir: 'asc' }] };
 
+    function getTenantSortValue(t, key) {
+        switch (key) {
+            case 'name': return (t.name || '').toLowerCase();
+            case 'type': return (t.type || '').toLowerCase();
+            case 'birth_date': return t.birth_date || '';
+            case 'email': return (t.email || '').toLowerCase();
+            case 'phone': return (t.phone || '').toLowerCase();
+            case 'ic': return (t.ic || '').toLowerCase();
+            case 'note': return (t.note || '').toLowerCase();
+            default: return '';
+        }
+    }
+
+    function compareValues(va, vb) {
+        if (typeof va === 'string' && typeof vb === 'string') return va.localeCompare(vb);
+        return va < vb ? -1 : (va > vb ? 1 : 0);
+    }
+
+    function sortTenants(data, state) {
+        const order = state.order && state.order.length ? state.order : [{ key: 'name', dir: 'asc' }];
+        return [...data].sort((a, b) => {
+            for (let i = 0; i < order.length; i++) {
+                const { key, dir } = order[i];
+                const cmp = compareValues(getTenantSortValue(a, key), getTenantSortValue(b, key));
+                if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
+            }
+            return 0;
+        });
+    }
+
+    function applySortAndRender() {
+        const sorted = sortTenants(_cache, _sortState);
         UI.renderTable('ten-table',
             [
-                { label: 'Jméno / Název' },
-                { label: 'Typ' },
-                { label: 'Datum narození', hideMobile: true },
-                { label: 'E-mail', hideMobile: true },
-                { label: 'Telefon' },
-                { label: 'IČO', hideMobile: true },
-                { label: 'Poznámka', hideMobile: true },
+                { label: 'Jméno / Název', sortKey: 'name' },
+                { label: 'Typ', sortKey: 'type' },
+                { label: 'Datum narození', sortKey: 'birth_date', hideMobile: true },
+                { label: 'E-mail', sortKey: 'email', hideMobile: true },
+                { label: 'Telefon', sortKey: 'phone' },
+                { label: 'IČO', sortKey: 'ic', hideMobile: true },
+                { label: 'Poznámka', sortKey: 'note', hideMobile: true },
                 { label: 'Akce', act: true },
             ],
-            data,
+            sorted,
             (t) => {
                 const birthDate = t.type === 'person' && t.birth_date ? UI.fmtDate(t.birth_date) : '—';
                 return (
@@ -141,13 +170,44 @@ const TenantsView = (() => {
                 '<td class="col-hide-mobile">' + (t.ic ? UI.esc(t.ic) : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td class="col-note cell-note-wrap col-hide-mobile">' + (t.note ? '<span class="cell-note-truncate" title="' + UI.esc(t.note) + '">' + UI.esc(t.note) + '</span>' : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                 '<td class="td-act">' +
-                    '<button class="btn btn-ghost btn-sm" onclick="TenantsView.edit(' + t.id + ')">Úprava</button>' +
-                    '<button class="btn btn-danger btn-sm" onclick="TenantsView.del(' + t.id + ')">Smazat</button>' +
+                    '<button class="btn btn-ghost btn-sm" onclick="TenantsView.edit(' + (t.tenants_id ?? t.id) + ')">Úprava</button>' +
+                    '<button class="btn btn-danger btn-sm" onclick="TenantsView.del(' + (t.tenants_id ?? t.id) + ')">Smazat</button>' +
                 '</td>'
             );
             },
-            { emptyMsg: 'Žádní nájemníci. Přidejte první výše.' }
+            { emptyMsg: 'Žádní nájemníci. Přidejte první výše.', sortable: { order: _sortState.order }, striped: true }
         );
+    }
+
+    function initTenTableSortClick() {
+        const el = document.getElementById('ten-table');
+        if (!el || el.dataset.sortBound) return;
+        el.dataset.sortBound = '1';
+        el.addEventListener('click', (e) => {
+            const th = e.target.closest('th[data-sort]');
+            if (!th) return;
+            const key = th.getAttribute('data-sort');
+            if (!key) return;
+            const order = _sortState.order || [];
+            const idx = order.findIndex(o => o.key === key);
+            if (e.ctrlKey || e.metaKey) {
+                if (idx >= 0) order[idx].dir = order[idx].dir === 'asc' ? 'desc' : 'asc';
+                else order.push({ key, dir: 'asc' });
+                _sortState.order = order;
+            } else {
+                _sortState.order = idx >= 0 && order.length === 1
+                    ? [{ key, dir: order[idx].dir === 'asc' ? 'desc' : 'asc' }]
+                    : [{ key, dir: 'asc' }];
+            }
+            applySortAndRender();
+        });
+    }
+
+    async function loadList() {
+        let data;
+        try { data = await Api.crudList('tenants'); _cache = data; }
+        catch (e) { return; }
+        applySortAndRender();
     }
 
     function edit(id) {
@@ -164,6 +224,7 @@ const TenantsView = (() => {
 
     async function load() {
         initForm();
+        initTenTableSortClick();
         form.exitEdit();
         _cache = [];
         await loadList();

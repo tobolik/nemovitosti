@@ -403,6 +403,38 @@ const PaymentsView = (() => {
         return 'Žádné platby.';
     }
 
+    let _paySortState = { order: [{ key: 'period_year', dir: 'desc' }, { key: 'period_month', dir: 'desc' }] };
+
+    function getPaySortValue(p, key) {
+        switch (key) {
+            case 'tenant_name': return (p.tenant_name || '').toLowerCase();
+            case 'period_year': return Number(p.period_year) || 0;
+            case 'period_month': return Number(p.period_month) || 0;
+            case 'payment_type': return (p.payment_type || 'rent').toLowerCase();
+            case 'amount': return parseFloat(p.amount) || 0;
+            case 'payment_date': return p.payment_date || '';
+            case 'note': return (p.note || '').toLowerCase();
+            default: return '';
+        }
+    }
+
+    function comparePayValues(va, vb) {
+        if (typeof va === 'string' && typeof vb === 'string') return va.localeCompare(vb);
+        return va < vb ? -1 : (va > vb ? 1 : 0);
+    }
+
+    function sortPayments(data, state) {
+        const order = state.order && state.order.length ? state.order : [{ key: 'period_year', dir: 'desc' }, { key: 'period_month', dir: 'desc' }];
+        return [...data].sort((a, b) => {
+            for (let i = 0; i < order.length; i++) {
+                const { key, dir } = order[i];
+                const cmp = comparePayValues(getPaySortValue(a, key), getPaySortValue(b, key));
+                if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
+            }
+            return 0;
+        });
+    }
+
     // ── apply client-side filters (rok, měsíc, typ, vyhledávání) ─────────
     function applyPaymentFilters(rows) {
         const year = document.getElementById('pay-filter-year');
@@ -454,20 +486,20 @@ const PaymentsView = (() => {
                 _payCache = await Api.crudList('payments', params);
             } catch (e) { return; }
         }
-        const data = applyPaymentFilters(_payCache);
-
-        const rowsWithClass = data.map(p => ({ ...p, _rowClass: 'pay-type-' + (p.payment_type || 'rent') }));
+        const filtered = applyPaymentFilters(_payCache);
+        const sorted = sortPayments(filtered, _paySortState);
+        const rowsWithClass = sorted.map(p => ({ ...p, _rowClass: 'pay-type-' + (p.payment_type || 'rent') }));
         UI.renderTable('pay-table',
             [
-                { label: 'Smlouva' },
-                { label: 'Období' },
-                { label: 'Typ', hideMobile: true },
-                { label: 'Částka' },
-                { label: 'Datum', hideMobile: true },
+                { label: 'Smlouva', sortKey: 'tenant_name' },
+                { label: 'Období', sortKey: 'period_year' },
+                { label: 'Typ', sortKey: 'payment_type', hideMobile: true },
+                { label: 'Částka', sortKey: 'amount' },
+                { label: 'Datum', sortKey: 'payment_date', hideMobile: true },
                 { label: 'Způsob', hideMobile: true },
                 { label: 'Protiúčet', hideMobile: true },
                 { label: 'Vs. nájemné', hideMobile: true },
-                { label: 'Poznámka', hideMobile: true },
+                { label: 'Poznámka', sortKey: 'note', hideMobile: true },
                 { label: 'Akce', act: true },
             ],
             rowsWithClass,
@@ -507,11 +539,11 @@ const PaymentsView = (() => {
                     '</td>'
                 );
             },
-            { emptyMsg: getPaymentsEmptyMsg(data.length === 0 && _payCache.length > 0) }
+            { emptyMsg: getPaymentsEmptyMsg(filtered.length === 0 && _payCache.length > 0), sortable: { order: _paySortState.order }, striped: true }
         );
 
-        if (data.length > 0) {
-            const sum = data.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+        if (filtered.length > 0) {
+            const sum = filtered.reduce((s, p) => s + (Number(p.amount) || 0), 0);
             const table = document.getElementById('pay-table').querySelector('table');
             if (table) {
                 const tfoot = document.createElement('tfoot');
@@ -581,9 +613,34 @@ const PaymentsView = (() => {
         }
     }
 
+    function initPayTableSortClick() {
+        const el = document.getElementById('pay-table');
+        if (!el || el.dataset.sortBound) return;
+        el.dataset.sortBound = '1';
+        el.addEventListener('click', (e) => {
+            const th = e.target.closest('th[data-sort]');
+            if (!th) return;
+            const key = th.getAttribute('data-sort');
+            if (!key) return;
+            const order = _paySortState.order || [];
+            const idx = order.findIndex(o => o.key === key);
+            if (e.ctrlKey || e.metaKey) {
+                if (idx >= 0) order[idx].dir = order[idx].dir === 'asc' ? 'desc' : 'asc';
+                else order.push({ key, dir: 'asc' });
+                _paySortState.order = order;
+            } else {
+                _paySortState.order = idx >= 0 && order.length === 1
+                    ? [{ key, dir: order[idx].dir === 'asc' ? 'desc' : 'asc' }]
+                    : [{ key, dir: 'asc' }];
+            }
+            renderPayments(false);
+        });
+    }
+
     // ── view loader ─────────────────────────────────────────────────────
     async function load() {
         initForm();
+        initPayTableSortClick();
         form.exitEdit();
         await fillDropdowns();
         applyHashParams();

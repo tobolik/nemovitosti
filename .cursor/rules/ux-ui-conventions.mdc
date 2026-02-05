@@ -36,10 +36,11 @@ Při úpravách UI (tabulky, formuláře, styly) vždy dodržuj následující.
 
 ## 6. Tabulky – řazení a pruhování
 
-- **Řazení:** U tabulek s řazením musí být graficky jasné, podle kterého sloupce a v jakém směru je řazeno.
-  - Klik na záhlaví sloupce: řazení podle tohoto sloupce; první klik = vzestupně (↑), druhý klik = sestupně (↓). Klik na jiný sloupec přepne řazení na ten sloupec.
-  - **Ctrl+Klik** (nebo Cmd+Klik): ponechat stávající sloupce v řazení a přidat tento sloupec jako další úroveň. Ctrl+Klik na již zařazený sloupec přepne u něj směr (asc/desc).
-  - V záhlaví řazeného sloupce zobrazit šipku (↑ vzestupně / ↓ sestupně). Při více úrovních řazení zobrazit u každého řazeného sloupce číslo priority (1, 2, 3…) vedle šipky.
+- **Řazení:** U tabulek s řazením musí být graficky jasné, podle kterého sloupce a v jakém směru je řazeno. Po načtení je vždy jeden sloupec v řazení (implicitní stav), aby ikona odpovídala skutečnému pořadí.
+  - **Řazený sloupec:** v záhlaví vždy **vyplněný** trojúhelník (▲ vzestupně, ▼ sestupně). Při více úrovních zobrazit číslo priority (1, 2, 3…) vedle ikony.
+  - **Řaditelný, neřazený sloupec:** v záhlaví **nevyplněný** trojúhelník (jen obrys) šipkou nahoru – značí, že sloupec jde řadit (výchozí směr = vzestupně). Po kliku se změní na vyplněný.
+  - Klik na záhlaví: řazení podle tohoto sloupce; první klik = vzestupně, druhý = sestupně. Klik na jiný sloupec přepne řazení na ten sloupec.
+  - **Ctrl+Klik:** ponechat stávající sloupce a přidat tento jako další úroveň; u již zařazeného přepne směr.
   - Implementace: `UI.renderTable(…, { sortable: { order: [ { key, dir }, … ] }, striped: true })`. Zpětná kompatibilita: `sortable: { currentKey, currentDir }` se převede na jednu úroveň.
 - **Pruhování řádků:** Tabulky s řazením nebo dlouhým seznamem mají mít `striped: true` (třída `tbl-striped`), aby se řádky vizuálně střídaly (např. každý sudý řádek mírně odlišené pozadí) a zlepšila se čitelnost.
 

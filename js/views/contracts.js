@@ -391,10 +391,7 @@ const ContractsView = (() => {
     function getContractSortValue(c, key) {
         switch (key) {
             case 'property_name': return (c.property_name || '').toLowerCase();
-            case 'tenant_name':
-                const name = (c.tenant_name || '').trim();
-                const lastWord = name.split(/\s+/).pop() || '';
-                return [(lastWord || name).toLowerCase(), name.toLowerCase()];
+            case 'tenant_name': return (c.tenant_name || '').trim().toLowerCase();
             case 'contract_start': return c.contract_start || '';
             case 'contract_end': return c.contract_end || '9999-99-99';
             case 'monthly_rent': return parseFloat(c.monthly_rent) || 0;
@@ -407,6 +404,7 @@ const ContractsView = (() => {
         if (Array.isArray(va) && Array.isArray(vb)) {
             return (va[0] || '').localeCompare(vb[0] || '') || (va[1] || '').localeCompare(vb[1] || '');
         }
+        if (typeof va === 'string' && typeof vb === 'string') return va.localeCompare(vb);
         return va < vb ? -1 : (va > vb ? 1 : 0);
     }
 
