@@ -147,7 +147,7 @@ const UI = (() => {
                 if (idx >= 0) {
                     const o = order[idx];
                     cls.push(o.dir === 'asc' ? 'th-sort-asc' : 'th-sort-desc');
-                    if (order.length > 1) sortLevel = ' data-sort-level="' + (idx + 1) + '"';
+                    sortLevel = ' data-sort-level="' + (idx + 1) + '"';
                 }
             }
             const titleAttr = h.title ? ' title="' + esc(h.title) + '"' : '';

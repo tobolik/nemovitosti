@@ -238,15 +238,18 @@ $contractsPerson = $contractsByType['person'] ?? 0;
 $contractsCompany = $contractsByType['company'] ?? 0;
 $contractsCount = count($contracts);
 
-// Průměrná / nejkratší / nejdelší doba nájmu (měsíce), aktuální nájemník
+// Průměrná / nejkratší / nejdelší doba nájmu (měsíce) + smlouvy, aktuální nájemník
 $avgTenancyMonths = 0;
 $shortestTenancyMonths = null;
 $longestTenancyMonths = null;
+$shortestTenancyContractsId = null;
+$longestTenancyContractsId = null;
 $currentTenantName = null;
 if ($contractsCount > 0) {
     $today = date('Y-m-d');
     $sumMonths = 0;
-    $monthsPerContract = [];
+    $shortestMonths = null;
+    $longestMonths = null;
     foreach ($contracts as $c) {
         $start = new DateTime($c['contract_start']);
         $end = !empty($c['contract_end']) && $c['contract_end'] <= $today
@@ -254,7 +257,17 @@ if ($contractsCount > 0) {
             : new DateTime($today);
         $months = (int)$start->diff($end)->format('%y') * 12 + (int)$start->diff($end)->format('%m');
         $sumMonths += $months;
-        $monthsPerContract[] = $months;
+        $cid = (int)($c['contracts_id'] ?? $c['id'] ?? 0);
+        if ($shortestMonths === null || $months < $shortestMonths) {
+            $shortestMonths = $months;
+            $shortestTenancyMonths = $months;
+            $shortestTenancyContractsId = $cid;
+        }
+        if ($longestMonths === null || $months > $longestMonths) {
+            $longestMonths = $months;
+            $longestTenancyMonths = $months;
+            $longestTenancyContractsId = $cid;
+        }
         if (empty($c['contract_end']) || $c['contract_end'] >= $today) {
             if ($currentTenantName === null) {
                 $tStmt = db()->prepare("SELECT name FROM tenants WHERE (tenants_id = ? OR id = ?) AND valid_to IS NULL LIMIT 1");
@@ -265,8 +278,6 @@ if ($contractsCount > 0) {
         }
     }
     $avgTenancyMonths = round($sumMonths / $contractsCount, 1);
-    $shortestTenancyMonths = min($monthsPerContract);
-    $longestTenancyMonths = max($monthsPerContract);
 }
 
 // Doplnit rent_received po letech z plateb
@@ -313,6 +324,8 @@ jsonOk([
     'avg_tenancy_months' => $avgTenancyMonths,
     'shortest_tenancy_months' => $shortestTenancyMonths,
     'longest_tenancy_months' => $longestTenancyMonths,
+    'shortest_tenancy_contracts_id' => $shortestTenancyContractsId,
+    'longest_tenancy_contracts_id' => $longestTenancyContractsId,
     'current_tenant_name' => $currentTenantName,
     'by_year' => $byYear,
 ]);

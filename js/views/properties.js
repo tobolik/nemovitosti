@@ -281,15 +281,15 @@ const PropertiesView = (() => {
                 container.innerHTML = '<p class="text-muted">K této nemovitosti nejsou evidované žádné smlouvy.</p>';
                 return;
             }
-            const thead = '<thead><tr><th>Nájemník</th><th>Období</th><th>Nájem</th><th>Akce</th></tr></thead>';
+            const thead = '<thead><tr><th>Nájemník</th><th>Období</th><th>Nájem</th><th class="th-act">Akce</th></tr></thead>';
             const tbody = rows.map(c => {
                 const cid = c.contracts_id ?? c.id;
                 const start = c.contract_start ? UI.fmtDate(c.contract_start) : '—';
                 const end = c.contract_end ? UI.fmtDate(c.contract_end) : '—';
                 const rent = c.monthly_rent != null ? UI.fmt(c.monthly_rent) + ' Kč' : '—';
-                return '<tr><td>' + UI.esc(c.tenant_name || '') + '</td><td>' + start + ' – ' + end + '</td><td>' + rent + '</td><td class="td-act"><button type="button" class="btn btn-ghost btn-sm" onclick="ContractsView.edit(' + cid + ')">Upravit</button></td></tr>';
+                return '<tr><td><strong>' + UI.esc(c.tenant_name || '') + '</strong></td><td>' + start + ' – ' + end + '</td><td>' + rent + '</td><td class="td-act"><button type="button" class="btn btn-ghost btn-sm" onclick="ContractsView.edit(' + cid + ')">Upravit</button></td></tr>';
             }).join('');
-            container.innerHTML = '<table class="prop-sub-table">' + thead + '<tbody>' + tbody + '</tbody></table>';
+            container.innerHTML = '<div class="tbl-wrap"><table class="tbl tbl-striped">' + thead + '<tbody>' + tbody + '</tbody></table></div>';
         } catch (e) {
             container.innerHTML = '<p class="alert alert-err">' + UI.esc(e.message || 'Chyba načtení smluv.') + '</p>';
         }
@@ -329,7 +329,17 @@ const PropertiesView = (() => {
             html += '<div class="stat stat-unified"><div class="stat-label">Počet nájemníků</div><div class="stat-label-sub">(FO\u00A0/\u00A0PO)</div><div class="stat-val">' + (data.tenants_total ?? 0) + '</div><div class="stat-val-sub">' + (data.tenants_person ?? 0) + '\u00A0/\u00A0' + (data.tenants_company ?? 0) + '</div></div>' +
                 '<div class="stat stat-unified"><div class="stat-label">Počet smluv</div><div class="stat-label-sub">(FO\u00A0/\u00A0PO)</div><div class="stat-val">' + (data.contracts_count ?? 0) + '</div><div class="stat-val-sub">' + (data.contracts_person ?? 0) + '\u00A0/\u00A0' + (data.contracts_company ?? 0) + '</div></div>' +
                 '<div class="stat stat-unified"><div class="stat-label">Doba nájmu</div><div class="stat-label-sub">Průměrná (nejkr.\u00A0/\u00A0nejdelší)</div><div class="stat-val">' + (data.avg_tenancy_months ?? 0) + '\u00A0měs.</div>' +
-                (data.shortest_tenancy_months != null && data.longest_tenancy_months != null ? '<div class="stat-val-sub">(' + data.shortest_tenancy_months + '\u00A0/\u00A0' + data.longest_tenancy_months + ')</div>' : '') + '</div>';
+                (data.shortest_tenancy_months != null && data.longest_tenancy_months != null
+                    ? '<div class="stat-val-sub">(' +
+                        (data.shortest_tenancy_contracts_id
+                            ? '<a href="#contracts&edit=' + data.shortest_tenancy_contracts_id + '" class="prop-year-link">' + data.shortest_tenancy_months + '</a>'
+                            : data.shortest_tenancy_months) +
+                        '\u00A0/\u00A0' +
+                        (data.longest_tenancy_contracts_id
+                            ? '<a href="#contracts&edit=' + data.longest_tenancy_contracts_id + '" class="prop-year-link">' + data.longest_tenancy_months + '</a>'
+                            : data.longest_tenancy_months) +
+                        ')</div>'
+                    : '') + '</div>';
             if (data.current_tenant_name) {
                 html += '<div class="stat"><div class="stat-label">Aktuální nájemník</div><div class="stat-val stat-val-stat-tenant">' + UI.esc(data.current_tenant_name) + '</div></div>';
             }
