@@ -381,16 +381,20 @@ footer .footer-version { opacity: .8; }
 .prop-stats-tags .prop-deposit-tag { white-space: nowrap; }
 
 /* Grafy ve statistikách nemovitosti */
+.prop-stats-table-charts-row { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 24px; align-items: flex-start; }
+.prop-stats-table-charts-row .prop-stats-table-col { flex: 1; min-width: 280px; }
+.prop-stats-table-charts-row .prop-stats-charts-side { display: flex; flex-direction: column; gap: 20px; min-width: 220px; max-width: 360px; flex-shrink: 0; }
+.prop-stats-table-charts-row .prop-stats-charts-side .prop-stats-chart-section { margin-top: 0; }
 .prop-stats-charts-row { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 24px; }
 .prop-stats-charts-row .prop-stats-chart-section { flex: 1; min-width: 200px; max-width: calc(50% - 10px); margin-top: 0; }
 .prop-stats-chart-section { margin-top: 24px; }
 .prop-stats-chart-title { font-size: .95rem; font-weight: 600; margin-bottom: 8px; color: var(--txt); }
-.prop-stats-chart { display: flex; gap: 6px; align-items: flex-end; height: 160px; padding: 8px 0; }
-.prop-stats-chart-bar-wrap { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; position: relative; }
+.prop-stats-chart { display: flex; gap: 6px; align-items: flex-end; height: 172px; padding: 8px 0 12px; box-sizing: border-box; }
+.prop-stats-chart-bar-wrap { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; position: relative; box-sizing: border-box; }
 .prop-stats-chart-bar { width: 70%; max-width: 40px; min-height: 8px; flex-shrink: 0; border-radius: 3px 3px 0 0; }
 .prop-stats-chart-bar.rent { background: var(--green-600); }
 .prop-stats-chart-bar.util { background: var(--purple-400); min-height: 8px; box-shadow: 0 0 0 1px rgba(255,255,255,.15); }
-.prop-stats-chart-label { font-size: .7rem; color: var(--txt3); margin-top: 6px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.prop-stats-chart-label { font-size: .7rem; color: var(--txt3); margin-top: 6px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex-shrink: 0; line-height: 1.2; min-height: 1.2em; }
 .prop-stats-chart-legend { font-size: .75rem; color: var(--txt2); margin-bottom: 8px; }
 .prop-stats-chart-legend span { margin-right: 12px; }
 .prop-stats-chart-legend .dot-rent { color: var(--green-500); }

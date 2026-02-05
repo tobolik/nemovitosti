@@ -349,8 +349,10 @@ const PropertiesView = (() => {
             if (byYear && !Array.isArray(byYear) && typeof byYear === 'object') {
                 byYear = Object.keys(byYear).map(yr => ({ year: parseInt(yr, 10), months_occupied: byYear[yr].months_occupied, rent_received: byYear[yr].rent_received ?? 0 }));
             }
+            let chartSectionRent = '';
+            let chartSectionUtil = '';
             if (byYear && byYear.length > 0) {
-                const chartHeightPx = 160;
+                const chartHeightPx = 136;
                 const maxRent = Math.max(1, ...byYear.map(r => r.rent_received || 0));
                 let chartBarsRent = '';
                 let chartBarsUtil = '';
@@ -370,17 +372,14 @@ const PropertiesView = (() => {
                         '<div class="prop-stats-chart-bar util" style="height:' + heightUtilPx + 'px"></div>' +
                         '<span class="prop-stats-chart-label">' + row.year + '</span></div>';
                 });
-                html += '<div class="prop-stats-charts-row">' +
-                    '<div class="prop-stats-chart-section">' +
+                chartSectionRent = '<div class="prop-stats-chart-section">' +
                     '<h4 class="prop-stats-chart-title">Vybraný nájem po letech</h4>' +
                     '<div class="prop-stats-chart-legend"><span class="dot-rent">vybraný nájem</span></div>' +
-                    '<div class="prop-stats-chart">' + chartBarsRent + '</div>' +
-                    '</div>' +
-                    '<div class="prop-stats-chart-section">' +
+                    '<div class="prop-stats-chart">' + chartBarsRent + '</div></div>';
+                chartSectionUtil = '<div class="prop-stats-chart-section">' +
                     '<h4 class="prop-stats-chart-title">Vytížení po letech</h4>' +
                     '<div class="prop-stats-chart-legend"><span class="dot-util">% obsazených měsíců</span></div>' +
-                    '<div class="prop-stats-chart">' + chartBarsUtil + '</div>' +
-                    '</div></div>';
+                    '<div class="prop-stats-chart">' + chartBarsUtil + '</div></div>';
             }
 
             const totalRent = data.total_rent_received || 0;
@@ -424,7 +423,9 @@ const PropertiesView = (() => {
                 });
                 const totalMonthsPossible = byYear.length * 12;
                 const avgUtilPct = totalMonthsPossible > 0 ? Math.round((sumMonthsOccupied / totalMonthsPossible) * 100) : 0;
-                html += '<h4 style="margin-top:20px;margin-bottom:8px;font-size:.9rem">Přehled po letech</h4>' +
+                html += '<div class="prop-stats-table-charts-row">' +
+                    '<div class="prop-stats-table-col">' +
+                    '<h4 style="margin-top:20px;margin-bottom:8px;font-size:.9rem">Přehled po letech</h4>' +
                     '<table class="prop-stats-table"><thead><tr><th>Rok</th><th class="col-num">Obs. měs.</th><th class="col-num">Vytížení</th><th class="col-num">Vybraný nájem</th><th class="col-num">Prům./měs.</th></tr></thead><tbody>';
                 byYear.forEach(row => {
                     const mo = row.months_occupied ?? 0;
@@ -436,7 +437,8 @@ const PropertiesView = (() => {
                     html += '<tr><td>' + link + '</td><td class="col-num">' + moFmt + '</td><td class="col-num">' + utilPct + ' %</td><td class="col-num">' + fmtKc(rent) + '</td><td class="col-num">' + (mo > 0 ? fmtKc(avgMonth) : '—') + '</td></tr>';
                 });
                 html += '<tr class="prop-stats-table-total"><td>Celkem</td><td class="col-num">' + (typeof sumMonthsOccupied === 'number' && sumMonthsOccupied % 1 !== 0 ? sumMonthsOccupied.toFixed(2).replace('.', ',') : sumMonthsOccupied) + '</td><td class="col-num">' + avgUtilPct + ' %</td><td class="col-num">' + fmtKc(sumRent) + '</td><td class="col-num">—</td></tr>';
-                html += '</tbody></table>';
+                html += '</tbody></table></div>' +
+                    '<div class="prop-stats-charts-side">' + chartSectionRent + chartSectionUtil + '</div></div>';
             }
             container.innerHTML = html;
         } catch (e) {
