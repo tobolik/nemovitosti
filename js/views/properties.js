@@ -162,7 +162,7 @@ const PropertiesView = (() => {
                 return (
                     '<td><strong>' + UI.esc(p.name) + '</strong></td>' +
                     '<td>' + UI.esc(TYPE_LABELS[p.type] || p.type) + '</td>' +
-                    '<td class="col-address col-hide-mobile">' + UI.esc(p.address) + '</td>' +
+                    '<td class="col-address cell-note-wrap col-hide-mobile">' + (p.address ? '<span class="cell-note-truncate" title="' + UI.esc(p.address) + '">' + UI.esc(p.address) + '</span>' : '<span style="color:var(--txt3)">—</span>') + '</td>' +
                     '<td class="col-hide-mobile">' + (p.size_m2 ? UI.fmt(p.size_m2) + ' m²' : '—') + '</td>' +
                     '<td class="col-hide-mobile">' + (p.purchase_price ? UI.fmt(p.purchase_price) + ' Kč' : '—') + '</td>' +
                     '<td class="col-hide-mobile">' + (p.purchase_date ? UI.fmtDate(p.purchase_date) : '—') + '</td>' +
@@ -345,22 +345,29 @@ const PropertiesView = (() => {
             }
             html += '</div>';
 
-            if (data.by_year && data.by_year.length > 0) {
-                const maxRent = Math.max(1, ...data.by_year.map(r => r.rent_received || 0));
+            let byYear = data.by_year;
+            if (byYear && !Array.isArray(byYear) && typeof byYear === 'object') {
+                byYear = Object.keys(byYear).map(yr => ({ year: parseInt(yr, 10), months_occupied: byYear[yr].months_occupied, rent_received: byYear[yr].rent_received ?? 0 }));
+            }
+            if (byYear && byYear.length > 0) {
+                const chartHeightPx = 160;
+                const maxRent = Math.max(1, ...byYear.map(r => r.rent_received || 0));
                 let chartBarsRent = '';
                 let chartBarsUtil = '';
                 const mo = (row) => Number(row.months_occupied) || 0;
-                data.by_year.forEach(row => {
+                byYear.forEach(row => {
                     const rent = row.rent_received || 0;
                     const utilPct = Math.round((mo(row) / 12) * 100);
                     const pctRent = maxRent > 0 ? (rent / maxRent) * 100 : 0;
                     const titleRent = row.year + ': ' + fmtKc(rent);
                     const titleUtil = row.year + ': ' + (mo(row).toFixed(2).replace('.', ',')) + ' měs. (' + utilPct + ' %)';
+                    const heightRentPx = Math.max(8, Math.round((pctRent / 100) * chartHeightPx));
+                    const heightUtilPx = Math.max(8, Math.round((utilPct / 100) * chartHeightPx));
                     chartBarsRent += '<div class="prop-stats-chart-bar-wrap" title="' + UI.esc(titleRent) + '">' +
-                        '<div class="prop-stats-chart-bar rent" style="height:' + Math.max(4, pctRent) + '%"></div>' +
+                        '<div class="prop-stats-chart-bar rent" style="height:' + heightRentPx + 'px"></div>' +
                         '<span class="prop-stats-chart-label">' + row.year + '</span></div>';
                     chartBarsUtil += '<div class="prop-stats-chart-bar-wrap" title="' + UI.esc(titleUtil) + '">' +
-                        '<div class="prop-stats-chart-bar util" style="height:' + Math.max(4, utilPct) + '%"></div>' +
+                        '<div class="prop-stats-chart-bar util" style="height:' + heightUtilPx + 'px"></div>' +
                         '<span class="prop-stats-chart-label">' + row.year + '</span></div>';
                 });
                 html += '<div class="prop-stats-charts-row">' +
@@ -407,11 +414,11 @@ const PropertiesView = (() => {
                 html += '</div>';
             }
 
-            if (data.by_year && data.by_year.length > 0) {
+            if (byYear && byYear.length > 0) {
                 const propId = propEntityId;
                 html += '<h4 style="margin-top:20px;margin-bottom:8px;font-size:.9rem">Přehled po letech</h4>' +
                     '<table class="prop-stats-table"><thead><tr><th>Rok</th><th class="col-num">Obs. měs.</th><th class="col-num">Vytížení</th><th class="col-num">Vybraný nájem</th><th class="col-num">Prům./měs.</th></tr></thead><tbody>';
-                data.by_year.forEach(row => {
+                byYear.forEach(row => {
                     const mo = row.months_occupied ?? 0;
                     const rent = row.rent_received ?? 0;
                     const utilPct = mo > 0 ? Math.round((mo / 12) * 100) : 0;

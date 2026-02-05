@@ -383,7 +383,7 @@ footer .footer-version { opacity: .8; }
 .prop-stats-chart-section { margin-top: 24px; }
 .prop-stats-chart-title { font-size: .95rem; font-weight: 600; margin-bottom: 8px; color: var(--txt); }
 .prop-stats-chart { display: flex; gap: 6px; align-items: flex-end; height: 160px; padding: 8px 0; }
-.prop-stats-chart-bar-wrap { flex: 1; height: 100%; display: flex; flex-direction: column-reverse; align-items: center; min-width: 0; position: relative; }
+.prop-stats-chart-bar-wrap { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; position: relative; }
 .prop-stats-chart-bar { width: 70%; max-width: 40px; min-height: 8px; flex-shrink: 0; border-radius: 3px 3px 0 0; }
 .prop-stats-chart-bar.rent { background: var(--green-600); }
 .prop-stats-chart-bar.util { background: var(--purple-500); }
@@ -587,8 +587,18 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
   white-space: nowrap;
 }
 .tbl td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.06); vertical-align: middle; }
-.tbl td.col-address { max-width: 240px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.35; }
-.tbl td.col-note.cell-note-wrap { max-width: 240px; vertical-align: top; }
+.tbl td.col-address.cell-note-wrap { min-width: 120px; max-width: 280px; vertical-align: top; }
+.tbl td.col-address .cell-note-truncate {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+/* Smlouva: jen šířka nápisu + ikona */
+.tbl td.col-contract, .tbl th.col-contract { width: 1%; white-space: nowrap; }
+.tbl td.col-note.cell-note-wrap { min-width: 180px; max-width: 320px; vertical-align: top; }
 /* Poznámka: max 1 řádek, ořez s ellipsis; celý text při najetí myši v tooltipu (title) */
 .tbl td.col-note .cell-note-truncate {
   display: block;

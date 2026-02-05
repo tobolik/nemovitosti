@@ -43,7 +43,10 @@ const App = (() => {
     function onHashChange() {
         const raw = (location.hash.slice(1) || 'dashboard').toLowerCase();
         const viewName = raw.split('&')[0];
-        if (views[viewName]) navigate(viewName);
+        if (views[viewName]) {
+            const forceReload = (viewName === currentView && raw.includes('edit='));
+            navigate(viewName, forceReload);
+        }
     }
 
     // ── login screen ────────────────────────────────────────────────────

@@ -434,7 +434,7 @@ const ContractsView = (() => {
                 { label: 'Do', sortKey: 'contract_end', hideMobile: true },
                 { label: 'Nájemné', sortKey: 'monthly_rent' },
                 { label: 'Kauce', sortKey: 'deposit_amount', hideMobile: true },
-                { label: 'Smlouva', hideMobile: true },
+                { label: 'Smlouva', hideMobile: true, colClass: 'col-contract' },
                 { label: 'Poznámka', hideMobile: true },
                 { label: 'Akce', act: true },
             ],
@@ -468,7 +468,7 @@ const ContractsView = (() => {
                     '<td class="col-hide-mobile">' + (c.contract_end ? UI.fmtDate(c.contract_end) : '<span style="color:var(--txt3)">neurčitá</span>') + '</td>' +
                     '<td>' + UI.fmt(c.monthly_rent) + ' Kč</td>' +
                     '<td class="col-hide-mobile">' + depositCell + '</td>' +
-                    '<td class="col-hide-mobile">' + contractLink + '</td>' +
+                    '<td class="col-contract col-hide-mobile">' + contractLink + '</td>' +
                     '<td class="col-note cell-note-wrap col-hide-mobile">' + noteCell + '</td>' +
                     '<td class="td-act">' +
                         '<button class="btn btn-ghost btn-sm" onclick="ContractsView.edit(' + (c.contracts_id ?? c.id) + ')">Úprava</button>' +
@@ -584,7 +584,22 @@ const ContractsView = (() => {
             });
             if (editId) {
                 const numId = parseInt(editId, 10);
-                if (!isNaN(numId)) setTimeout(() => ContractsView.edit(numId), 0);
+                if (!isNaN(numId)) {
+                    setTimeout(async () => {
+                        const row = _cache.find(r => (r.contracts_id ?? r.id) == numId);
+                        if (row) {
+                            ContractsView.edit(numId);
+                        } else {
+                            try {
+                                const r = await Api.crudGet('contracts', numId);
+                                if (r) {
+                                    form.startEdit(r);
+                                    history.replaceState(null, '', '#contracts&edit=' + (r.contracts_id ?? r.id));
+                                }
+                            } catch (_) {}
+                        }
+                    }, 0);
+                }
             }
         }
     }

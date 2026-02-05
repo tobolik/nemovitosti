@@ -140,6 +140,7 @@ const UI = (() => {
             let cls = [];
             if (h.act) cls.push('th-act');
             if (h.hideMobile) cls.push('col-hide-mobile');
+            if (h.colClass) cls.push(h.colClass);
             let sortLevel = '';
             if (h.sortKey) {
                 cls.push('th-sortable');
