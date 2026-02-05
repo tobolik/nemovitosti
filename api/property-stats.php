@@ -124,7 +124,10 @@ try {
 } catch (Throwable $e) {
     // Tabulka property_valuations nemusí existovat (migrace 041)
 }
-$appreciationPctVsPurchase = $purchasePrice > 0 ? round(($currentMarketValue - $purchasePrice) / $purchasePrice * 100, 1) : null;
+$appreciationPctVsPurchase = null;
+if ($purchasePrice > 0 && $currentMarketValue > 0) {
+    $appreciationPctVsPurchase = round(($currentMarketValue - $purchasePrice) / $purchasePrice * 100, 1);
+}
 $roiPct = $currentMarketValue > 0 ? round($annualRent / $currentMarketValue * 100, 1) : null;
 
 // Náklady: součet uhrazených požadavků mimo kauce (energy, settlement, other)

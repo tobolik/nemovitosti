@@ -214,7 +214,7 @@ const PropertiesView = (() => {
                 '<div class="stat"><div class="stat-label">Počet smluv</div><div class="stat-val">' + (data.contracts_count ?? 0) + '</div></div>' +
                 '<div class="stat"><div class="stat-label">Prům. doba nájmu</div><div class="stat-val">' + (data.avg_tenancy_months ?? 0) + ' měs.</div></div>';
             if (data.current_tenant_name) {
-                html += '<div class="stat"><div class="stat-label">Aktuální nájemník</div><div class="stat-val">' + UI.esc(data.current_tenant_name) + '</div></div>';
+                html += '<div class="stat"><div class="stat-label">Aktuální nájemník</div><div class="stat-val stat-val-stat-tenant">' + UI.esc(data.current_tenant_name) + '</div></div>';
             }
             html += '</div>';
 
@@ -235,7 +235,8 @@ const PropertiesView = (() => {
                         '<div class="prop-stats-chart-bar util" style="height:' + Math.max(4, utilPct) + '%"></div>' +
                         '<span class="prop-stats-chart-label">' + row.year + '</span></div>';
                 });
-                html += '<div class="prop-stats-chart-section">' +
+                html += '<div class="prop-stats-charts-row">' +
+                    '<div class="prop-stats-chart-section">' +
                     '<h4 class="prop-stats-chart-title">Vybraný nájem po letech</h4>' +
                     '<div class="prop-stats-chart-legend"><span class="dot-rent">vybraný nájem</span></div>' +
                     '<div class="prop-stats-chart">' + chartBarsRent + '</div>' +
@@ -244,7 +245,7 @@ const PropertiesView = (() => {
                     '<h4 class="prop-stats-chart-title">Vytížení po letech</h4>' +
                     '<div class="prop-stats-chart-legend"><span class="dot-util">% obsazených měsíců</span></div>' +
                     '<div class="prop-stats-chart">' + chartBarsUtil + '</div>' +
-                    '</div>';
+                    '</div></div>';
             }
 
             const totalRent = data.total_rent_received || 0;
@@ -280,9 +281,13 @@ const PropertiesView = (() => {
 
             if (data.by_year && data.by_year.length > 0) {
                 html += '<h4 style="margin-top:20px;margin-bottom:8px;font-size:.9rem">Přehled po letech</h4>' +
-                    '<table class="prop-stats-table"><thead><tr><th>Rok</th><th>Obsazené měsíce</th><th>Vybraný nájem</th></tr></thead><tbody>';
+                    '<table class="prop-stats-table"><thead><tr><th>Rok</th><th class="col-num">Obs. měs.</th><th class="col-num">Vytížení</th><th class="col-num">Vybraný nájem</th><th class="col-num">Prům./měs.</th></tr></thead><tbody>';
                 data.by_year.forEach(row => {
-                    html += '<tr><td>' + row.year + '</td><td>' + (row.months_occupied ?? 0) + '</td><td>' + fmtKc(row.rent_received) + '</td></tr>';
+                    const mo = row.months_occupied ?? 0;
+                    const rent = row.rent_received ?? 0;
+                    const utilPct = mo > 0 ? Math.round((mo / 12) * 100) : 0;
+                    const avgMonth = mo > 0 ? Math.round((rent / mo) * 100) / 100 : 0;
+                    html += '<tr><td>' + row.year + '</td><td class="col-num">' + mo + '</td><td class="col-num">' + utilPct + ' %</td><td class="col-num">' + fmtKc(rent) + '</td><td class="col-num">' + (mo > 0 ? fmtKc(avgMonth) : '—') + '</td></tr>';
                 });
                 html += '</tbody></table>';
             }

@@ -360,19 +360,25 @@ footer .footer-version { opacity: .8; }
 .prop-tab.active { color: var(--purple-400); border-bottom-color: var(--purple-500); font-weight: 500; }
 .prop-stats-wrap { padding: 8px 0; }
 .prop-stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.prop-stats-grid .stat-label { margin-bottom: 8px; }
+.prop-stats-grid .stat-val { margin-top: 2px; font-size: 0.92rem; min-height: 1.4em; }
+.prop-stats-grid .stat-val-stat-tenant { font-size: 0.8rem; word-break: break-word; }
 .prop-stats-wrap .stat { margin-bottom: 0; }
-.prop-stats-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.prop-stats-table { width: 100%; max-width: 520px; border-collapse: collapse; font-size: .9rem; }
 .prop-stats-table th, .prop-stats-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--glass-border); }
 .prop-stats-table th { color: var(--txt2); font-weight: 500; }
+.prop-stats-table .col-num { text-align: right; }
 .prop-stats-tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .prop-stats-tags .prop-deposit-tag { white-space: nowrap; }
 
 /* Grafy ve statistikách nemovitosti */
+.prop-stats-charts-row { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 24px; }
+.prop-stats-charts-row .prop-stats-chart-section { flex: 1; min-width: 200px; max-width: calc(50% - 10px); margin-top: 0; }
 .prop-stats-chart-section { margin-top: 24px; }
 .prop-stats-chart-title { font-size: .95rem; font-weight: 600; margin-bottom: 8px; color: var(--txt); }
 .prop-stats-chart { display: flex; gap: 6px; align-items: flex-end; height: 160px; padding: 8px 0; }
 .prop-stats-chart-bar-wrap { flex: 1; height: 100%; display: flex; flex-direction: column-reverse; align-items: center; min-width: 0; position: relative; }
-.prop-stats-chart-bar { width: 70%; max-width: 40px; min-height: 2px; flex-shrink: 0; border-radius: 3px 3px 0 0; }
+.prop-stats-chart-bar { width: 70%; max-width: 40px; min-height: 8px; flex-shrink: 0; border-radius: 3px 3px 0 0; }
 .prop-stats-chart-bar.rent { background: var(--green-600); }
 .prop-stats-chart-bar.util { background: var(--purple-500); }
 .prop-stats-chart-label { font-size: .7rem; color: var(--txt3); margin-top: 6px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
