@@ -4,7 +4,10 @@ const PaymentsView = (() => {
     let form = null;
     let contractsCache = [];   // all active contracts (with names)
     let bankAccountsCache = []; // bank accounts for select
+    let propertiesCache = [];  // all properties for filter
     let filterContractId = 0;  // current filter (API)
+    let filterPropertyId = 0;  // filter by property (API)
+    let filterTenantId = 0;    // filter by tenant (API)
     let _payCache = [];        // last loaded rows (before client-side filters)
 
     // ── init form (once) ────────────────────────────────────────────────
@@ -188,15 +191,47 @@ const PaymentsView = (() => {
             }
         });
 
-        // Filter: smlouva (API) – refetch
+        const propFilterEl = document.getElementById('pay-filter-property');
+        const tenantFilterEl = document.getElementById('pay-filter-tenant');
+        if (propFilterEl) {
+            propFilterEl.addEventListener('change', function () {
+                filterPropertyId = parseInt(this.value, 10) || 0;
+                filterContractId = 0;
+                const conSel = document.getElementById('pay-filter-contract');
+                if (conSel) conSel.value = '';
+                if (typeof UI.updateSearchableSelectDisplay === 'function') UI.updateSearchableSelectDisplay('pay-filter-contract');
+                renderPayments(true);
+            });
+        }
+        if (tenantFilterEl) {
+            tenantFilterEl.addEventListener('change', function () {
+                filterTenantId = parseInt(this.value, 10) || 0;
+                filterContractId = 0;
+                const conSel = document.getElementById('pay-filter-contract');
+                if (conSel) conSel.value = '';
+                if (typeof UI.updateSearchableSelectDisplay === 'function') UI.updateSearchableSelectDisplay('pay-filter-contract');
+                renderPayments(true);
+            });
+        }
         document.getElementById('pay-filter-contract').addEventListener('change', function () {
             filterContractId = Number(this.value);
+            filterPropertyId = 0;
+            filterTenantId = 0;
+            if (propFilterEl) propFilterEl.value = '';
+            if (tenantFilterEl) tenantFilterEl.value = '';
+            if (typeof UI.updateSearchableSelectDisplay === 'function') {
+                UI.updateSearchableSelectDisplay('pay-filter-property');
+                UI.updateSearchableSelectDisplay('pay-filter-tenant');
+            }
             renderPayments(true);
         });
-        // Filtry rok, měsíc, typ, vyhledávání – jen přefiltrovat načtená data
+        // Filtry rok, měsíc, typ – při filtru po nemovitosti refetch (server), jinak jen client-side
         ['pay-filter-year', 'pay-filter-month', 'pay-filter-type'].forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.addEventListener('change', () => renderPayments(false));
+            if (el) el.addEventListener('change', () => {
+                const refetch = filterPropertyId && (id === 'pay-filter-year' || id === 'pay-filter-month');
+                renderPayments(refetch);
+            });
         });
         const searchEl = document.getElementById('pay-filter-search');
         if (searchEl) {
@@ -294,9 +329,12 @@ const PaymentsView = (() => {
 
     // ── fill contract dropdowns (form + filter) ────────────────────────
     async function fillDropdowns() {
-        [contractsCache, bankAccountsCache] = await Promise.all([
+        let tenantsCache = [];
+        [contractsCache, bankAccountsCache, propertiesCache, tenantsCache] = await Promise.all([
             Api.crudList('contracts'),
             Api.crudList('bank_accounts'),
+            Api.crudList('properties'),
+            Api.crudList('tenants'),
         ]);
 
         fillBankAccountSelect('pay-account');
@@ -311,7 +349,21 @@ const PaymentsView = (() => {
             ).join('');
         document.getElementById('pay-contract').innerHTML = opts;
 
-        // Filter dropdown – title u každé option pro tooltip (celý text při zkrácení)
+        // Filter: Nemovitost
+        const propSel = document.getElementById('pay-filter-property');
+        if (propSel) {
+            const pid = (p) => p.properties_id ?? p.id;
+            propSel.innerHTML = '<option value="">— Všechny —</option>' +
+                propertiesCache.map(p => '<option value="' + pid(p) + '" title="' + UI.esc(p.name) + '"' + (filterPropertyId === pid(p) ? ' selected' : '') + '>' + UI.esc(p.name) + '</option>').join('');
+        }
+        // Filter: Nájemník
+        const tenantFilterSel = document.getElementById('pay-filter-tenant');
+        if (tenantFilterSel && tenantsCache.length) {
+            const tid = (t) => t.tenants_id ?? t.id;
+            tenantFilterSel.innerHTML = '<option value="">— Všichni —</option>' +
+                tenantsCache.map(t => '<option value="' + tid(t) + '" title="' + UI.esc(t.name) + '"' + (filterTenantId === tid(t) ? ' selected' : '') + '>' + UI.esc(t.name) + '</option>').join('');
+        }
+        // Filter: Smlouva
         const fOpts = '<option value="">— Všechny smlouvy —</option>' +
             contractsCache.map(c => {
                 const label = UI.esc(c.tenant_name) + ' – ' + UI.esc(c.property_name);
@@ -324,28 +376,31 @@ const PaymentsView = (() => {
             const now = new Date().getFullYear();
             const existing = yearSel.querySelectorAll('option');
             if (existing.length <= 1) {
-                let opts = '<option value="">— Všechny —</option>';
-                for (let y = now; y >= now - 15; y--) opts += '<option value="' + y + '">' + y + '</option>';
-                yearSel.innerHTML = opts;
+                let yopts = '<option value="">— Všechny —</option>';
+                for (let y = now; y >= now - 15; y--) yopts += '<option value="' + y + '">' + y + '</option>';
+                yearSel.innerHTML = yopts;
             }
         }
-        // Našeptávač u všech filtrů (smlouva, rok, měsíc, typ) – zobrazí možnosti při focusu a vyhledávání
+        // Našeptávač u všech filtrů
         if (typeof UI.createSearchableSelect === 'function') {
-            ['pay-filter-contract', 'pay-filter-year', 'pay-filter-month', 'pay-filter-type'].forEach(id => {
+            ['pay-filter-property', 'pay-filter-contract', 'pay-filter-year', 'pay-filter-month', 'pay-filter-type'].forEach(id => {
                 if (!document.querySelector('.searchable-select-wrap[data-for="' + id + '"]')) {
                     UI.createSearchableSelect(id);
                 }
             });
         }
         if (typeof UI.updateSearchableSelectDisplay === 'function') {
-            ['pay-filter-contract', 'pay-filter-year', 'pay-filter-month', 'pay-filter-type'].forEach(UI.updateSearchableSelectDisplay);
+            ['pay-filter-property', 'pay-filter-tenant', 'pay-filter-contract', 'pay-filter-year', 'pay-filter-month', 'pay-filter-type'].forEach(UI.updateSearchableSelectDisplay);
         }
         updateYearSelects();
     }
 
     function getPaymentsEmptyMsg(filteredToZero) {
         if (filteredToZero) return 'Žádné platby nevyhovují filtrům.';
-        return filterContractId ? 'Žádné platby pro tuto smlouvu.' : 'Žádné platby.';
+        if (filterContractId) return 'Žádné platby pro tuto smlouvu.';
+        if (filterPropertyId) return 'Žádné platby pro tuto nemovitost.';
+        if (filterTenantId) return 'Žádné platby pro tohoto nájemníka.';
+        return 'Žádné platby.';
     }
 
     // ── apply client-side filters (rok, měsíc, typ, vyhledávání) ─────────
@@ -383,7 +438,18 @@ const PaymentsView = (() => {
     // ── render payments table ───────────────────────────────────────────
     async function renderPayments(forceRefetch = true) {
         if (forceRefetch) {
-            const params = filterContractId ? { contracts_id: filterContractId } : {};
+            let params = {};
+            if (filterContractId) {
+                params = { contracts_id: filterContractId };
+            } else if (filterPropertyId) {
+                params = { properties_id: filterPropertyId };
+                const yearSel = document.getElementById('pay-filter-year');
+                const monthSel = document.getElementById('pay-filter-month');
+                const y = yearSel && yearSel.value ? parseInt(yearSel.value, 10) : 0;
+                const m = monthSel && monthSel.value ? parseInt(monthSel.value, 10) : 0;
+                if (y) params.period_year = y;
+                if (m) params.period_month = m;
+            }
             try {
                 _payCache = await Api.crudList('payments', params);
             } catch (e) { return; }
@@ -488,12 +554,40 @@ const PaymentsView = (() => {
         document.getElementById('pay-date').value     = todayISO();
     }
 
+    // ── parse hash params (payments&year=2024&properties_id=5) ───────────
+    function applyHashParams() {
+        const raw = (location.hash.slice(1) || '').toLowerCase();
+        if (!raw.startsWith('payments')) return;
+        const parts = raw.split('&').slice(1);
+        let year = '', propId = '';
+        parts.forEach(p => {
+            const eq = p.indexOf('=');
+            if (eq > 0) {
+                const k = p.slice(0, eq);
+                const v = decodeURIComponent(p.slice(eq + 1));
+                if (k === 'year') year = v;
+                if (k === 'properties_id') propId = v;
+            }
+        });
+        filterContractId = 0;
+        filterPropertyId = parseInt(propId, 10) || 0;
+        const propSel = document.getElementById('pay-filter-property');
+        const yearSel = document.getElementById('pay-filter-year');
+        if (propSel && filterPropertyId) propSel.value = String(filterPropertyId);
+        if (yearSel && year) yearSel.value = year;
+        if (typeof UI.updateSearchableSelectDisplay === 'function') {
+            if (propSel) UI.updateSearchableSelectDisplay('pay-filter-property');
+            if (yearSel) UI.updateSearchableSelectDisplay('pay-filter-year');
+        }
+    }
+
     // ── view loader ─────────────────────────────────────────────────────
     async function load() {
         initForm();
         form.exitEdit();
         await fillDropdowns();
-        await renderPayments();
+        applyHashParams();
+        await renderPayments(true);
     }
 
     return { load, edit, del, navigateWithFilter, prefill };

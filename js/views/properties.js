@@ -55,9 +55,13 @@ const PropertiesView = (() => {
                 document.getElementById('prop-note').value                    = row.note                   || '';
                 const tabUdaje = document.getElementById('prop-tab-udaje');
                 const tabStatistiky = document.getElementById('prop-tab-statistiky');
+                const tabSmlouvy = document.getElementById('prop-tab-smlouvy');
+                const tabPlatby = document.getElementById('prop-tab-platby');
                 const tabs = document.getElementById('prop-tabs');
                 if (tabUdaje) tabUdaje.style.display = '';
                 if (tabStatistiky) tabStatistiky.style.display = 'none';
+                if (tabSmlouvy) tabSmlouvy.style.display = 'none';
+                if (tabPlatby) tabPlatby.style.display = 'none';
                 if (tabs) {
                     tabs.querySelectorAll('.prop-tab').forEach(b => b.classList.remove('active'));
                     const btnUdaje = tabs.querySelector('.prop-tab[data-tab="udaje"]');
@@ -71,9 +75,13 @@ const PropertiesView = (() => {
                 document.getElementById('prop-type').value = 'apartment';
                 const tabUdaje = document.getElementById('prop-tab-udaje');
                 const tabStatistiky = document.getElementById('prop-tab-statistiky');
+                const tabSmlouvy = document.getElementById('prop-tab-smlouvy');
+                const tabPlatby = document.getElementById('prop-tab-platby');
                 const tabs = document.getElementById('prop-tabs');
                 if (tabUdaje) tabUdaje.style.display = '';
                 if (tabStatistiky) tabStatistiky.style.display = 'none';
+                if (tabSmlouvy) tabSmlouvy.style.display = 'none';
+                if (tabPlatby) tabPlatby.style.display = 'none';
                 if (tabs) {
                     tabs.querySelectorAll('.prop-tab').forEach(b => b.classList.remove('active'));
                     const btnUdaje = tabs.querySelector('.prop-tab[data-tab="udaje"]');
@@ -156,33 +164,73 @@ const PropertiesView = (() => {
         });
     }
 
-    // ── záložka Statistiky ──────────────────────────────────────────────
+    // ── záložky Údaje / Statistiky / Smlouvy / Platby ────────────────────
     function initPropertyTabs() {
         const tabsEl = document.getElementById('prop-tabs');
         const tabUdaje = document.getElementById('prop-tab-udaje');
         const tabStatistiky = document.getElementById('prop-tab-statistiky');
+        const tabSmlouvy = document.getElementById('prop-tab-smlouvy');
+        const tabPlatby = document.getElementById('prop-tab-platby');
         const statsContent = document.getElementById('prop-stats-content');
+        const smlouvyContent = document.getElementById('prop-smlouvy-content');
+        const platbyContent = document.getElementById('prop-platby-content');
         if (!tabsEl || !tabUdaje || !tabStatistiky) return;
-        tabsEl.querySelectorAll('.prop-tab').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tab = btn.dataset.tab;
-                tabsEl.querySelectorAll('.prop-tab').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                if (tab === 'udaje') {
-                    tabUdaje.style.display = '';
-                    tabStatistiky.style.display = 'none';
-                } else {
-                    tabUdaje.style.display = 'none';
-                    tabStatistiky.style.display = 'block';
-                    const editId = (document.getElementById('prop-edit-id') && document.getElementById('prop-edit-id').value) || '';
-                    if (!editId) {
-                        statsContent.innerHTML = '<p class="text-muted">Pro zobrazení statistik nejdříve uložte nemovitost a otevřete ji znovu.</p>';
-                    } else {
-                        loadPropertyStats(editId, statsContent);
-                    }
-                }
+
+        function showTab(tabName) {
+            [tabUdaje, tabStatistiky, tabSmlouvy, tabPlatby].forEach((el, i) => {
+                if (!el) return;
+                const name = ['udaje', 'statistiky', 'smlouvy', 'platby'][i];
+                el.style.display = name === tabName ? (name === 'udaje' ? '' : 'block') : 'none';
             });
+            tabsEl.querySelectorAll('.prop-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+            const editId = (document.getElementById('prop-edit-id') && document.getElementById('prop-edit-id').value) || '';
+            if (tabName === 'statistiky' && statsContent) {
+                if (!editId) statsContent.innerHTML = '<p class="text-muted">Pro zobrazení statistik nejdříve uložte nemovitost a otevřete ji znovu.</p>';
+                else loadPropertyStats(editId, statsContent);
+            }
+            if (tabName === 'smlouvy' && smlouvyContent) {
+                if (!editId) smlouvyContent.innerHTML = '<p class="text-muted">Pro zobrazení smluv nejdříve uložte nemovitost a otevřete ji znovu.</p>';
+                else loadPropertyContracts(editId, smlouvyContent);
+            }
+            if (tabName === 'platby' && platbyContent) {
+                if (!editId) platbyContent.innerHTML = '<p class="text-muted">Pro zobrazení odkazů na platby nejdříve uložte nemovitost a otevřete ji znovu.</p>';
+                else loadPropertyPaymentsPanel(editId, platbyContent);
+            }
+        }
+
+        tabsEl.querySelectorAll('.prop-tab').forEach(btn => {
+            btn.addEventListener('click', () => showTab(btn.dataset.tab));
         });
+    }
+
+    async function loadPropertyContracts(propEntityId, container) {
+        if (!container) return;
+        container.innerHTML = '<p class="text-muted">Načítám…</p>';
+        try {
+            const rows = await Api.crudList('contracts', { properties_id: propEntityId });
+            if (!rows.length) {
+                container.innerHTML = '<p class="text-muted">K této nemovitosti nejsou evidované žádné smlouvy.</p>';
+                return;
+            }
+            const thead = '<thead><tr><th>Nájemník</th><th>Období</th><th>Nájem</th><th>Akce</th></tr></thead>';
+            const tbody = rows.map(c => {
+                const cid = c.contracts_id ?? c.id;
+                const start = c.contract_start ? UI.fmtDate(c.contract_start) : '—';
+                const end = c.contract_end ? UI.fmtDate(c.contract_end) : '—';
+                const rent = c.monthly_rent != null ? UI.fmt(c.monthly_rent) + ' Kč' : '—';
+                return '<tr><td>' + UI.esc(c.tenant_name || '') + '</td><td>' + start + ' – ' + end + '</td><td>' + rent + '</td><td class="td-act"><button type="button" class="btn btn-ghost btn-sm" onclick="ContractsView.edit(' + cid + ')">Upravit</button></td></tr>';
+            }).join('');
+            container.innerHTML = '<table class="prop-sub-table">' + thead + '<tbody>' + tbody + '</tbody></table>';
+        } catch (e) {
+            container.innerHTML = '<p class="alert alert-err">' + UI.esc(e.message || 'Chyba načtení smluv.') + '</p>';
+        }
+    }
+
+    function loadPropertyPaymentsPanel(propEntityId, container) {
+        if (!container) return;
+        const hash = 'payments&properties_id=' + propEntityId;
+        container.innerHTML = '<p class="text-muted">Platby k této nemovitosti zobrazíte v agendě Platby s filtrem podle nemovitosti.</p>' +
+            '<p><a href="#' + hash + '" class="btn btn-pri">Přejít do agendy Platby</a></p>';
     }
 
     function fmtKc(n) {
@@ -209,10 +257,10 @@ const PropertiesView = (() => {
             if (data.roi_pct != null) {
                 html += '<div class="stat"><div class="stat-label">ROI (k\u00A0tržní ceně)</div><div class="stat-val">' + data.roi_pct + ' %</div></div>';
             }
-            html += '<div class="stat"><div class="stat-label">Počet nájemníků</div><div class="stat-val">' + (data.tenants_total ?? 0) + '</div></div>' +
-                '<div class="stat"><div class="stat-label">z toho FO / PO</div><div class="stat-val">' + (data.tenants_person ?? 0) + ' / ' + (data.tenants_company ?? 0) + '</div></div>' +
-                '<div class="stat"><div class="stat-label">Počet smluv</div><div class="stat-val">' + (data.contracts_count ?? 0) + '</div></div>' +
-                '<div class="stat"><div class="stat-label">Prům. doba nájmu</div><div class="stat-val">' + (data.avg_tenancy_months ?? 0) + ' měs.</div></div>';
+            html += '<div class="stat stat-unified"><div class="stat-label">Počet nájemníků</div><div class="stat-label-sub">(FO\u00A0/\u00A0PO)</div><div class="stat-val">' + (data.tenants_total ?? 0) + '</div><div class="stat-val-sub">' + (data.tenants_person ?? 0) + '\u00A0/\u00A0' + (data.tenants_company ?? 0) + '</div></div>' +
+                '<div class="stat stat-unified"><div class="stat-label">Počet smluv</div><div class="stat-label-sub">(FO\u00A0/\u00A0PO)</div><div class="stat-val">' + (data.contracts_count ?? 0) + '</div><div class="stat-val-sub">' + (data.contracts_person ?? 0) + '\u00A0/\u00A0' + (data.contracts_company ?? 0) + '</div></div>' +
+                '<div class="stat stat-unified"><div class="stat-label">Doba nájmu</div><div class="stat-label-sub">Průměrná (nejkr.\u00A0/\u00A0nejdelší)</div><div class="stat-val">' + (data.avg_tenancy_months ?? 0) + '\u00A0měs.</div>' +
+                (data.shortest_tenancy_months != null && data.longest_tenancy_months != null ? '<div class="stat-val-sub">(' + data.shortest_tenancy_months + '\u00A0/\u00A0' + data.longest_tenancy_months + ')</div>' : '') + '</div>';
             if (data.current_tenant_name) {
                 html += '<div class="stat"><div class="stat-label">Aktuální nájemník</div><div class="stat-val stat-val-stat-tenant">' + UI.esc(data.current_tenant_name) + '</div></div>';
             }
@@ -222,12 +270,13 @@ const PropertiesView = (() => {
                 const maxRent = Math.max(1, ...data.by_year.map(r => r.rent_received || 0));
                 let chartBarsRent = '';
                 let chartBarsUtil = '';
+                const mo = (row) => Number(row.months_occupied) || 0;
                 data.by_year.forEach(row => {
                     const rent = row.rent_received || 0;
-                    const utilPct = Math.round(((row.months_occupied || 0) / 12) * 100);
+                    const utilPct = Math.round((mo(row) / 12) * 100);
                     const pctRent = maxRent > 0 ? (rent / maxRent) * 100 : 0;
                     const titleRent = row.year + ': ' + fmtKc(rent);
-                    const titleUtil = row.year + ': ' + (row.months_occupied || 0) + '/12 měsíců (' + utilPct + ' %)';
+                    const titleUtil = row.year + ': ' + (mo(row).toFixed(2).replace('.', ',')) + ' měs. (' + utilPct + ' %)';
                     chartBarsRent += '<div class="prop-stats-chart-bar-wrap" title="' + UI.esc(titleRent) + '">' +
                         '<div class="prop-stats-chart-bar rent" style="height:' + Math.max(4, pctRent) + '%"></div>' +
                         '<span class="prop-stats-chart-label">' + row.year + '</span></div>';
@@ -280,6 +329,7 @@ const PropertiesView = (() => {
             }
 
             if (data.by_year && data.by_year.length > 0) {
+                const propId = propEntityId;
                 html += '<h4 style="margin-top:20px;margin-bottom:8px;font-size:.9rem">Přehled po letech</h4>' +
                     '<table class="prop-stats-table"><thead><tr><th>Rok</th><th class="col-num">Obs. měs.</th><th class="col-num">Vytížení</th><th class="col-num">Vybraný nájem</th><th class="col-num">Prům./měs.</th></tr></thead><tbody>';
                 data.by_year.forEach(row => {
@@ -287,7 +337,9 @@ const PropertiesView = (() => {
                     const rent = row.rent_received ?? 0;
                     const utilPct = mo > 0 ? Math.round((mo / 12) * 100) : 0;
                     const avgMonth = mo > 0 ? Math.round((rent / mo) * 100) / 100 : 0;
-                    html += '<tr><td>' + row.year + '</td><td class="col-num">' + mo + '</td><td class="col-num">' + utilPct + ' %</td><td class="col-num">' + fmtKc(rent) + '</td><td class="col-num">' + (mo > 0 ? fmtKc(avgMonth) : '—') + '</td></tr>';
+                    const moFmt = typeof mo === 'number' && mo % 1 !== 0 ? mo.toFixed(2).replace('.', ',') : mo;
+                    const link = '<a href="#payments&year=' + row.year + '&properties_id=' + propId + '" class="prop-year-link">' + row.year + '</a>';
+                    html += '<tr><td>' + link + '</td><td class="col-num">' + moFmt + '</td><td class="col-num">' + utilPct + ' %</td><td class="col-num">' + fmtKc(rent) + '</td><td class="col-num">' + (mo > 0 ? fmtKc(avgMonth) : '—') + '</td></tr>';
                 });
                 html += '</tbody></table>';
             }

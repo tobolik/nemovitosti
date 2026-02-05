@@ -41,7 +41,8 @@ const App = (() => {
     }
 
     function onHashChange() {
-        const viewName = (location.hash.slice(1) || 'dashboard').toLowerCase();
+        const raw = (location.hash.slice(1) || 'dashboard').toLowerCase();
+        const viewName = raw.split('&')[0];
         if (views[viewName]) navigate(viewName);
     }
 

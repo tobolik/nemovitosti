@@ -98,6 +98,8 @@
           <div class="prop-tabs" id="prop-tabs">
             <button type="button" class="prop-tab active" data-tab="udaje">Údaje</button>
             <button type="button" class="prop-tab" data-tab="statistiky">Statistiky</button>
+            <button type="button" class="prop-tab" data-tab="smlouvy">Smlouvy</button>
+            <button type="button" class="prop-tab" data-tab="platby">Platby</button>
           </div>
           <div class="alert" id="prop-alert"></div>
           <input type="hidden" id="prop-edit-id">
@@ -134,6 +136,12 @@
           </div>
           <div id="prop-tab-statistiky" class="prop-stats-wrap" style="display:none">
             <div id="prop-stats-content"></div>
+          </div>
+          <div id="prop-tab-smlouvy" class="prop-tab-panel" style="display:none">
+            <div id="prop-smlouvy-content"></div>
+          </div>
+          <div id="prop-tab-platby" class="prop-tab-panel" style="display:none">
+            <div id="prop-platby-content"></div>
           </div>
         </div>
         <div id="prop-table"></div>
@@ -344,6 +352,14 @@
         </div>
         <div class="filter-bar filter-bar-payments">
           <div class="filter-row">
+            <label>Nemovitost:</label>
+            <select id="pay-filter-property"><option value="">— Všechny —</option></select>
+          </div>
+          <div class="filter-row">
+            <label>Nájemník:</label>
+            <select id="pay-filter-tenant"><option value="">— Všichni —</option></select>
+          </div>
+          <div class="filter-row">
             <label>Smlouva:</label>
             <select id="pay-filter-contract"><option value="">— Všechny smlouvy —</option></select>
           </div>
@@ -437,7 +453,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v1.4.2</span>
+    <span class="footer-version">v1.4.3</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>

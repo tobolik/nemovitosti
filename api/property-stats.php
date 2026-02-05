@@ -22,26 +22,35 @@ $contracts = $stmt->fetchAll();
 $nowY = (int)date('Y');
 $nowM = (int)date('n');
 
-// Vytížení za daný rok: počet měsíců 1–12, kdy byla nemovitost obsazena
+// Vytížení za daný rok: zlomkové měsíce (částečné měsíce na začátku/konci smlouvy)
 $monthsInYear = 0;
+$today = date('Y-m-d');
 for ($m = 1; $m <= 12; $m++) {
     $firstOfMonth = sprintf('%04d-%02d-01', $year, $m);
     $lastOfMonth = date('Y-m-t', strtotime($firstOfMonth));
+    $daysInMonth = (int)date('t', strtotime($firstOfMonth));
+    $maxFrac = 0;
     foreach ($contracts as $c) {
-        if ($c['contract_start'] <= $lastOfMonth && (empty($c['contract_end']) || $c['contract_end'] >= $firstOfMonth)) {
-            $monthsInYear++;
-            break;
+        $cEnd = !empty($c['contract_end']) && $c['contract_end'] <= $today ? $c['contract_end'] : $today;
+        if ($c['contract_start'] <= $lastOfMonth && $cEnd >= $firstOfMonth) {
+            $oStart = max($c['contract_start'], $firstOfMonth);
+            $oEnd = min($cEnd, $lastOfMonth);
+            $days = (strtotime($oEnd) - strtotime($oStart)) / 86400 + 1;
+            $frac = min(1, $days / $daysInMonth);
+            if ($frac > $maxFrac) $maxFrac = $frac;
         }
     }
+    $monthsInYear += $maxFrac;
 }
 $utilizationRateYear = round($monthsInYear / 12 * 100, 1);
 
-// Vytížení celkem: od prvního startu/koupě do teď (nebo posledního konce)
+// Vytížení celkem a by_year s částečnými měsíci (zlomkové měsíce na začátku/konci smlouvy)
 $starts = [];
 $ends = [];
+$today = date('Y-m-d');
 foreach ($contracts as $c) {
     $starts[] = $c['contract_start'];
-    $ends[] = $c['contract_end'] ?? sprintf('%04d-%02d-%02d', $nowY, $nowM, (int)date('t', mktime(0, 0, 0, $nowM, 1, $nowY)));
+    $ends[] = $c['contract_end'] ?? $today;
 }
 if ($prop['purchase_date'] ?? null) $starts[] = $prop['purchase_date'];
 if (empty($starts)) {
@@ -49,27 +58,56 @@ if (empty($starts)) {
     $byYear = [];
 } else {
     $periodStart = min($starts);
-    $periodEnd = !empty($ends) ? max($ends) : date('Y-m-d');
+    $periodEnd = !empty($ends) ? max($ends) : $today;
     if ($periodEnd < $periodStart) $periodEnd = $periodStart;
+    $yMin = (int)date('Y', strtotime($periodStart));
+    $yMax = (int)date('Y', strtotime($periodEnd));
+    $byYear = [];
+    $occupiedMonths = 0;
+    $totalMonths = 0;
+    for ($yr = $yMin; $yr <= $yMax; $yr++) {
+        $monthsInYr = 0;
+        for ($m = 1; $m <= 12; $m++) {
+            $firstOfMonth = sprintf('%04d-%02d-01', $yr, $m);
+            $lastOfMonth = date('Y-m-t', strtotime($firstOfMonth));
+            $daysInMonth = (int)date('t', strtotime($firstOfMonth));
+            $maxFrac = 0;
+            foreach ($contracts as $c) {
+                $cEnd = !empty($c['contract_end']) && $c['contract_end'] <= $today ? $c['contract_end'] : $today;
+                if ($c['contract_start'] <= $lastOfMonth && $cEnd >= $firstOfMonth) {
+                    $oStart = max($c['contract_start'], $firstOfMonth);
+                    $oEnd = min($cEnd, $lastOfMonth);
+                    $days = (strtotime($oEnd) - strtotime($oStart)) / 86400 + 1;
+                    $frac = min(1, $days / $daysInMonth);
+                    if ($frac > $maxFrac) $maxFrac = $frac;
+                }
+            }
+            $monthsInYr += $maxFrac;
+        }
+        $byYear[$yr] = ['months_occupied' => round($monthsInYr, 2), 'rent_received' => 0];
+    }
     $d = new DateTime($periodStart);
     $endDt = new DateTime($periodEnd);
     $endDt->modify('last day of this month');
     $occupiedMonths = 0;
     $totalMonths = 0;
-    $byYear = [];
     while ($d <= $endDt) {
         $totalMonths++;
         $firstOfMonth = $d->format('Y-m') . '-01';
         $lastOfMonth = $d->format('Y-m-t');
-        $yr = (int)$d->format('Y');
+        $daysInMonth = (int)$d->format('t');
+        $maxFrac = 0;
         foreach ($contracts as $c) {
-            if ($c['contract_start'] <= $lastOfMonth && (empty($c['contract_end']) || $c['contract_end'] >= $firstOfMonth)) {
-                $occupiedMonths++;
-                if (!isset($byYear[$yr])) $byYear[$yr] = ['months_occupied' => 0, 'rent_received' => 0];
-                $byYear[$yr]['months_occupied']++;
-                break;
+            $cEnd = !empty($c['contract_end']) && $c['contract_end'] <= $today ? $c['contract_end'] : $today;
+            if ($c['contract_start'] <= $lastOfMonth && $cEnd >= $firstOfMonth) {
+                $oStart = max($c['contract_start'], $firstOfMonth);
+                $oEnd = min($cEnd, $lastOfMonth);
+                $days = (strtotime($oEnd) - strtotime($oStart)) / 86400 + 1;
+                $frac = min(1, $days / $daysInMonth);
+                if ($frac > $maxFrac) $maxFrac = $frac;
             }
         }
+        $occupiedMonths += $maxFrac;
         $d->modify('+1 month');
     }
     $utilizationRateOverall = $totalMonths > 0 ? round($occupiedMonths / $totalMonths * 100, 1) : 0;
@@ -183,19 +221,40 @@ if ($tenantsTotal === 0 && count($contracts) > 0) {
     $tenantsCompany = 0;
 }
 
-// Počet smluv, průměrná doba nájmu (měsíce), aktuální nájemník
+// Počet smluv podle typu nájemníka (FO/PO)
+$contractsByTypeStmt = db()->prepare("
+    SELECT t.type, COUNT(*) AS cnt
+    FROM contracts c
+    JOIN tenants t ON (t.tenants_id = c.tenants_id OR t.id = c.tenants_id) AND t.valid_to IS NULL
+    WHERE (c.properties_id = ? OR c.properties_id = ?) AND c.valid_to IS NULL
+    GROUP BY t.type
+");
+$contractsByTypeStmt->execute([$propEntityId, $propId]);
+$contractsByType = [];
+while ($r = $contractsByTypeStmt->fetch()) {
+    $contractsByType[$r['type']] = (int)$r['cnt'];
+}
+$contractsPerson = $contractsByType['person'] ?? 0;
+$contractsCompany = $contractsByType['company'] ?? 0;
 $contractsCount = count($contracts);
+
+// Průměrná / nejkratší / nejdelší doba nájmu (měsíce), aktuální nájemník
 $avgTenancyMonths = 0;
+$shortestTenancyMonths = null;
+$longestTenancyMonths = null;
 $currentTenantName = null;
 if ($contractsCount > 0) {
     $today = date('Y-m-d');
     $sumMonths = 0;
+    $monthsPerContract = [];
     foreach ($contracts as $c) {
         $start = new DateTime($c['contract_start']);
         $end = !empty($c['contract_end']) && $c['contract_end'] <= $today
             ? new DateTime($c['contract_end'])
             : new DateTime($today);
-        $sumMonths += (int)$start->diff($end)->format('%y') * 12 + (int)$start->diff($end)->format('%m');
+        $months = (int)$start->diff($end)->format('%y') * 12 + (int)$start->diff($end)->format('%m');
+        $sumMonths += $months;
+        $monthsPerContract[] = $months;
         if (empty($c['contract_end']) || $c['contract_end'] >= $today) {
             if ($currentTenantName === null) {
                 $tStmt = db()->prepare("SELECT name FROM tenants WHERE (tenants_id = ? OR id = ?) AND valid_to IS NULL LIMIT 1");
@@ -206,6 +265,8 @@ if ($contractsCount > 0) {
         }
     }
     $avgTenancyMonths = round($sumMonths / $contractsCount, 1);
+    $shortestTenancyMonths = min($monthsPerContract);
+    $longestTenancyMonths = max($monthsPerContract);
 }
 
 // Doplnit rent_received po letech z plateb
@@ -247,7 +308,11 @@ jsonOk([
     'tenants_person' => $tenantsPerson,
     'tenants_company' => $tenantsCompany,
     'contracts_count' => $contractsCount,
+    'contracts_person' => $contractsPerson,
+    'contracts_company' => $contractsCompany,
     'avg_tenancy_months' => $avgTenancyMonths,
+    'shortest_tenancy_months' => $shortestTenancyMonths,
+    'longest_tenancy_months' => $longestTenancyMonths,
     'current_tenant_name' => $currentTenantName,
     'by_year' => $byYear,
 ]);

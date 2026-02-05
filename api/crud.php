@@ -161,6 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($table === 'payments') {
         $cid = isset($_GET['contracts_id']) ? (int)$_GET['contracts_id'] : 0;
         $pid = isset($_GET['properties_id']) ? (int)$_GET['properties_id'] : 0;
+        $tid = isset($_GET['tenants_id']) ? (int)$_GET['tenants_id'] : 0;
         $periodYear = isset($_GET['period_year']) ? (int)$_GET['period_year'] : 0;
         $periodMonth = isset($_GET['period_month']) ? (int)$_GET['period_month'] : 0;
         // properties_id, tenants_id = odkazy na entity_id; bank_accounts_id → account_number; propojení s požadavkem
@@ -180,6 +181,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($cid > 0) {
             $sql .= " AND pay.contracts_id=?";
             $params[] = $cid;
+        }
+        if ($tid > 0) {
+            $sql .= " AND (c.tenants_id = ? OR t.tenants_id = ? OR t.id = ?)";
+            $params[] = $tid;
+            $params[] = $tid;
+            $params[] = $tid;
         }
         if ($pid > 0) {
             $sql .= " AND (c.properties_id = ? OR p.properties_id = ?)";
