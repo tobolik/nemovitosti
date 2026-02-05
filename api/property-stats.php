@@ -49,7 +49,7 @@ if (empty($starts)) {
     $byYear = [];
 } else {
     $periodStart = min($starts);
-    $periodEnd = max($ends);
+    $periodEnd = !empty($ends) ? max($ends) : date('Y-m-d');
     if ($periodEnd < $periodStart) $periodEnd = $periodStart;
     $d = new DateTime($periodStart);
     $endDt = new DateTime($periodEnd);
@@ -105,8 +105,105 @@ $stmt->execute([$propId, (int)$prop['id']]);
 $row = $stmt->fetch();
 $totalRentReceived = (float)($row['total_rent_received'] ?? 0);
 $annualRent = (float)($row['annual_rent'] ?? 0);
+$purchasePrice = (float)($row['purchase_price'] ?? 0);
 $valuationAmount = (float)($row['valuation_amount'] ?? 0);
-$roiPct = $valuationAmount > 0 ? round($annualRent / $valuationAmount * 100, 1) : null;
+
+// Aktuální tržní cena: nejnovější z property_valuations (effective_from <= dnes) nebo valuation_amount
+$currentMarketValue = $valuationAmount;
+try {
+    $pvStmt = db()->prepare("
+        SELECT amount FROM property_valuations
+        WHERE (properties_id = ? OR properties_id = ?) AND valid_to IS NULL AND effective_from <= CURDATE()
+        ORDER BY effective_from DESC LIMIT 1
+    ");
+    $pvStmt->execute([$propEntityId, $propId]);
+    $pv = $pvStmt->fetch();
+    if ($pv && (float)$pv['amount'] > 0) {
+        $currentMarketValue = (float)$pv['amount'];
+    }
+} catch (Throwable $e) {
+    // Tabulka property_valuations nemusí existovat (migrace 041)
+}
+$appreciationPctVsPurchase = $purchasePrice > 0 ? round(($currentMarketValue - $purchasePrice) / $purchasePrice * 100, 1) : null;
+$roiPct = $currentMarketValue > 0 ? round($annualRent / $currentMarketValue * 100, 1) : null;
+
+// Náklady: součet uhrazených požadavků mimo kauce (energy, settlement, other)
+$costsStmt = db()->prepare("
+    SELECT COALESCE(SUM(pr.amount), 0) AS total
+    FROM payment_requests pr
+    JOIN contracts c ON c.contracts_id = pr.contracts_id AND c.valid_to IS NULL
+    WHERE (c.properties_id = ? OR c.properties_id = ?)
+      AND pr.valid_to IS NULL
+      AND pr.paid_at IS NOT NULL
+      AND pr.type IN ('energy', 'settlement', 'other')
+");
+$costsStmt->execute([$propEntityId, $propId]);
+$totalCosts = (float)$costsStmt->fetch()['total'];
+
+// Kauce: ze smluv (deposit_amount, deposit_paid_date, deposit_return_date) + název nájemníka
+$deposits = [];
+foreach ($contracts as $c) {
+    $amt = (float)($c['deposit_amount'] ?? 0);
+    if ($amt <= 0) continue;
+    $tenantStmt = db()->prepare("SELECT name, type FROM tenants WHERE (tenants_id = ? OR id = ?) AND valid_to IS NULL LIMIT 1");
+    $tenantStmt->execute([$c['tenants_id'] ?? 0, $c['tenants_id'] ?? 0]);
+    $tenant = $tenantStmt->fetch();
+    $deposits[] = [
+        'tenant_name' => $tenant['name'] ?? '',
+        'tenant_type' => $tenant['type'] ?? 'person',
+        'amount' => round($amt, 2),
+        'paid_date' => $c['deposit_paid_date'] ?? null,
+        'return_date' => $c['deposit_return_date'] ?? null,
+    ];
+}
+
+// Počet nájemníků (distinct) a rozdělení FO / PO
+$tenantsStmt = db()->prepare("
+    SELECT t.type, COUNT(DISTINCT t.tenants_id) AS cnt
+    FROM contracts c
+    JOIN tenants t ON (t.tenants_id = c.tenants_id OR t.id = c.tenants_id) AND t.valid_to IS NULL
+    WHERE (c.properties_id = ? OR c.properties_id = ?) AND c.valid_to IS NULL
+    GROUP BY t.type
+");
+$tenantsStmt->execute([$propEntityId, $propId]);
+$tenantsByType = [];
+$tenantsTotal = 0;
+while ($r = $tenantsStmt->fetch()) {
+    $tenantsByType[$r['type']] = (int)$r['cnt'];
+    $tenantsTotal += (int)$r['cnt'];
+}
+$tenantsPerson = $tenantsByType['person'] ?? 0;
+$tenantsCompany = $tenantsByType['company'] ?? 0;
+if ($tenantsTotal === 0 && count($contracts) > 0) {
+    $tenantsTotal = count(array_unique(array_column($contracts, 'tenants_id')));
+    $tenantsPerson = $tenantsTotal;
+    $tenantsCompany = 0;
+}
+
+// Počet smluv, průměrná doba nájmu (měsíce), aktuální nájemník
+$contractsCount = count($contracts);
+$avgTenancyMonths = 0;
+$currentTenantName = null;
+if ($contractsCount > 0) {
+    $today = date('Y-m-d');
+    $sumMonths = 0;
+    foreach ($contracts as $c) {
+        $start = new DateTime($c['contract_start']);
+        $end = !empty($c['contract_end']) && $c['contract_end'] <= $today
+            ? new DateTime($c['contract_end'])
+            : new DateTime($today);
+        $sumMonths += (int)$start->diff($end)->format('%y') * 12 + (int)$start->diff($end)->format('%m');
+        if (empty($c['contract_end']) || $c['contract_end'] >= $today) {
+            if ($currentTenantName === null) {
+                $tStmt = db()->prepare("SELECT name FROM tenants WHERE (tenants_id = ? OR id = ?) AND valid_to IS NULL LIMIT 1");
+                $tStmt->execute([$c['tenants_id'] ?? 0, $c['tenants_id'] ?? 0]);
+                $tn = $tStmt->fetch();
+                $currentTenantName = $tn['name'] ?? '';
+            }
+        }
+    }
+    $avgTenancyMonths = round($sumMonths / $contractsCount, 1);
+}
 
 // Doplnit rent_received po letech z plateb
 $stmt = db()->prepare("
@@ -135,8 +232,19 @@ jsonOk([
     'utilization_rate_year' => $utilizationRateYear,
     'utilization_rate_overall' => $utilizationRateOverall,
     'total_rent_received' => round($totalRentReceived, 2),
+    'total_costs' => round($totalCosts, 2),
     'annual_rent' => round($annualRent, 2),
     'roi_pct' => $roiPct,
+    'purchase_price' => $purchasePrice > 0 ? round($purchasePrice, 2) : null,
+    'current_market_value' => $currentMarketValue > 0 ? round($currentMarketValue, 2) : null,
     'valuation_amount' => $valuationAmount > 0 ? round($valuationAmount, 2) : null,
+    'appreciation_pct_vs_purchase' => $appreciationPctVsPurchase,
+    'deposits' => $deposits,
+    'tenants_total' => $tenantsTotal,
+    'tenants_person' => $tenantsPerson,
+    'tenants_company' => $tenantsCompany,
+    'contracts_count' => $contractsCount,
+    'avg_tenancy_months' => $avgTenancyMonths,
+    'current_tenant_name' => $currentTenantName,
     'by_year' => $byYear,
 ]);

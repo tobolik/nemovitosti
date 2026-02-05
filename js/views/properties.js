@@ -185,6 +185,11 @@ const PropertiesView = (() => {
         });
     }
 
+    function fmtKc(n) {
+        if (n == null || isNaN(n)) return '—';
+        return (UI.fmt(n) + '\u00A0Kč').replace(/\s/g, '\u00A0');
+    }
+
     async function loadPropertyStats(propEntityId, container) {
         if (!container) return;
         container.innerHTML = '<p class="text-muted">Načítám…</p>';
@@ -194,17 +199,90 @@ const PropertiesView = (() => {
             let html = '<div class="prop-stats-grid">' +
                 '<div class="stat"><div class="stat-label">Vytížení (' + year + ')</div><div class="stat-val">' + (data.utilization_rate_year ?? 0) + ' %</div></div>' +
                 '<div class="stat"><div class="stat-label">Vytížení (celkem)</div><div class="stat-val">' + (data.utilization_rate_overall ?? 0) + ' %</div></div>' +
-                '<div class="stat"><div class="stat-label">Vybraný nájem celkem</div><div class="stat-val green">' + UI.fmt(data.total_rent_received ?? 0) + ' Kč</div></div>' +
-                '<div class="stat"><div class="stat-label">Roční nájem (aktuální)</div><div class="stat-val">' + UI.fmt(data.annual_rent ?? 0) + ' Kč</div></div>';
+                '<div class="stat"><div class="stat-label">Vybraný nájem celkem</div><div class="stat-val green">' + fmtKc(data.total_rent_received) + '</div></div>' +
+                '<div class="stat"><div class="stat-label">Náklady celkem</div><div class="stat-val">' + fmtKc(data.total_costs) + '</div></div>' +
+                '<div class="stat"><div class="stat-label">Roční nájem (aktuální)</div><div class="stat-val">' + fmtKc(data.annual_rent) + '</div></div>';
+            if (data.appreciation_pct_vs_purchase != null) {
+                const sign = data.appreciation_pct_vs_purchase >= 0 ? '+' : '';
+                html += '<div class="stat"><div class="stat-label">Zhodnocení (k\u00A0kupní ceně)</div><div class="stat-val">' + sign + data.appreciation_pct_vs_purchase + ' %</div></div>';
+            }
             if (data.roi_pct != null) {
-                html += '<div class="stat"><div class="stat-label">ROI (k odhadu)</div><div class="stat-val">' + data.roi_pct + ' %</div></div>';
+                html += '<div class="stat"><div class="stat-label">ROI (k\u00A0tržní ceně)</div><div class="stat-val">' + data.roi_pct + ' %</div></div>';
+            }
+            html += '<div class="stat"><div class="stat-label">Počet nájemníků</div><div class="stat-val">' + (data.tenants_total ?? 0) + '</div></div>' +
+                '<div class="stat"><div class="stat-label">z toho FO / PO</div><div class="stat-val">' + (data.tenants_person ?? 0) + ' / ' + (data.tenants_company ?? 0) + '</div></div>' +
+                '<div class="stat"><div class="stat-label">Počet smluv</div><div class="stat-val">' + (data.contracts_count ?? 0) + '</div></div>' +
+                '<div class="stat"><div class="stat-label">Prům. doba nájmu</div><div class="stat-val">' + (data.avg_tenancy_months ?? 0) + ' měs.</div></div>';
+            if (data.current_tenant_name) {
+                html += '<div class="stat"><div class="stat-label">Aktuální nájemník</div><div class="stat-val">' + UI.esc(data.current_tenant_name) + '</div></div>';
             }
             html += '</div>';
+
+            if (data.by_year && data.by_year.length > 0) {
+                const maxRent = Math.max(1, ...data.by_year.map(r => r.rent_received || 0));
+                let chartBarsRent = '';
+                let chartBarsUtil = '';
+                data.by_year.forEach(row => {
+                    const rent = row.rent_received || 0;
+                    const utilPct = Math.round(((row.months_occupied || 0) / 12) * 100);
+                    const pctRent = maxRent > 0 ? (rent / maxRent) * 100 : 0;
+                    const titleRent = row.year + ': ' + fmtKc(rent);
+                    const titleUtil = row.year + ': ' + (row.months_occupied || 0) + '/12 měsíců (' + utilPct + ' %)';
+                    chartBarsRent += '<div class="prop-stats-chart-bar-wrap" title="' + UI.esc(titleRent) + '">' +
+                        '<div class="prop-stats-chart-bar rent" style="height:' + Math.max(4, pctRent) + '%"></div>' +
+                        '<span class="prop-stats-chart-label">' + row.year + '</span></div>';
+                    chartBarsUtil += '<div class="prop-stats-chart-bar-wrap" title="' + UI.esc(titleUtil) + '">' +
+                        '<div class="prop-stats-chart-bar util" style="height:' + Math.max(4, utilPct) + '%"></div>' +
+                        '<span class="prop-stats-chart-label">' + row.year + '</span></div>';
+                });
+                html += '<div class="prop-stats-chart-section">' +
+                    '<h4 class="prop-stats-chart-title">Vybraný nájem po letech</h4>' +
+                    '<div class="prop-stats-chart-legend"><span class="dot-rent">vybraný nájem</span></div>' +
+                    '<div class="prop-stats-chart">' + chartBarsRent + '</div>' +
+                    '</div>' +
+                    '<div class="prop-stats-chart-section">' +
+                    '<h4 class="prop-stats-chart-title">Vytížení po letech</h4>' +
+                    '<div class="prop-stats-chart-legend"><span class="dot-util">% obsazených měsíců</span></div>' +
+                    '<div class="prop-stats-chart">' + chartBarsUtil + '</div>' +
+                    '</div>';
+            }
+
+            const totalRent = data.total_rent_received || 0;
+            const totalCosts = data.total_costs || 0;
+            const totalAll = totalRent + totalCosts;
+            if (totalAll > 0) {
+                const pctRent = (totalRent / totalAll) * 100;
+                const pctCosts = (totalCosts / totalAll) * 100;
+                html += '<div class="prop-stats-chart-section">' +
+                    '<h4 class="prop-stats-chart-title">Příjmy vs náklady (celkem)</h4>' +
+                    '<div class="prop-stats-summary-bar">' +
+                    '<div class="seg-rent" style="width:' + pctRent + '%" title="Vybraný nájem ' + fmtKc(totalRent) + '"></div>' +
+                    '<div class="seg-costs" style="width:' + pctCosts + '%" title="Náklady ' + fmtKc(totalCosts) + '"></div>' +
+                    '</div>' +
+                    '<div class="prop-stats-summary-labels">' +
+                    '<span class="l-rent">Příjmy (nájem) ' + fmtKc(totalRent) + '</span>' +
+                    '<span class="l-costs">Náklady ' + fmtKc(totalCosts) + '</span>' +
+                    '<span class="l-net">Čistý výnos ' + fmtKc(totalRent - totalCosts) + '</span>' +
+                    '</div></div>';
+            }
+
+            if (data.deposits && data.deposits.length > 0) {
+                html += '<h4 style="margin-top:20px;margin-bottom:8px;font-size:.9rem">Kauce</h4><div class="prop-stats-tags">';
+                data.deposits.forEach(d => {
+                    const tenant = (d.tenant_name ? UI.esc(d.tenant_name) + ': ' : '');
+                    const paid = d.paid_date ? 'zaplaceno ' + UI.fmtDate(d.paid_date) : 'nezaplaceno';
+                    const ret = d.return_date ? 'vráceno ' + UI.fmtDate(d.return_date) : 'dosud nevrácena';
+                    html += '<span class="tag prop-deposit-tag" title="' + tenant + paid + ', ' + ret + '">' +
+                        'Kauce ' + fmtKc(d.amount) + ' – ' + paid + ' – ' + ret + '</span> ';
+                });
+                html += '</div>';
+            }
+
             if (data.by_year && data.by_year.length > 0) {
                 html += '<h4 style="margin-top:20px;margin-bottom:8px;font-size:.9rem">Přehled po letech</h4>' +
                     '<table class="prop-stats-table"><thead><tr><th>Rok</th><th>Obsazené měsíce</th><th>Vybraný nájem</th></tr></thead><tbody>';
                 data.by_year.forEach(row => {
-                    html += '<tr><td>' + row.year + '</td><td>' + (row.months_occupied ?? 0) + '</td><td>' + UI.fmt(row.rent_received ?? 0) + ' Kč</td></tr>';
+                    html += '<tr><td>' + row.year + '</td><td>' + (row.months_occupied ?? 0) + '</td><td>' + fmtKc(row.rent_received) + '</td></tr>';
                 });
                 html += '</tbody></table>';
             }

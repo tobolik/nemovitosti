@@ -364,6 +364,33 @@ footer .footer-version { opacity: .8; }
 .prop-stats-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .prop-stats-table th, .prop-stats-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--glass-border); }
 .prop-stats-table th { color: var(--txt2); font-weight: 500; }
+.prop-stats-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.prop-stats-tags .prop-deposit-tag { white-space: nowrap; }
+
+/* Grafy ve statistikách nemovitosti */
+.prop-stats-chart-section { margin-top: 24px; }
+.prop-stats-chart-title { font-size: .95rem; font-weight: 600; margin-bottom: 8px; color: var(--txt); }
+.prop-stats-chart { display: flex; gap: 6px; align-items: flex-end; height: 160px; padding: 8px 0; }
+.prop-stats-chart-bar-wrap { flex: 1; height: 100%; display: flex; flex-direction: column-reverse; align-items: center; min-width: 0; position: relative; }
+.prop-stats-chart-bar { width: 70%; max-width: 40px; min-height: 2px; flex-shrink: 0; border-radius: 3px 3px 0 0; }
+.prop-stats-chart-bar.rent { background: var(--green-600); }
+.prop-stats-chart-bar.util { background: var(--purple-500); }
+.prop-stats-chart-label { font-size: .7rem; color: var(--txt3); margin-top: 6px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.prop-stats-chart-legend { font-size: .75rem; color: var(--txt2); margin-bottom: 8px; }
+.prop-stats-chart-legend span { margin-right: 12px; }
+.prop-stats-chart-legend .dot-rent { color: var(--green-500); }
+.prop-stats-chart-legend .dot-util::before { content: ''; display: inline-block; width: 10px; height: 10px; background: var(--purple-500); border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.prop-stats-chart-legend .dot-rent::before { content: ''; display: inline-block; width: 10px; height: 10px; background: var(--green-600); border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.prop-stats-summary-bar { margin-top: 16px; display: flex; gap: 12px; align-items: stretch; height: 32px; border-radius: 6px; overflow: hidden; background: var(--glass-border); }
+.prop-stats-summary-bar .seg-rent { background: var(--green-600); }
+.prop-stats-summary-bar .seg-costs { background: var(--orange-500); }
+.prop-stats-summary-bar .seg-net { background: var(--purple-500); }
+.prop-stats-summary-labels { display: flex; gap: 12px; margin-top: 6px; font-size: .8rem; color: var(--txt2); }
+.prop-stats-summary-labels span { display: flex; align-items: center; gap: 4px; }
+.prop-stats-summary-labels span::before { content: ''; width: 8px; height: 8px; border-radius: 2px; }
+.prop-stats-summary-labels .l-rent::before { background: var(--green-600); }
+.prop-stats-summary-labels .l-costs::before { background: var(--orange-500); }
+.prop-stats-summary-labels .l-net::before { background: var(--purple-500); }
 
 .form-row { display: flex; gap: 16px; }
 .form-row .fg { flex: 1; min-width: 0; }
