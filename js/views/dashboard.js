@@ -41,33 +41,41 @@ async function loadDashboard(year) {
     initPaymentRequestModal();
 
     // ── Stats (Obsazenost, Vytížení, Měsíční výnos, ROI, Míra inkasa) ─────────────
+    const statTitles = {
+        occupancy: 'Výpočet: (počet nemovitostí se smlouvou / počet nemovitostí „v pronájmu“) × 100. Do jmenovatele se berou jen nemovitosti, u nichž je Pronajímáno od prázdné nebo ≤ dnes.',
+        utilizationYear: 'Výpočet: (obsazené měsíce nemovitostí za vybraný rok / celkový počet měsíců v roce) × 100. U každé nemovitosti se započítávají jen měsíce od data „Pronajímáno od“.',
+        utilizationOverall: 'Výpočet: (celkový počet obsazených měsíců / celkový počet měsíců v období) × 100. Období u každé nemovitosti začíná dnem „Pronajímáno od“, datumem koupě nebo první smlouvou. Reaguje na pole Pronajímáno od.',
+        monthlyIncome: 'Výpočet: součet skutečně vybraných plateb (nájem) za aktuální kalendářní měsíc.',
+        roi: 'Výpočet: (vybraný nájem za aktuální rok / celková investice) × 100. Investice = součet kupních cen všech nemovitostí.',
+        collectionRate: 'Výpočet: (skutečně vybraný nájem za rok / očekávaný nájem za rok) × 100. Očekávaný = nájem dle smluv a změn nájmu za daný rok.'
+    };
     document.getElementById('dash-stats').innerHTML =
-        '<div class="stat">' +
+        '<div class="stat" title="' + UI.esc(statTitles.occupancy) + '">' +
             '<div class="stat-icon purple">%</div>' +
             '<div class="stat-val">' + (stats.occupancyRate ?? 0) + '%</div>' +
             '<div class="stat-label">Obsazenost</div>' +
         '</div>' +
-        '<div class="stat" title="Podíl obsazených měsíců nemovitostí za vybraný rok">' +
+        '<div class="stat" title="' + UI.esc(statTitles.utilizationYear) + '">' +
             '<div class="stat-icon purple">📅</div>' +
             '<div class="stat-val">' + (stats.utilizationRateYear ?? 0) + '%</div>' +
             '<div class="stat-label">Vytížení (' + y + ')</div>' +
         '</div>' +
-        '<div class="stat" title="Podíl obsazených měsíců od začátku">' +
+        '<div class="stat" title="' + UI.esc(statTitles.utilizationOverall) + '">' +
             '<div class="stat-icon purple">Σ</div>' +
             '<div class="stat-val">' + (stats.utilizationRateOverall ?? 0) + '%</div>' +
             '<div class="stat-label">Vytížení (celkem)</div>' +
         '</div>' +
-        '<div class="stat">' +
+        '<div class="stat" title="' + UI.esc(statTitles.monthlyIncome) + '">' +
             '<div class="stat-icon green">$</div>' +
             '<div class="stat-val green">' + UI.fmt(stats.monthlyIncome ?? 0) + ' Kč</div>' +
             '<div class="stat-label">Měsíční výnos</div>' +
         '</div>' +
-        '<div class="stat">' +
+        '<div class="stat" title="' + UI.esc(statTitles.roi) + '">' +
             '<div class="stat-icon yellow">?</div>' +
             '<div class="stat-val">' + (stats.roi ?? 0) + '%</div>' +
             '<div class="stat-label">ROI (roční)</div>' +
         '</div>' +
-        '<div class="stat">' +
+        '<div class="stat" title="' + UI.esc(statTitles.collectionRate) + '">' +
             '<div class="stat-icon blue">📄</div>' +
             '<div class="stat-val">' + (stats.collectionRate ?? 100) + '%</div>' +
             '<div class="stat-label">Míra inkasa</div>' +
@@ -160,7 +168,8 @@ async function loadDashboard(year) {
                 const paymentCount = cell.payment_count ?? (cell.payment && cell.payment.count ? cell.payment.count : 0);
                 const remaining = cell.remaining ?? (cell.amount ? Math.max(0, cell.amount - paidAmt) : 0);
                 const isPaid = cell.type === 'exact' || cell.type === 'overpaid';
-                if (cell.type !== 'empty') {
+                const isEmptyOrNotRented = cell.type === 'empty' || cell.type === 'not_rented';
+                if (!isEmptyOrNotRented) {
                     propYearExpected += cell.amount || 0;
                     propYearActual += paidAmt;
                 }
@@ -169,6 +178,7 @@ async function loadDashboard(year) {
                 const isCurrentMonth = y === now.getFullYear() && m === now.getMonth() + 1;
 
                 let cls = 'heatmap-cell ' + (cell.type || 'empty');
+                if (cell.type === 'not_rented') cls += ' heatmap-cell-not-rented';
                 if (cell.is_contract_start_month) cls += ' heatmap-cell-start-month';
                 if (cell.has_unfulfilled_requests) cls += ' heatmap-cell-has-requests';
                 if (isFuture && (cell.type === 'unpaid' || cell.type === 'overdue')) {
@@ -181,7 +191,9 @@ async function loadDashboard(year) {
                 const pctPaid = prescribedTotal > 0 ? Math.min(100, (paidAmt / prescribedTotal) * 100) : 100;
                 let content = '';
                 let isBeforePurchase = false;
-                if (cell.type === 'empty') {
+                if (cell.type === 'not_rented') {
+                    content = 'Nepronajímáno';
+                } else if (cell.type === 'empty') {
                     const purchaseDate = prop.purchase_date || '';
                     const purchaseYear = purchaseDate ? parseInt(purchaseDate.substring(0, 4), 10) : null;
                     const purchaseMonth = purchaseDate ? parseInt(purchaseDate.substring(5, 7), 10) : null;
@@ -213,12 +225,14 @@ async function loadDashboard(year) {
                     : '';
                 const monthlyRent = contract && (contract.monthly_rent != null) ? parseFloat(contract.monthly_rent) : 0;
                 const propIdForCell = prop.properties_id ?? prop.id;
-                const dataAttrs = cell.type !== 'empty'
+                const dataAttrs = !isEmptyOrNotRented
                     ? ' data-property-id="' + propIdForCell + '" data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"' + (contractStart ? ' data-contract-start="' + contractStart.replace(/"/g, '&quot;') + '"' : '') + (contractEnd ? ' data-contract-end="' + contractEnd.replace(/"/g, '&quot;') + '"' : '') + (rentChangesJson ? ' data-rent-changes="' + rentChangesJson + '"' : '') + (monthlyRent > 0 ? ' data-monthly-rent="' + monthlyRent + '"' : '')
                     : ' data-property-id="' + propIdForCell + '" data-month-key="' + monthKey + '"';
 
                 let titleAttr = '';
-                if (cell.type !== 'empty') {
+                if (cell.type === 'not_rented') {
+                    titleAttr = ' title="Nemovitost se v tomto období ještě nepronajímala (pole Pronajímáno od u nemovitosti)."';
+                } else if (!isEmptyOrNotRented) {
                     const tipParts = ['Předpis (součet): ' + UI.fmt(prescribedTotal) + ' Kč'];
                     if (cell.payment_details && cell.payment_details.length > 0) {
                         tipParts.push('Uhrazené platby:');
@@ -249,9 +263,8 @@ async function loadDashboard(year) {
                     titleAttr = ' title="' + UI.esc(tipParts.join('\n')) + '"';
                 }
 
-                const onClick = cell.type === 'empty'
-                    ? (isBeforePurchase ? '' : 'DashboardView.openNewContract(this)')
-                    : 'DashboardView.openPaymentModal(this)';
+                const onClick = cell.type === 'not_rented' ? ''
+                    : (cell.type === 'empty' ? (isBeforePurchase ? '' : 'DashboardView.openNewContract(this)') : 'DashboardView.openPaymentModal(this)');
 
                 rows += '<td><div class="' + cls + '"' + dataAttrs + titleAttr + (onClick ? ' onclick="' + onClick + '"' : '') + '>' + content + '</div></td>';
             }

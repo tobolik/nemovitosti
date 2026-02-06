@@ -444,7 +444,7 @@ foreach ($properties as $p) {
         $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
 
         if ($rentedFrom !== null && $firstOfMonth < $rentedFrom) {
-            $heatmap[$propId . '_' . $monthKey] = ['type' => 'empty', 'monthKey' => $monthKey];
+            $heatmap[$propId . '_' . $monthKey] = ['type' => 'not_rented', 'monthKey' => $monthKey];
             continue;
         }
 

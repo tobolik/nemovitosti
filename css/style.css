@@ -810,6 +810,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .heatmap-cell:hover { opacity: .9; }
 .heatmap-cell.empty { background: rgba(100,100,100,.3); color: var(--txt3); font-size: .76rem; padding: 4px 3px; }
 .heatmap-cell.heatmap-cell-before-purchase { cursor: default; pointer-events: none; background: transparent; }
+.heatmap-cell.heatmap-cell-not-rented { cursor: default; pointer-events: none; background: rgba(80,80,80,.25); color: var(--txt3); }
 .heatmap-cell .heatmap-cell-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; min-width: 0; background: var(--green-600); border-radius: var(--r); z-index: 0; pointer-events: none; }
 .heatmap-cell .heatmap-cell-content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; line-height: 1.1; }
 .heatmap-cell.exact { background: var(--green-600); color: #fff; font-weight: 600; }
