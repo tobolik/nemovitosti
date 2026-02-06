@@ -64,7 +64,7 @@ if (empty($starts)) {
     $utilizationRateOverall = 0;
     $byYear = [];
 } else {
-    $periodStart = min($starts);
+    $periodStart = ($rentedFrom !== null) ? $rentedFrom : min($starts);
     $periodEnd = !empty($ends) ? max($ends) : $today;
     if ($periodEnd < $periodStart) $periodEnd = $periodStart;
     $yMin = (int)date('Y', strtotime($periodStart));

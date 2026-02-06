@@ -158,7 +158,11 @@ async function loadDashboard(year) {
         properties.forEach(prop => {
             let propYearExpected = 0;
             let propYearActual = 0;
-            rows += '<tr><td class="heatmap-property" title="' + UI.esc(prop.name) + '">' + UI.esc(prop.name) + '</td>';
+            const propEntityId = prop.properties_id ?? prop.id;
+            const propNameCell = propEntityId
+                ? '<a href="#properties&edit=' + propEntityId + '" class="dash-link heatmap-property-link" title="Zobrazit evidenci nemovitosti">' + UI.esc(prop.name) + '</a>'
+                : UI.esc(prop.name);
+            rows += '<tr><td class="heatmap-property" title="' + UI.esc(prop.name) + '">' + propNameCell + '</td>';
             for (let m = 1; m <= 12; m++) {
                 const monthKey = y + '-' + String(m).padStart(2, '0');
                 const key = prop.id + '_' + monthKey;
