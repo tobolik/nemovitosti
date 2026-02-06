@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=2.0.6">
+<link rel="stylesheet" href="css/style.css?v=2.0.7">
 </head>
 <body>
 
@@ -460,7 +460,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v2.0.6</span>
+    <span class="footer-version">v2.0.7</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -495,23 +495,15 @@
         </div>
         <div id="pay-modal-range-row" class="form-row" style="display:none">
           <div class="fg">
-            <label>Od měsíce *</label>
-            <div class="pay-modal-month-row">
-              <select id="pay-modal-month-from"><option value="1">Leden</option><option value="2">Únor</option><option value="3">Březen</option><option value="4">Duben</option><option value="5">Květen</option><option value="6">Červen</option><option value="7">Červenec</option><option value="8">Srpen</option><option value="9">Září</option><option value="10">Říjen</option><option value="11">Listopad</option><option value="12">Prosinec</option></select>
-              <span class="pay-modal-month-or">nebo číslo</span>
-              <input type="number" id="pay-modal-month-from-num" min="1" max="12" placeholder="1" aria-label="Měsíc 1–12">
-            </div>
+            <label>Od měsíce * (vyhledat: leden nebo 1)</label>
+            <select id="pay-modal-month-from"><option value="1">Leden</option><option value="2">Únor</option><option value="3">Březen</option><option value="4">Duben</option><option value="5">Květen</option><option value="6">Červen</option><option value="7">Červenec</option><option value="8">Srpen</option><option value="9">Září</option><option value="10">Říjen</option><option value="11">Listopad</option><option value="12">Prosinec</option></select>
           </div>
-          <div class="fg"><label>Od roku * (např. 26 nebo 2026)</label><input type="number" id="pay-modal-year-from" placeholder="26"></div>
+          <div class="fg"><label>Od roku * (např. 26 → 2026)</label><input type="text" id="pay-modal-year-from" placeholder="26" inputmode="numeric" maxlength="4"></div>
           <div class="fg">
-            <label>Do měsíce *</label>
-            <div class="pay-modal-month-row">
-              <select id="pay-modal-month-to"><option value="1">Leden</option><option value="2">Únor</option><option value="3">Březen</option><option value="4">Duben</option><option value="5">Květen</option><option value="6">Červen</option><option value="7">Červenec</option><option value="8">Srpen</option><option value="9">Září</option><option value="10">Říjen</option><option value="11">Listopad</option><option value="12">Prosinec</option></select>
-              <span class="pay-modal-month-or">nebo číslo</span>
-              <input type="number" id="pay-modal-month-to-num" min="1" max="12" placeholder="12" aria-label="Měsíc 1–12">
-            </div>
+            <label>Do měsíce * (vyhledat: leden nebo 1)</label>
+            <select id="pay-modal-month-to"><option value="1">Leden</option><option value="2">Únor</option><option value="3">Březen</option><option value="4">Duben</option><option value="5">Květen</option><option value="6">Červen</option><option value="7">Červenec</option><option value="8">Srpen</option><option value="9">Září</option><option value="10">Říjen</option><option value="11">Listopad</option><option value="12">Prosinec</option></select>
           </div>
-          <div class="fg"><label>Do roku * (např. 26 nebo 2026)</label><input type="number" id="pay-modal-year-to" placeholder="26"></div>
+          <div class="fg"><label>Do roku * (např. 26 → 2026)</label><input type="text" id="pay-modal-year-to" placeholder="26" inputmode="numeric" maxlength="4"></div>
         </div>
         <div class="fg">
         <label>Částka (Kč) *</label>
@@ -682,16 +674,16 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=2.0.6"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=2.0.6"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=2.0.6"></script>
-<script src="js/app.js?v=2.0.6"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=2.0.6"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=2.0.6"></script>
-<script src="js/views/tenants.js?v=2.0.6"></script>
-<script src="js/views/contracts.js?v=2.0.6"></script>
-<script src="js/views/payments.js?v=2.0.6"></script>
-<script src="js/views/bank_accounts.js?v=2.0.6"></script>
-<script src="js/views/users.js?v=2.0.6"></script>
+<script src="js/api.js?v=2.0.7"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=2.0.7"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=2.0.7"></script>
+<script src="js/app.js?v=2.0.7"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=2.0.7"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=2.0.7"></script>
+<script src="js/views/tenants.js?v=2.0.7"></script>
+<script src="js/views/contracts.js?v=2.0.7"></script>
+<script src="js/views/payments.js?v=2.0.7"></script>
+<script src="js/views/bank_accounts.js?v=2.0.7"></script>
+<script src="js/views/users.js?v=2.0.7"></script>
 </body>
 </html>

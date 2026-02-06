@@ -820,18 +820,6 @@ async function openPaymentModal(el) {
     const yearFromEl = document.getElementById('pay-modal-year-from');
     const monthToEl = document.getElementById('pay-modal-month-to');
     const yearToEl = document.getElementById('pay-modal-year-to');
-    const monthFromNum = document.getElementById('pay-modal-month-from-num');
-    const monthToNum = document.getElementById('pay-modal-month-to-num');
-    function syncMonthSelectToNum(selectEl, numEl) {
-        if (!numEl) return;
-        const v = selectEl && selectEl.value ? parseInt(selectEl.value, 10) : '';
-        numEl.value = (v >= 1 && v <= 12) ? v : '';
-    }
-    function syncMonthNumToSelect(numEl, selectEl) {
-        if (!selectEl || !numEl) return;
-        const v = parseInt(numEl.value, 10);
-        if (v >= 1 && v <= 12) selectEl.value = String(v);
-    }
     function parseYear(v) {
         const n = parseInt(String(v).trim(), 10);
         if (isNaN(n)) return NaN;
@@ -881,10 +869,27 @@ async function openPaymentModal(el) {
     const nowY = new Date().getFullYear();
     if (monthFromEl) monthFromEl.value = month;
     if (monthToEl) monthToEl.value = month;
-    syncMonthSelectToNum(monthFromEl, monthFromNum);
-    syncMonthSelectToNum(monthToEl, monthToNum);
     yearFromEl.value = year;
     yearToEl.value = year;
+    if (!window._payModalSearchableMonthInited) {
+        window._payModalSearchableMonthInited = true;
+        if (typeof UI.createSearchableSelect === 'function') {
+            UI.createSearchableSelect('pay-modal-month-from');
+            UI.createSearchableSelect('pay-modal-month-to');
+        }
+        yearFromEl.addEventListener('blur', function () {
+            const y = parseYear(yearFromEl.value);
+            if (!isNaN(y)) yearFromEl.value = String(y);
+        });
+        yearToEl.addEventListener('blur', function () {
+            const y = parseYear(yearToEl.value);
+            if (!isNaN(y)) yearToEl.value = String(y);
+        });
+    }
+    if (typeof UI.updateSearchableSelectDisplay === 'function') {
+        UI.updateSearchableSelectDisplay('pay-modal-month-from');
+        UI.updateSearchableSelectDisplay('pay-modal-month-to');
+    }
 
     const showFormInitially = (forMonth.length === 0);
     if (showFormInitially) {
@@ -1252,25 +1257,7 @@ async function openPaymentModal(el) {
             el.addEventListener('change', _payModalRangeChange);
             el.addEventListener('input', _payModalRangeChange);
         });
-        if (monthFromNum) {
-            monthFromNum.removeEventListener('input', _syncMonthFromNum);
-            monthFromNum.addEventListener('input', _syncMonthFromNum);
-        }
-        if (monthToNum) {
-            monthToNum.removeEventListener('input', _syncMonthToNum);
-            monthToNum.addEventListener('input', _syncMonthToNum);
-        }
     }
-    function _syncMonthFromNum() {
-        syncMonthNumToSelect(monthFromNum, monthFromEl);
-        _payModalRangeChange();
-    }
-    function _syncMonthToNum() {
-        syncMonthNumToSelect(monthToNum, monthToEl);
-        _payModalRangeChange();
-    }
-    if (monthFromEl) monthFromEl.addEventListener('change', () => { syncMonthSelectToNum(monthFromEl, monthFromNum); });
-    if (monthToEl) monthToEl.addEventListener('change', () => { syncMonthSelectToNum(monthToEl, monthToNum); });
     function _payModalRangeChange() {
         updateAmountFromRange();
     }

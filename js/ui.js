@@ -333,7 +333,7 @@ const UI = (() => {
             const opts = getOptions();
             const q = (filter || '').toLowerCase().trim();
             const filtered = q
-                ? opts.filter(o => o.text.toLowerCase().includes(q))
+                ? opts.filter(o => o.text.toLowerCase().includes(q) || String(o.value).toLowerCase().includes(q))
                 : opts;
             dropdown.innerHTML = filtered.length
                 ? filtered.map(o => '<div class="searchable-select-option" role="option" data-value="' + esc(o.value) + '">' + esc(o.text) + '</div>').join('')
