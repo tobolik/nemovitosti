@@ -23,11 +23,17 @@ $nowY = (int)date('Y');
 $nowM = (int)date('n');
 
 // Vytížení za daný rok: zlomkové měsíce (částečné měsíce na začátku/konci smlouvy)
+$rentedFrom = !empty($prop['rented_from']) ? $prop['rented_from'] : null;
 $monthsInYear = 0;
+$monthsInYearDenom = 0;
 $today = date('Y-m-d');
 for ($m = 1; $m <= 12; $m++) {
     $firstOfMonth = sprintf('%04d-%02d-01', $year, $m);
     $lastOfMonth = date('Y-m-t', strtotime($firstOfMonth));
+    if ($rentedFrom !== null && $firstOfMonth < $rentedFrom) {
+        continue;
+    }
+    $monthsInYearDenom++;
     $daysInMonth = (int)date('t', strtotime($firstOfMonth));
     $maxFrac = 0;
     foreach ($contracts as $c) {
@@ -42,7 +48,7 @@ for ($m = 1; $m <= 12; $m++) {
     }
     $monthsInYear += $maxFrac;
 }
-$utilizationRateYear = round($monthsInYear / 12 * 100, 1);
+$utilizationRateYear = $monthsInYearDenom > 0 ? round($monthsInYear / $monthsInYearDenom * 100, 1) : 0;
 
 // Vytížení celkem a by_year s částečnými měsíci (zlomkové měsíce na začátku/konci smlouvy)
 $starts = [];
@@ -53,6 +59,7 @@ foreach ($contracts as $c) {
     $ends[] = $c['contract_end'] ?? $today;
 }
 if ($prop['purchase_date'] ?? null) $starts[] = $prop['purchase_date'];
+if ($rentedFrom !== null) $starts[] = $rentedFrom;
 if (empty($starts)) {
     $utilizationRateOverall = 0;
     $byYear = [];
@@ -69,6 +76,9 @@ if (empty($starts)) {
         $monthsInYr = 0;
         for ($m = 1; $m <= 12; $m++) {
             $firstOfMonth = sprintf('%04d-%02d-01', $yr, $m);
+            if ($rentedFrom !== null && $firstOfMonth < $rentedFrom) {
+                continue;
+            }
             $lastOfMonth = date('Y-m-t', strtotime($firstOfMonth));
             $daysInMonth = (int)date('t', strtotime($firstOfMonth));
             $maxFrac = 0;

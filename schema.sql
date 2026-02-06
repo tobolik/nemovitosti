@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS properties (
     size_m2        DECIMAL(10,2) NULL,
     purchase_price DECIMAL(12,2) NULL,
     purchase_date  DATE NULL,
+    rented_from    DATE NULL,
     purchase_contract_url VARCHAR(500) NULL,
     type           ENUM('apartment','garage','house','commercial','land') NOT NULL DEFAULT 'apartment',
     note           TEXT NULL,

@@ -9,7 +9,7 @@ requireLogin();
 
 // Whitelist: tabulka → povolená pole
 $FIELDS = [
-    'properties' => ['name','address','size_m2','purchase_price','purchase_date','purchase_contract_url','valuation_date','valuation_amount','type','note'],
+    'properties' => ['name','address','size_m2','purchase_price','purchase_date','rented_from','purchase_contract_url','valuation_date','valuation_amount','type','note'],
     'tenants'    => ['name','type','birth_date','email','phone','address','ic','dic','note'],
     'contracts'  => ['properties_id','tenants_id','contract_start','contract_end','monthly_rent','first_month_rent','last_month_rent','contract_url','deposit_amount','deposit_paid_date','deposit_return_date','note'],
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','counterpart_account','payment_batch_id','payment_method','bank_accounts_id','payment_type'],
@@ -55,7 +55,7 @@ $REQUIRED = [
 
 // Lidsky čitelné názvy polí pro chybové hlášky
 $FIELD_LABELS = [
-    'properties' => ['name'=>'Název','address'=>'Adresa','valuation_date'=>'K odhadu ke dni','valuation_amount'=>'Odhadní cena'],
+    'properties' => ['name'=>'Název','address'=>'Adresa','rented_from'=>'Pronajímáno od','valuation_date'=>'K odhadu ke dni','valuation_amount'=>'Odhadní cena'],
     'tenants'    => ['name'=>'Jméno / Název','birth_date'=>'Datum narození'],
     'contracts'  => ['properties_id'=>'Nemovitost','tenants_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','first_month_rent'=>'Nájem za první měsíc (poměrná část)','last_month_rent'=>'Nájem za poslední měsíc (poměrná část)','deposit_amount'=>'Kauce','deposit_paid_date'=>'Datum přijetí kauce','deposit_return_date'=>'Datum vrácení kauce','note'=>'Poznámka'],
     'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','counterpart_account'=>'Číslo protiúčtu','payment_method'=>'Způsob platby','bank_accounts_id'=>'Bankovní účet','payment_type'=>'Typ platby'],
@@ -307,6 +307,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($table === 'contracts' && ($data['contract_end']??'') === '') $data['contract_end'] = null;
     if ($table === 'properties' && ($data['valuation_date']??'') === '') $data['valuation_date'] = null;
     if ($table === 'properties' && ($data['valuation_amount']??'') === '') $data['valuation_amount'] = null;
+    if ($table === 'properties' && ($data['rented_from']??'') === '') $data['rented_from'] = null;
     if ($table === 'contracts' && ($data['deposit_amount']??'') === '') $data['deposit_amount'] = null;
     if ($table === 'contracts' && ($data['deposit_paid_date']??'') === '') $data['deposit_paid_date'] = null;
     if ($table === 'contracts' && ($data['deposit_return_date']??'') === '') $data['deposit_return_date'] = null;
@@ -340,6 +341,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($table === 'properties' && isset($data['valuation_date']) && $data['valuation_date'] !== '') {
         $e = validateDateField($data['valuation_date'], 'K odhadu ke dni');
+        if ($e) jsonErr($e);
+    }
+    if ($table === 'properties' && isset($data['rented_from']) && $data['rented_from'] !== '') {
+        $e = validateDateField($data['rented_from'], 'Pronajímáno od');
         if ($e) jsonErr($e);
     }
     if ($table === 'tenants' && isset($data['birth_date']) && $data['birth_date'] !== '') {

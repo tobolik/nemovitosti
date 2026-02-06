@@ -25,6 +25,9 @@ const PropertiesView = (() => {
                 if (values.purchase_date && !UI.isDateValid(values.purchase_date)) {
                     return 'Datum koupě: zadejte platné datum (např. únor má max. 29 dní).';
                 }
+                if (values.rented_from && !UI.isDateValid(values.rented_from)) {
+                    return 'Pronajímáno od: zadejte platné datum.';
+                }
                 return null;
             },
             getValues() {
@@ -34,6 +37,7 @@ const PropertiesView = (() => {
                     size_m2:                document.getElementById('prop-size-m2').value || null,
                     purchase_price:         document.getElementById('prop-purchase-price').value || null,
                     purchase_date:          document.getElementById('prop-purchase-date').value || null,
+                    rented_from:           document.getElementById('prop-rented-from').value || null,
                     purchase_contract_url:  document.getElementById('prop-purchase-contract-url').value.trim() || null,
                     valuation_date:         document.getElementById('prop-valuation-date').value || null,
                     valuation_amount:       document.getElementById('prop-valuation-amount').value || null,
@@ -48,6 +52,7 @@ const PropertiesView = (() => {
                 document.getElementById('prop-size-m2').value                 = row.size_m2                || '';
                 document.getElementById('prop-purchase-price').value          = row.purchase_price         || '';
                 document.getElementById('prop-purchase-date').value          = row.purchase_date          || '';
+                document.getElementById('prop-rented-from').value             = row.rented_from           || '';
                 document.getElementById('prop-purchase-contract-url').value   = row.purchase_contract_url || '';
                 document.getElementById('prop-valuation-date').value         = row.valuation_date         || '';
                 document.getElementById('prop-valuation-amount').value       = row.valuation_amount       || '';
@@ -71,7 +76,7 @@ const PropertiesView = (() => {
                 if (editId) history.replaceState(null, '', '#properties&edit=' + editId + '&tab=udaje');
             },
             resetForm() {
-                ['prop-name','prop-address','prop-size-m2','prop-purchase-price','prop-purchase-date','prop-purchase-contract-url','prop-valuation-date','prop-valuation-amount','prop-note'].forEach(id =>
+                ['prop-name','prop-address','prop-size-m2','prop-purchase-price','prop-purchase-date','prop-rented-from','prop-purchase-contract-url','prop-valuation-date','prop-valuation-amount','prop-note'].forEach(id =>
                     document.getElementById(id).value = ''
                 );
                 document.getElementById('prop-type').value = 'apartment';

@@ -437,10 +437,16 @@ $monthNames = ['leden','únor','březen','duben','květen','červen','červenec'
 
 foreach ($properties as $p) {
     $propId = $p['id'];
+    $rentedFrom = !empty($p['rented_from']) ? $p['rented_from'] : null;
     for ($m = 1; $m <= 12; $m++) {
         $monthKey = $year . '-' . str_pad((string)$m, 2, '0', STR_PAD_LEFT);
         $firstOfMonth = $monthKey . '-01';
         $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
+
+        if ($rentedFrom !== null && $firstOfMonth < $rentedFrom) {
+            $heatmap[$propId . '_' . $monthKey] = ['type' => 'empty', 'monthKey' => $monthKey];
+            continue;
+        }
 
         $contract = null;
         $propEntityId = (int)($p['properties_id'] ?? $p['id']);
@@ -650,7 +656,10 @@ foreach ($properties as $p) {
 
 // Stats podle spec (jen zobrazené smlouvy = aktivní nebo včetně skončených)
 $activeCount = count(array_unique(array_column($contractsForView, 'properties_id')));
-$occupancyRate = count($properties) > 0 ? round($activeCount / count($properties) * 100, 1) : 0;
+$propertiesAvailable = array_filter($properties, function ($p) use ($today) {
+    return empty($p['rented_from']) || $p['rented_from'] <= $today;
+});
+$occupancyRate = count($propertiesAvailable) > 0 ? round($activeCount / count($propertiesAvailable) * 100, 1) : 0;
 
 $currentMonthKey = $nowY . '-' . str_pad((string)$nowM, 2, '0', STR_PAD_LEFT);
 $monthlyIncome = 0;
@@ -670,11 +679,12 @@ $collectionRate = $expectedYearIncome > 0 ? round($yearIncome / $expectedYearInc
 
 // Míra vytížení: za vybraný rok a celkově (podíl obsazených měsíců na všech měsících)
 $monthsOccupiedInYear = 0;
-$monthsPeriodInYear = count($properties) * 12;
+$monthsPeriodInYear = 0;
 $totalMonthsOccupiedOverall = 0;
 $totalMonthsPeriodOverall = 0;
 foreach ($properties as $prop) {
     $propId = (int)($prop['properties_id'] ?? $prop['id']);
+    $rentedFrom = !empty($prop['rented_from']) ? $prop['rented_from'] : null;
     $contractsOfProp = array_filter($contracts, function ($c) use ($propId) {
         return (int)($c['properties_id'] ?? $c['property_row_id'] ?? 0) === $propId;
     });
@@ -682,6 +692,10 @@ foreach ($properties as $prop) {
     for ($m = 1; $m <= 12; $m++) {
         $firstOfMonth = sprintf('%04d-%02d-01', $year, $m);
         $lastOfMonth = date('Y-m-t', strtotime($firstOfMonth));
+        if ($rentedFrom !== null && $firstOfMonth < $rentedFrom) {
+            continue;
+        }
+        $monthsPeriodInYear++;
         foreach ($contractsOfProp as $c) {
             if ($c['contract_start'] <= $lastOfMonth && (empty($c['contract_end']) || $c['contract_end'] >= $firstOfMonth)) {
                 $monthsInYear++;
@@ -699,6 +713,7 @@ foreach ($properties as $prop) {
     }
     $purchaseDate = $prop['purchase_date'] ?? null;
     if ($purchaseDate) $starts[] = $purchaseDate;
+    if ($rentedFrom !== null) $starts[] = $rentedFrom;
     if (empty($starts)) {
         $totalMonthsPeriodOverall += 0;
         continue;
