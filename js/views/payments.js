@@ -233,6 +233,8 @@ const PaymentsView = (() => {
                 renderPayments(refetch);
             });
         });
+        const approvedFilterEl = document.getElementById('pay-filter-approved');
+        if (approvedFilterEl) approvedFilterEl.addEventListener('change', () => { renderPayments(true); });
         const searchEl = document.getElementById('pay-filter-search');
         if (searchEl) {
             let searchDebounce = null;
@@ -482,6 +484,8 @@ const PaymentsView = (() => {
                 if (y) params.period_year = y;
                 if (m) params.period_month = m;
             }
+            const approvedFilter = document.getElementById('pay-filter-approved');
+            if (approvedFilter && approvedFilter.checked) params.approved = '0';
             try {
                 _payCache = await Api.crudList('payments', params);
             } catch (e) { return; }
@@ -492,6 +496,7 @@ const PaymentsView = (() => {
         UI.renderTable('pay-table',
             [
                 { label: 'Smlouva', sortKey: 'tenant_name' },
+                { label: 'Stav', hideMobile: true },
                 { label: 'Období', sortKey: 'period_year' },
                 { label: 'Typ', sortKey: 'payment_type', hideMobile: true },
                 { label: 'Částka', sortKey: 'amount' },
@@ -523,8 +528,10 @@ const PaymentsView = (() => {
                 const methodLabel = p.payment_method === 'cash' ? 'Hotovost' : (p.account_number ? 'Účet ' + UI.esc(p.account_number) : 'Na účet');
                 const batchHint = p.payment_batch_id ? '<br><span class="tag tag-batch" title="Součást jedné platby">dávka</span>' : '';
                 const linkedReq = p.linked_payment_request_id ? ('<br><span class="tag tag-request-linked" title="Úhrada požadavku">Úhrada pož.: ' + (p.linked_request_note ? UI.esc(p.linked_request_note) : (UI.fmt(Number(p.linked_request_amount)) + ' Kč')) + '</span>') : '';
+                const approvedBadge = !p.approved_at ? '<span class="badge badge-warning" title="Platba čeká na schválení (např. po načtení z FIO)">Ke schválení</span>' : '<span class="badge badge-ok" title="Schváleno">Schváleno</span>';
                 return (
                     '<td><strong>' + UI.esc(p.tenant_name) + '</strong><br><span style="color:var(--txt3);font-size:.8em">' + UI.esc(p.property_name) + '</span></td>' +
+                    '<td class="col-hide-mobile">' + approvedBadge + '</td>' +
                     '<td>' + UI.MONTHS[p.period_month] + ' ' + p.period_year + batchHint + '</td>' +
                     '<td class="col-hide-mobile">' + UI.esc(typeLabel) + '</td>' +
                     '<td>' + UI.fmt(amt) + ' Kč</td>' +
@@ -551,7 +558,7 @@ const PaymentsView = (() => {
                     '<tr class="tbl-total-row">' +
                     '<td colspan="3"><strong>Celkem</strong></td>' +
                     '<td><strong>' + UI.fmt(sum) + ' Kč</strong></td>' +
-                    '<td colspan="6" class="col-hide-mobile"></td>' +
+                    '<td colspan="7" class="col-hide-mobile"></td>' +
                     '</tr>';
                 table.appendChild(tfoot);
             }
@@ -645,6 +652,29 @@ const PaymentsView = (() => {
         await fillDropdowns();
         applyHashParams();
         await renderPayments(true);
+        // Předvyplnění z FIO (Bankovní účty → Načíst z FIO → Přidat platbu)
+        try {
+            const raw = sessionStorage.getItem('paymentsFioPrefill');
+            if (raw) {
+                sessionStorage.removeItem('paymentsFioPrefill');
+                const p = JSON.parse(raw);
+                form.startAdd();
+                const dateEl = document.getElementById('pay-date');
+                const amountEl = document.getElementById('pay-amount');
+                const accountEl = document.getElementById('pay-account');
+                const counterpartEl = document.getElementById('pay-counterpart-account');
+                const noteEl = document.getElementById('pay-note');
+                const methodEl = document.getElementById('pay-method');
+                if (dateEl && p.payment_date) dateEl.value = p.payment_date;
+                if (amountEl && p.amount != null && p.amount !== '') amountEl.value = p.amount;
+                if (accountEl && p.bank_accounts_id) accountEl.value = p.bank_accounts_id;
+                if (counterpartEl && p.counterpart_account) counterpartEl.value = p.counterpart_account;
+                if (noteEl && p.note) noteEl.value = p.note;
+                if (methodEl) methodEl.value = 'account';
+                const accWrap = document.getElementById('pay-account-wrap');
+                if (accWrap) accWrap.style.display = '';
+            }
+        } catch (_) {}
     }
 
     return { load, edit, del, navigateWithFilter, prefill };

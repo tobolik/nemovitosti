@@ -133,11 +133,30 @@ const BankAccountsView = (() => {
         });
     }
 
+    function fillFioFetchForm() {
+        const sel = document.getElementById('fio-fetch-account');
+        if (!sel) return;
+        const withToken = _cache.filter(b => b.fio_token_isset);
+        sel.innerHTML = '<option value="">— Vyberte účet —</option>' +
+            withToken.map(b => {
+                const id = b.bank_accounts_id ?? b.id;
+                return '<option value="' + id + '">' + UI.esc(b.name) + (b.account_number ? ' – ' + UI.esc(b.account_number) : '') + '</option>';
+            }).join('');
+        const fromEl = document.getElementById('fio-fetch-from');
+        const toEl = document.getElementById('fio-fetch-to');
+        if (fromEl && toEl && !fromEl.value) {
+            const now = new Date();
+            fromEl.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+            toEl.value = now.toISOString().slice(0, 10);
+        }
+    }
+
     async function loadList() {
         let data;
         try { data = await Api.crudList('bank_accounts'); _cache = data; }
         catch (e) { return; }
         applySortAndRender();
+        fillFioFetchForm();
     }
 
     function edit(id) {
@@ -149,9 +168,48 @@ const BankAccountsView = (() => {
         UI.confirmDelete('bank_accounts', id, 'Smazat tento bankovní účet?', loadList);
     }
 
+    function initFioFetch() {
+        const btn = document.getElementById('btn-fio-fetch');
+        const alertEl = document.getElementById('fio-fetch-alert');
+        const resultEl = document.getElementById('fio-import-result');
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+            const accountId = document.getElementById('fio-fetch-account').value;
+            const from = document.getElementById('fio-fetch-from').value;
+            const to = document.getElementById('fio-fetch-to').value;
+            if (!accountId) {
+                if (alertEl) { alertEl.textContent = 'Vyberte účet s FIO tokenem.'; alertEl.className = 'alert alert-err show'; alertEl.style.display = ''; }
+                if (resultEl) resultEl.style.display = 'none';
+                return;
+            }
+            btn.disabled = true;
+            if (alertEl) alertEl.style.display = 'none';
+            if (resultEl) resultEl.style.display = 'none';
+            try {
+                const data = await Api.fioImport(parseInt(accountId, 10), from || undefined, to || undefined);
+                const n = data.imported || 0;
+                const sk = data.skipped || 0;
+                const skFilter = data.skipped_filter || 0;
+                if (resultEl) {
+                    resultEl.className = 'alert alert-ok show';
+                    resultEl.style.display = '';
+                    let msg = 'Naimportováno <strong>' + n + '</strong> pohybů.';
+                    if (sk > 0) msg += ' (' + sk + ' již v importu přeskočeno.)';
+                    if (skFilter > 0) msg += ' (' + skFilter + ' neodpovídá protiúčtům u smluv.)';
+                    msg += ' <a href="#payment_imports">Přejít na kontrolu importů</a>';
+                    resultEl.innerHTML = msg;
+                }
+            } catch (e) {
+                if (alertEl) { alertEl.textContent = e.message || 'Import z FIO se nezdařil.'; alertEl.className = 'alert alert-err show'; alertEl.style.display = ''; }
+            }
+            btn.disabled = false;
+        });
+    }
+
     async function load() {
         initForm();
         initBankTableSortClick();
+        initFioFetch();
         form.exitEdit();
         await loadList();
     }

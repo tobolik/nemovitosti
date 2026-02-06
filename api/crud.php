@@ -11,11 +11,13 @@ requireLogin();
 $FIELDS = [
     'properties' => ['name','address','size_m2','purchase_price','purchase_date','rented_from','purchase_contract_url','valuation_date','valuation_amount','type','note'],
     'tenants'    => ['name','type','birth_date','email','phone','address','ic','dic','note'],
+    'tenant_bank_accounts' => ['tenants_id','account_number'],
     'contracts'  => ['properties_id','tenants_id','contract_start','contract_end','monthly_rent','first_month_rent','last_month_rent','contract_url','deposit_amount','deposit_paid_date','deposit_return_date','note','default_payment_method','default_bank_accounts_id'],
-    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','counterpart_account','payment_batch_id','payment_method','bank_accounts_id','payment_type'],
+    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','counterpart_account','payment_batch_id','payment_method','bank_accounts_id','payment_type','approved_at'],
     'bank_accounts' => ['name','account_number','is_primary','sort_order','fio_token'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
     'payment_requests' => ['contracts_id','amount','type','note','due_date'],
+    'payment_imports' => ['bank_accounts_id','payment_date','amount','counterpart_account','note','fio_transaction_id','contracts_id','period_year','period_month','period_year_to','period_month_to','payment_type'],
 ];
 
 // Seznam nemovitostí včetně ročního nájmu a ROI (když je zadána odhadní cena)
@@ -45,6 +47,7 @@ if ($table === 'properties' && $id <= 0) {
 $REQUIRED = [
     'properties' => ['name','address'],
     'tenants'    => ['name'],
+    'tenant_bank_accounts' => ['tenants_id','account_number'],
     'contracts'  => ['properties_id','tenants_id','contract_start','monthly_rent'],
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date'],
     'bank_accounts' => ['name','account_number'],
@@ -57,11 +60,13 @@ $REQUIRED = [
 $FIELD_LABELS = [
     'properties' => ['name'=>'Název','address'=>'Adresa','rented_from'=>'Pronajímáno od','valuation_date'=>'K odhadu ke dni','valuation_amount'=>'Odhadní cena'],
     'tenants'    => ['name'=>'Jméno / Název','birth_date'=>'Datum narození'],
+    'tenant_bank_accounts' => ['tenants_id'=>'Nájemník','account_number'=>'Číslo účtu'],
     'contracts'  => ['properties_id'=>'Nemovitost','tenants_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','first_month_rent'=>'Nájem za první měsíc (poměrná část)','last_month_rent'=>'Nájem za poslední měsíc (poměrná část)','deposit_amount'=>'Kauce','deposit_paid_date'=>'Datum přijetí kauce','deposit_return_date'=>'Datum vrácení kauce','note'=>'Poznámka','default_payment_method'=>'Výchozí způsob platby','default_bank_accounts_id'=>'Výchozí bankovní účet'],
-    'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','counterpart_account'=>'Číslo protiúčtu','payment_method'=>'Způsob platby','bank_accounts_id'=>'Bankovní účet','payment_type'=>'Typ platby'],
+    'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','counterpart_account'=>'Číslo protiúčtu','payment_method'=>'Způsob platby','bank_accounts_id'=>'Bankovní účet','payment_type'=>'Typ platby','approved_at'=>'Schváleno'],
     'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu','fio_token'=>'FIO API token'],
     'contract_rent_changes' => ['contracts_id'=>'Smlouva','amount'=>'Částka','effective_from'=>'Platné od'],
     'payment_requests' => ['contracts_id'=>'Smlouva','amount'=>'Částka','type'=>'Typ','note'=>'Poznámka','due_date'=>'Splatnost'],
+    'payment_imports' => ['contracts_id'=>'Smlouva','period_year'=>'Rok od','period_month'=>'Měsíc od','period_year_to'=>'Rok do','period_month_to'=>'Měsíc do','payment_type'=>'Typ platby'],
 ];
 
 $table = $_GET['table'] ?? body()['table'] ?? '';
@@ -92,12 +97,50 @@ function validateDateField(?string $val, string $label): ?string {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-    // Jednotlivý záznam – parametr id = entity_id (properties_id, contracts_id, …)
+    // Jednotlivý záznam – parametr id = entity_id (properties_id, contracts_id, …); u payment_imports id = primární klíč
     if ($id > 0) {
-        $row = findActiveByEntityId($table, $id);
+        if ($table === 'payment_imports') {
+            $s = db()->prepare('SELECT * FROM payment_imports WHERE id = ?');
+            $s->execute([$id]);
+            $row = $s->fetch(PDO::FETCH_ASSOC);
+        } else {
+            $row = findActiveByEntityId($table, $id);
+        }
         if (!$row) jsonErr('Záznam neexistuje.', 404);
         if ($table === 'bank_accounts') $row = maskBankAccountFioToken($row);
         jsonOk($row);
+    }
+
+    // payment_imports: bez valid_to, join na smlouvy
+    if ($table === 'payment_imports') {
+        $baId = isset($_GET['bank_accounts_id']) ? (int)$_GET['bank_accounts_id'] : 0;
+        $from = isset($_GET['from']) ? trim($_GET['from']) : '';
+        $to = isset($_GET['to']) ? trim($_GET['to']) : '';
+        $sql = "
+            SELECT pi.*, c.contracts_id AS c_entity_id, p.name AS property_name, t.name AS tenant_name,
+                   CONCAT(t.name, ' – ', p.name) AS contract_label
+            FROM payment_imports pi
+            LEFT JOIN contracts c ON c.contracts_id = pi.contracts_id AND c.valid_to IS NULL
+            LEFT JOIN properties p ON p.properties_id = c.properties_id AND p.valid_to IS NULL
+            LEFT JOIN tenants t ON t.tenants_id = c.tenants_id AND t.valid_to IS NULL
+            WHERE 1=1";
+        $params = [];
+        if ($baId > 0) {
+            $sql .= " AND pi.bank_accounts_id = ?";
+            $params[] = $baId;
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
+            $sql .= " AND pi.payment_date >= ?";
+            $params[] = $from;
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+            $sql .= " AND pi.payment_date <= ?";
+            $params[] = $to;
+        }
+        $sql .= " ORDER BY pi.payment_date DESC, pi.id DESC";
+        $s = db()->prepare($sql);
+        $s->execute($params);
+        jsonOk($s->fetchAll(PDO::FETCH_ASSOC));
     }
 
     // bank_accounts: soft-update, vlastní řazení (primární první); token nikdy neposílat
@@ -139,6 +182,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $s = db()->prepare($sql);
         $s->execute($params);
         jsonOk($s->fetchAll());
+    }
+
+    if ($table === 'tenant_bank_accounts') {
+        $tid = isset($_GET['tenants_id']) ? (int)$_GET['tenants_id'] : 0;
+        $sql = "SELECT * FROM tenant_bank_accounts WHERE valid_to IS NULL";
+        $params = [];
+        if ($tid > 0) {
+            $sql .= " AND tenants_id=?";
+            $params[] = $tid;
+        }
+        $sql .= " ORDER BY id ASC";
+        $s = db()->prepare($sql);
+        $s->execute($params);
+        jsonOk($s->fetchAll(PDO::FETCH_ASSOC));
     }
 
     if ($table === 'payment_requests') {
@@ -211,6 +268,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $params[] = $periodMonth;
             }
         }
+        if (isset($_GET['approved']) && $_GET['approved'] === '0') {
+            $sql .= " AND pay.approved_at IS NULL";
+        }
         $sql .= " ORDER BY pay.period_year DESC, pay.period_month DESC";
         $s = db()->prepare($sql); $s->execute($params);
         $rows = $s->fetchAll();
@@ -244,6 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                  JOIN contracts c ON c.contracts_id = pay.contracts_id AND c.valid_to IS NULL
                  WHERE (c.properties_id = p.properties_id OR c.properties_id = p.id)
                    AND pay.valid_to IS NULL
+                   AND pay.approved_at IS NOT NULL
                    AND pay.payment_type = 'rent'
                 ) AS total_rent_received
             FROM properties p
@@ -383,10 +444,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'contracts' => ['properties_id', 'tenants_id'],
         'payments'  => ['contracts_id'],
         'contract_rent_changes' => ['contracts_id'],
+        'tenant_bank_accounts' => ['tenants_id'],
         'payment_requests' => ['contracts_id'],
     ];
 
     if ($action === 'add') {
+        if ($table === 'payment_imports') {
+            jsonErr('Import z FIO provádějte v sekci Bankovní účty → Načíst z FIO.');
+        }
         foreach ($REQUIRED[$table] as $r) {
             $val = $data[$r] ?? null;
             $isEmpty = ($val === '' || $val === null);
@@ -443,12 +508,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'effective_from'=> $data['effective_from'],
             ]);
             jsonOk(findActive($table, $newId), 201);
+        } elseif ($table === 'tenant_bank_accounts') {
+            $acc = isset($data['account_number']) ? trim((string)$data['account_number']) : '';
+            if ($acc === '') jsonErr('Vyplňte číslo účtu.');
+            $newId = softInsert($table, [
+                'tenants_id'     => (int)$data['tenants_id'],
+                'account_number' => $acc,
+            ]);
+            jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'payments') {
             $pm = in_array($data['payment_method'] ?? '', ['account','cash']) ? $data['payment_method'] : 'account';
             $baId = isset($data['bank_accounts_id']) ? (int)$data['bank_accounts_id'] : 0;
             if ($pm === 'account' && ($baId <= 0)) jsonErr('Vyberte bankovní účet.');
             $data['bank_accounts_id'] = $pm === 'account' ? $baId : null;
             $data['payment_type'] = in_array($data['payment_type'] ?? 'rent', ['rent','deposit','deposit_return','energy','other']) ? $data['payment_type'] : 'rent';
+            if (!array_key_exists('approved_at', $data)) $data['approved_at'] = date('Y-m-d H:i:s');
             $amt = (float)($data['amount'] ?? 0);
             if ($amt === 0.0) jsonErr('Zadejte částku platby.');
             $paymentRequestEntityId = isset($b['payment_request_id']) ? (int)$b['payment_request_id'] : 0;
@@ -546,6 +620,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'edit') {
         $entityId = (int)($b['id'] ?? 0);
         if (!$entityId) jsonErr('Chybí ID.');
+
+        if ($table === 'payment_imports') {
+            $rowId = $entityId;
+            $s = db()->prepare('SELECT * FROM payment_imports WHERE id = ?');
+            $s->execute([$rowId]);
+            $row = $s->fetch(PDO::FETCH_ASSOC);
+            if (!$row) jsonErr('Záznam neexistuje.', 404);
+            $allowed = ['contracts_id', 'period_year', 'period_month', 'period_year_to', 'period_month_to', 'payment_type'];
+            $upd = [];
+            foreach ($allowed as $f) {
+                if (!array_key_exists($f, $data)) continue;
+                if ($f === 'payment_type') {
+                    $upd[$f] = in_array($data[$f] ?? '', ['rent', 'deposit', 'deposit_return', 'energy', 'other']) ? $data[$f] : 'rent';
+                } else {
+                    $v = $data[$f];
+                    $upd[$f] = ($v === null || $v === '') ? null : (int)$v;
+                }
+            }
+            if (!empty($upd)) {
+                $sets = implode(', ', array_map(fn($k) => "`$k`=?", array_keys($upd)));
+                db()->prepare("UPDATE payment_imports SET $sets WHERE id = ?")->execute([...array_values($upd), $rowId]);
+            }
+            $s2 = db()->prepare('SELECT * FROM payment_imports WHERE id = ?');
+            $s2->execute([$rowId]);
+            jsonOk($s2->fetch(PDO::FETCH_ASSOC));
+        }
+
         $row = findActiveByEntityId($table, $entityId);
         if (!$row) jsonErr('Záznam neexistuje.', 404);
         $rowId = (int)$row['id'];
@@ -567,6 +668,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newId = softUpdate($table, $rowId, [
                 'amount'        => (float)$data['amount'],
                 'effective_from'=> $data['effective_from'],
+            ]);
+            jsonOk(findActive($table, $newId));
+        } elseif ($table === 'tenant_bank_accounts') {
+            $acc = isset($data['account_number']) ? trim((string)$data['account_number']) : '';
+            if ($acc === '') jsonErr('Vyplňte číslo účtu.');
+            $newId = softUpdate($table, $rowId, [
+                'tenants_id'     => (int)($data['tenants_id'] ?? $row['tenants_id']),
+                'account_number' => $acc,
             ]);
             jsonOk(findActive($table, $newId));
         } elseif ($table === 'contracts') {
@@ -657,6 +766,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete') {
         $entityId = (int)($b['id'] ?? 0);
         if (!$entityId) jsonErr('Chybí ID.');
+        if ($table === 'payment_imports') {
+            db()->prepare('DELETE FROM payment_imports WHERE id = ?')->execute([$entityId]);
+            jsonOk(['deleted' => $entityId]);
+        }
         $row = findActiveByEntityId($table, $entityId);
         if (!$row) jsonErr('Záznam neexistuje.', 404);
         $rowId = (int)$row['id'];

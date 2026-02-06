@@ -46,9 +46,71 @@ const TenantsView = (() => {
         });
     }
 
+    async function loadTenantBankAccounts(tenantsId) {
+        const listEl = document.getElementById('ten-bank-accounts-list');
+        const addWrap = document.getElementById('ten-bank-account-add');
+        const btnAdd = document.getElementById('btn-ten-ba-add');
+        if (!listEl) return;
+        if (btnAdd) btnAdd.disabled = !tenantsId;
+        if (!tenantsId) {
+            listEl.innerHTML = '<div class="text-muted" style="font-size:.85rem;padding:8px 0">Uložte nájemníka a pak přidejte účty.</div>';
+            return;
+        }
+        try {
+            const data = await Api.crudList('tenant_bank_accounts', { tenants_id: tenantsId });
+            if (!data || !data.length) {
+                listEl.innerHTML = '<div class="text-muted" style="font-size:.85rem;padding:8px 0">Žádné bankovní účty.</div>';
+                return;
+            }
+            let html = '<table class="tbl tbl-sm" style="margin-bottom:0"><thead><tr><th>Číslo účtu</th><th class="th-act"></th></tr></thead><tbody>';
+            data.forEach(ba => {
+                const acc = UI.esc(ba.account_number || '');
+                html += '<tr><td>' + acc + '</td><td class="td-act"><button type="button" class="btn btn-danger btn-sm" data-action="del" data-id="' + ba.id + '">Smazat</button></td></tr>';
+            });
+            html += '</tbody></table>';
+            listEl.innerHTML = html;
+            listEl.querySelectorAll('[data-action="del"]').forEach(btn => {
+                btn.onclick = async () => {
+                    if (!confirm('Smazat tento účet?')) return;
+                    try {
+                        await Api.crudDelete('tenant_bank_accounts', parseInt(btn.dataset.id, 10));
+                        loadTenantBankAccounts(tenantsId);
+                    } catch (e) { alert(e.message); }
+                };
+            });
+        } catch (e) {
+            listEl.innerHTML = '<div class="alert alert-err show">' + UI.esc(e.message || 'Chyba při načítání.') + '</div>';
+        }
+    }
+
+    function initTenantBankAccountsHandlers() {
+        const btnAdd = document.getElementById('btn-ten-ba-add');
+        const accountEl = document.getElementById('ten-ba-account');
+        const editIdEl = document.getElementById('ten-edit-id');
+        if (!btnAdd || !accountEl) return;
+        btnAdd.onclick = async () => {
+            const tenantsId = editIdEl ? parseInt(editIdEl.value, 10) : 0;
+            if (!tenantsId) {
+                alert('Nejprve uložte nájemníka.');
+                return;
+            }
+            const acc = (accountEl.value || '').trim();
+            if (!acc) {
+                alert('Zadejte číslo účtu.');
+                return;
+            }
+            try {
+                await Api.crudAdd('tenant_bank_accounts', { tenants_id: tenantsId, account_number: acc });
+                accountEl.value = '';
+                loadTenantBankAccounts(tenantsId);
+            } catch (e) { alert(e.message); }
+        };
+    }
+
     function initForm() {
         if (form) return;
         initAresButton();
+        initTenantBankAccountsHandlers();
         form = UI.createCrudForm({
             table:      'tenants',
             alertId:    'ten-alert',
@@ -89,6 +151,7 @@ const TenantsView = (() => {
                 const entityId = row.tenants_id ?? row.id;
                 document.getElementById('ten-edit-id').value = String(entityId);
                 document.getElementById('ten-note').value    = row.note    || '';
+                loadTenantBankAccounts(entityId);
                 const addContractBtn = document.getElementById('ten-add-contract');
                 if (addContractBtn) {
                     addContractBtn.href = '#contracts&tenants_id=' + entityId;
@@ -103,11 +166,12 @@ const TenantsView = (() => {
                 if (birthWrap) birthWrap.style.display = !isCo ? 'block' : 'none';
             },
             resetForm() {
-                ['ten-name','ten-birth-date','ten-email','ten-phone','ten-address','ten-ic','ten-dic','ten-note'].forEach(id => {
+                ['ten-name','ten-birth-date','ten-email','ten-phone','ten-address','ten-ic','ten-dic','ten-note','ten-ba-account'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) el.value = '';
                 });
                 document.getElementById('ten-type').value = 'person';
+                loadTenantBankAccounts(0);
                 const wrapAresR = document.getElementById('ten-ares-wrap');
                 const wrapIcDicR = document.getElementById('ten-ic-dic-wrap');
                 const birthWrapR = document.getElementById('ten-birth-date-wrap');

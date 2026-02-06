@@ -104,7 +104,7 @@ $s = db()->prepare("
     SELECT p.payments_id, p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type
     FROM payments p
     JOIN contracts c ON c.contracts_id = p.contracts_id AND c.valid_to IS NULL
-    WHERE p.valid_to IS NULL AND p.contracts_id = ?
+    WHERE p.valid_to IS NULL AND p.contracts_id = ? AND p.approved_at IS NOT NULL
 ");
 foreach ($contracts as $c) {
     $entityId = $c['contracts_id'] ?? $c['id'];

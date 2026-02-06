@@ -97,6 +97,48 @@ const Api = (() => {
         return post('/api/crud.php?table=payments', { action: 'deleteBatch', table: 'payments', payment_batch_id: batchId });
     }
 
+    /** Načtení pohybů z FIO banky pro daný účet a období. */
+    function fioFetch(bankAccountsId, from, to) {
+        const params = new URLSearchParams({ bank_accounts_id: bankAccountsId });
+        if (from) params.set('from', from);
+        if (to) params.set('to', to);
+        return get('/api/fio-fetch.php?' + params.toString());
+    }
+
+    /** Import z FIO do payment_imports (uloží pohyby ke kontrole). */
+    function fioImport(bankAccountsId, from, to) {
+        return post('/api/fio-import.php', { bank_accounts_id: bankAccountsId, from: from || undefined, to: to || undefined });
+    }
+
+    /** Seznam importů (filtry: bank_accounts_id, from, to). */
+    function paymentImportsList(params) {
+        const q = new URLSearchParams();
+        if (params && params.bank_accounts_id) q.set('bank_accounts_id', params.bank_accounts_id);
+        if (params && params.from) q.set('from', params.from);
+        if (params && params.to) q.set('to', params.to);
+        return get('/api/crud.php?table=payment_imports' + (q.toString() ? '&' + q.toString() : ''));
+    }
+
+    /** Úprava importu (párování: contracts_id, period_year, period_month, period_year_to?, period_month_to?, payment_type). */
+    function paymentImportEdit(id, data) {
+        return post('/api/crud.php?table=payment_imports', { action: 'edit', table: 'payment_imports', id: id, ...data });
+    }
+
+    /** Smazání importu. */
+    function paymentImportDelete(id) {
+        return post('/api/crud.php?table=payment_imports', { action: 'delete', table: 'payment_imports', id: id });
+    }
+
+    /** Hromadné schválení importů → vytvoření plateb. */
+    function paymentImportsApprove(importIds) {
+        return post('/api/payment-imports-approve.php', { import_ids: importIds });
+    }
+
+    /** Hromadné schválení plateb (např. po načtení z FIO). payment_ids = pole entity_id. */
+    function paymentsApprove(paymentIds) {
+        return post('/api/payments-approve.php', { payment_ids: paymentIds });
+    }
+
     /** Přiřadit platbu k požadavku (nastaví payment_requests.payments_id a paid_at). */
     function paymentRequestLink(paymentRequestId, paymentsId) {
         return post('/api/crud.php?table=payment_requests', { action: 'link_payment_request', table: 'payment_requests', payment_request_id: paymentRequestId, payments_id: paymentsId });
@@ -172,7 +214,7 @@ const Api = (() => {
     return {
         setCsrf, getCsrf,
         authCheck, authLogin, authLogout,
-        crudList, crudGet, crudAdd, crudEdit, crudDelete, paymentsEditBatch, paymentsDeleteBatch, paymentRequestLink, paymentRequestUnlink,
+        crudList, crudGet, crudAdd, crudEdit, crudDelete, paymentsEditBatch, paymentsDeleteBatch, paymentsApprove, paymentRequestLink, paymentRequestUnlink,
         dashboardLoad,
         propertyStats,
         search,

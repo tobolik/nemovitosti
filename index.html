@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=2.0.11">
+<link rel="stylesheet" href="css/style.css?v=2.1.5">
 </head>
 <body>
 
@@ -53,6 +53,7 @@
         <button class="nav-link" data-view="contracts"><span class="icon">📄</span> Smlouvy</button>
         <button class="nav-link" data-view="payments"><span class="icon">💰</span> Platby</button>
         <button class="nav-link" data-view="bank_accounts"><span class="icon">🏦</span> Bankovní účty</button>
+        <button class="nav-link" data-view="payment_imports"><span class="icon">📥</span> Kontrola importů</button>
         <button class="nav-link" data-view="users" id="nav-users" style="display:none"><span class="icon">⚙</span> Uživatelé</button>
       </nav>
       <div class="global-search-wrap">
@@ -183,6 +184,15 @@
             <div class="fg"><label>Telefon</label><input type="tel" id="ten-phone"></div>
           </div>
           <div class="fg"><label>Poznámka</label><textarea id="ten-note" rows="2"></textarea></div>
+          <div id="ten-bank-accounts-wrap" class="fg">
+            <label title="Import z FIO stáhne jen platby z těchto účtů">Bankovní účty nájemníka</label>
+            <p class="text-muted" style="font-size:.8rem;margin-bottom:8px">Účty, ze kterých nájemník platí (v pohybech zobrazované jako protiúčet).</p>
+            <div id="ten-bank-accounts-list"></div>
+            <div id="ten-bank-account-add" class="form-row" style="margin-top:10px">
+              <div class="fg"><label>Číslo účtu</label><input type="text" id="ten-ba-account" placeholder="123456789/0800"></div>
+              <div class="fg" style="align-self:flex-end"><button type="button" class="btn btn-ghost btn-sm" id="btn-ten-ba-add">+ Přidat</button></div>
+            </div>
+          </div>
           <div class="form-actions">
             <button class="btn btn-pri" id="btn-ten-save" data-save-btn>Přidat nájemníka</button>
             <button class="btn btn-ghost" id="btn-ten-cancel" style="display:none">Zrušit</button>
@@ -394,6 +404,12 @@
             <label>Vyhledat:</label>
             <input type="text" id="pay-filter-search" placeholder="nájemník, nemovitost, poznámka, protiúčet, částka…" class="filter-search-input">
           </div>
+          <div class="filter-row">
+            <label class="filter-check-label"><input type="checkbox" id="pay-filter-approved" title="Platby načtené z FIO bez schválení"> Jen ke schválení</label>
+          </div>
+        </div>
+        <div id="pay-approve-bar" class="pay-approve-bar" style="display:none">
+          <button type="button" class="btn btn-pri btn-sm" id="btn-pay-approve-selected">Schválit zobrazené</button>
         </div>
         <div id="pay-table"></div>
       </div>
@@ -431,6 +447,36 @@
           </div>
         </div>
         <div id="bank-table"></div>
+        <div class="card" id="bank-fio-card" style="margin-top:1.5rem">
+          <div class="card-title">Načíst pohyby z FIO banky</div>
+          <p class="text-muted" style="margin-bottom:12px">Vyberte účet a období. Příchozí platby se naimportují do Kontroly importů, kde je napárujete na smlouvy a měsíce a hromadně schválíte.</p>
+          <div class="form-row">
+            <div class="fg"><label>Účet</label><select id="fio-fetch-account"><option value="">— Vyberte účet —</option></select></div>
+            <div class="fg"><label>Od data</label><input type="date" id="fio-fetch-from"></div>
+            <div class="fg"><label>Do data</label><input type="date" id="fio-fetch-to"></div>
+            <div class="fg" style="align-self:flex-end"><button type="button" class="btn btn-pri" id="btn-fio-fetch">Importovat z FIO</button></div>
+          </div>
+          <div id="fio-fetch-alert" class="alert" style="display:none; margin-top:10px"></div>
+          <div id="fio-import-result" class="alert alert-ok" style="display:none; margin-top:10px"></div>
+        </div>
+      </div>
+
+      <!-- ═══ PAYMENT IMPORTS (Kontrola importů) ═══ -->
+      <div class="view" id="view-payment_imports">
+        <div class="page-title">Kontrola importů</div>
+        <p class="text-muted">Naimportované pohyby z FIO. Napárujte každý na smlouvu a období (příp. za více měsíců) a hromadně schvalte.</p>
+        <div class="card" style="margin-bottom:1rem">
+          <div class="form-row">
+            <div class="fg"><label>Účet</label><select id="import-filter-account"><option value="">— Všechny —</option></select></div>
+            <div class="fg"><label>Od data</label><input type="date" id="import-filter-from"></div>
+            <div class="fg"><label>Do data</label><input type="date" id="import-filter-to"></div>
+            <div class="fg" style="align-self:flex-end"><button type="button" class="btn btn-pri" id="import-filter-btn">Zobrazit</button></div>
+          </div>
+        </div>
+        <div class="list-actions" style="margin-bottom:8px"><button type="button" class="btn btn-pri" id="import-approve-btn" disabled>Hromadně schválit vybrané</button></div>
+        <div id="import-alert" class="alert" style="display:none"></div>
+        <div id="import-table-wrap"><table class="table" id="import-table"><thead><tr><th><input type="checkbox" id="import-select-all" title="Vybrat vše"></th><th>Datum</th><th>Částka</th><th>Protiúčet</th><th>Zpráva</th><th>Smlouva</th><th>Období od</th><th>Období do</th><th>Typ</th><th></th></tr></thead><tbody id="import-tbody"></tbody></table></div>
+        <div id="import-empty" class="empty" style="display:none">Žádné importy. Naimportujte pohyby v sekci <a href="#bank_accounts">Bankovní účty</a> → Načíst z FIO.</div>
       </div>
 
       <!-- ═══ USERS ═══ -->
@@ -464,7 +510,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v2.0.11</span>
+    <span class="footer-version">v2.1.5</span>
     © 2025 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -678,16 +724,17 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=2.0.11"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=2.0.11"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=2.0.11"></script>
-<script src="js/app.js?v=2.0.11"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=2.0.11"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=2.0.11"></script>
-<script src="js/views/tenants.js?v=2.0.11"></script>
-<script src="js/views/contracts.js?v=2.0.11"></script>
-<script src="js/views/payments.js?v=2.0.11"></script>
-<script src="js/views/bank_accounts.js?v=2.0.11"></script>
-<script src="js/views/users.js?v=2.0.11"></script>
+<script src="js/api.js?v=2.1.5"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=2.1.5"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=2.1.5"></script>
+<script src="js/app.js?v=2.1.5"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=2.1.5"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=2.1.5"></script>
+<script src="js/views/tenants.js?v=2.1.5"></script>
+<script src="js/views/contracts.js?v=2.1.5"></script>
+<script src="js/views/payments.js?v=2.1.5"></script>
+<script src="js/views/bank_accounts.js?v=2.1.5"></script>
+<script src="js/views/payment_imports.js?v=2.1.5"></script>
+<script src="js/views/users.js?v=2.1.5"></script>
 </body>
 </html>
