@@ -745,10 +745,10 @@ foreach ($properties as $prop) {
 $utilizationRateYear = $monthsPeriodInYear > 0 ? round($monthsOccupiedInYear / $monthsPeriodInYear * 100, 1) : 0;
 $utilizationRateOverall = $totalMonthsPeriodOverall > 0 ? round($totalMonthsOccupiedOverall / $totalMonthsPeriodOverall * 100, 1) : 0;
 
-// Rozsah let pro tlačítka – podle nejstarší smlouvy a plateb
+// Rozsah let pro tlačítka – podle všech smluv a plateb (ne jen zobrazených), aby v heatmapě byly dostupné i roky skončených smluv
 $yearMin = $nowY - 2;
 $yearMax = $nowY + 1;
-foreach ($contractsForView as $c) {
+foreach ($contracts as $c) {
     $sy = (int)date('Y', strtotime($c['contract_start']));
     if ($sy < $yearMin) $yearMin = $sy;
     if (!empty($c['contract_end'])) {

@@ -86,8 +86,14 @@ const TenantsView = (() => {
                 document.getElementById('ten-address').value = row.address || '';
                 document.getElementById('ten-ic').value      = row.ic      || '';
                 document.getElementById('ten-dic').value     = row.dic     || '';
-                document.getElementById('ten-edit-id').value = String(row.tenants_id ?? row.id);
+                const entityId = row.tenants_id ?? row.id;
+                document.getElementById('ten-edit-id').value = String(entityId);
                 document.getElementById('ten-note').value    = row.note    || '';
+                const addContractBtn = document.getElementById('ten-add-contract');
+                if (addContractBtn) {
+                    addContractBtn.href = '#contracts&tenants_id=' + entityId;
+                    addContractBtn.style.display = '';
+                }
                 const wrapAresF = document.getElementById('ten-ares-wrap');
                 const wrapIcDicF = document.getElementById('ten-ic-dic-wrap');
                 const birthWrap = document.getElementById('ten-birth-date-wrap');
@@ -108,6 +114,8 @@ const TenantsView = (() => {
                 if (wrapAresR) wrapAresR.style.display = 'none';
                 if (wrapIcDicR) wrapIcDicR.style.display = 'none';
                 if (birthWrapR) birthWrapR.style.display = 'block';
+                const addContractBtnR = document.getElementById('ten-add-contract');
+                if (addContractBtnR) addContractBtnR.style.display = 'none';
             },
             onSaved: loadList,
         });

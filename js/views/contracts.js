@@ -546,12 +546,12 @@ const ContractsView = (() => {
         initTableSortClick();
         _cache = [];
         await fillDropdowns();
+        await loadList();
+        prefillFromCalendarIfPending();
         if (typeof UI.createSearchableSelect === 'function') {
             UI.createSearchableSelect('con-property');
             UI.createSearchableSelect('con-tenant');
         }
-        await loadList();
-        prefillFromCalendarIfPending();
 
         const cancelBtn = document.getElementById('btn-con-cancel');
         if (cancelBtn && !cancelBtn.dataset.hashListener) {
@@ -578,9 +578,15 @@ const ContractsView = (() => {
         if (hashRaw.startsWith('contracts')) {
             const parts = hashRaw.split('&').slice(1);
             let editId = null;
+            let tenantsId = null;
             parts.forEach(p => {
                 const eq = p.indexOf('=');
-                if (eq > 0 && p.slice(0, eq) === 'edit') editId = decodeURIComponent(p.slice(eq + 1));
+                if (eq > 0) {
+                    const key = p.slice(0, eq);
+                    const val = decodeURIComponent(p.slice(eq + 1));
+                    if (key === 'edit') editId = val;
+                    else if (key === 'tenants_id') tenantsId = val;
+                }
             });
             if (editId) {
                 const numId = parseInt(editId, 10);
@@ -600,6 +606,16 @@ const ContractsView = (() => {
                         }
                     }, 0);
                 }
+            } else if (tenantsId) {
+                const numTenantsId = parseInt(tenantsId, 10);
+                if (!isNaN(numTenantsId)) {
+                    form.startAdd();
+                    const tenantSel = document.getElementById('con-tenant');
+                    if (tenantSel) {
+                        tenantSel.value = String(numTenantsId);
+                        if (typeof UI.updateSearchableSelectDisplay === 'function') UI.updateSearchableSelectDisplay('con-tenant');
+                    }
+                }
             }
         }
     }
@@ -608,14 +624,17 @@ const ContractsView = (() => {
     function prefillFromCalendar(propertyId, monthKey, propertyName) {
         _pendingPrefill = { propertyId, monthKey, propertyName };
     }
-    async function prefillFromCalendarIfPending() {
+    function prefillFromCalendarIfPending() {
         if (!_pendingPrefill) return;
         const { propertyId, monthKey } = _pendingPrefill;
         _pendingPrefill = null;
-        await fillDropdowns();
         form.startAdd();
-        document.getElementById('con-property').value = propertyId;
-        document.getElementById('con-start').value = monthKey + '-01';
+        const propEl = document.getElementById('con-property');
+        if (propEl) {
+            propEl.value = String(propertyId);
+        }
+        const startEl = document.getElementById('con-start');
+        if (startEl) startEl.value = monthKey + '-01';
     }
 
     function getCache() { return _cache; }
