@@ -342,19 +342,20 @@ const PropertiesView = (() => {
             if (data.roi_pct != null) {
                 html += '<div class="stat"><div class="stat-label">ROI (k\u00A0tržní ceně)</div><div class="stat-val">' + data.roi_pct + ' %</div></div>';
             }
-            html += '<div class="stat stat-unified"><div class="stat-label">Počet nájemníků</div><div class="stat-label-sub">(FO\u00A0/\u00A0PO)</div><div class="stat-val">' + (data.tenants_total ?? 0) + '</div><div class="stat-val-sub">' + (data.tenants_person ?? 0) + '\u00A0/\u00A0' + (data.tenants_company ?? 0) + '</div></div>' +
-                '<div class="stat stat-unified"><div class="stat-label">Počet smluv</div><div class="stat-label-sub">(FO\u00A0/\u00A0PO)</div><div class="stat-val">' + (data.contracts_count ?? 0) + '</div><div class="stat-val-sub">' + (data.contracts_person ?? 0) + '\u00A0/\u00A0' + (data.contracts_company ?? 0) + '</div></div>' +
-                '<div class="stat stat-unified"><div class="stat-label">Doba nájmu</div><div class="stat-label-sub">Průměrná (nejkr.\u00A0/\u00A0nejdelší)</div><div class="stat-val">' + (data.avg_tenancy_months ?? 0) + '\u00A0měs.</div>' +
+            const foPoTitle = 'FO = fyzická osoba, PO = právnická osoba';
+            html += '<div class="stat stat-unified"><div class="stat-label" title="' + UI.esc(foPoTitle) + '">Počet nájemníků (FO\u00A0/\u00A0PO)</div><div class="stat-val">' + (data.tenants_total ?? 0) + '</div><div class="stat-val-sub">(' + (data.tenants_person ?? 0) + '\u00A0FO\u00A0/\u00A0' + (data.tenants_company ?? 0) + '\u00A0PO)</div></div>' +
+                '<div class="stat stat-unified"><div class="stat-label" title="' + UI.esc(foPoTitle) + '">Počet smluv (FO\u00A0/\u00A0PO)</div><div class="stat-val">' + (data.contracts_count ?? 0) + '</div><div class="stat-val-sub">(' + (data.contracts_person ?? 0) + '\u00A0FO\u00A0/\u00A0' + (data.contracts_company ?? 0) + '\u00A0PO)</div></div>' +
+                '<div class="stat stat-unified"><div class="stat-label">Doba nájmu</div><div class="stat-val">' + (data.avg_tenancy_months ?? 0) + '\u00A0měs.</div>' +
                 (data.shortest_tenancy_months != null && data.longest_tenancy_months != null
-                    ? '<div class="stat-val-sub">(' +
+                    ? '<div class="stat-val-sub">Průměrná (' +
                         (data.shortest_tenancy_contracts_id
                             ? '<a href="#contracts&edit=' + data.shortest_tenancy_contracts_id + '" class="prop-year-link">' + data.shortest_tenancy_months + '</a>'
                             : data.shortest_tenancy_months) +
-                        '\u00A0/\u00A0' +
+                        '\u00A0nejkr.\u00A0/\u00A0' +
                         (data.longest_tenancy_contracts_id
                             ? '<a href="#contracts&edit=' + data.longest_tenancy_contracts_id + '" class="prop-year-link">' + data.longest_tenancy_months + '</a>'
                             : data.longest_tenancy_months) +
-                        ')</div>'
+                        '\u00A0nejdelší)</div>'
                     : '') + '</div>';
             if (data.current_tenant_name) {
                 html += '<div class="stat"><div class="stat-label">Aktuální nájemník</div><div class="stat-val stat-val-stat-tenant">' + UI.esc(data.current_tenant_name) + '</div></div>';
