@@ -13,7 +13,7 @@ $FIELDS = [
     'tenants'    => ['name','type','birth_date','email','phone','address','ic','dic','note'],
     'contracts'  => ['properties_id','tenants_id','contract_start','contract_end','monthly_rent','first_month_rent','last_month_rent','contract_url','deposit_amount','deposit_paid_date','deposit_return_date','note'],
     'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','counterpart_account','payment_batch_id','payment_method','bank_accounts_id','payment_type'],
-    'bank_accounts' => ['name','account_number','is_primary','sort_order'],
+    'bank_accounts' => ['name','account_number','is_primary','sort_order','fio_token'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
     'payment_requests' => ['contracts_id','amount','type','note','due_date'],
 ];
@@ -59,13 +59,21 @@ $FIELD_LABELS = [
     'tenants'    => ['name'=>'Jméno / Název','birth_date'=>'Datum narození'],
     'contracts'  => ['properties_id'=>'Nemovitost','tenants_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','first_month_rent'=>'Nájem za první měsíc (poměrná část)','last_month_rent'=>'Nájem za poslední měsíc (poměrná část)','deposit_amount'=>'Kauce','deposit_paid_date'=>'Datum přijetí kauce','deposit_return_date'=>'Datum vrácení kauce','note'=>'Poznámka'],
     'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','counterpart_account'=>'Číslo protiúčtu','payment_method'=>'Způsob platby','bank_accounts_id'=>'Bankovní účet','payment_type'=>'Typ platby'],
-    'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu'],
+    'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu','fio_token'=>'FIO API token'],
     'contract_rent_changes' => ['contracts_id'=>'Smlouva','amount'=>'Částka','effective_from'=>'Platné od'],
     'payment_requests' => ['contracts_id'=>'Smlouva','amount'=>'Částka','type'=>'Typ','note'=>'Poznámka','due_date'=>'Splatnost'],
 ];
 
 $table = $_GET['table'] ?? body()['table'] ?? '';
 if (!isset($FIELDS[$table])) jsonErr('Neznámá tabulka.');
+
+/** U bank_accounts nevracíme fio_token do klienta, jen příznak fio_token_isset */
+function maskBankAccountFioToken(array $row): array {
+    $isset = isset($row['fio_token']) && trim((string)$row['fio_token']) !== '';
+    unset($row['fio_token']);
+    $row['fio_token_isset'] = $isset;
+    return $row;
+}
 
 /** Ověří, zda řetězec YYYY-MM-DD představuje platné datum. Vrací chybovou zprávu nebo null. */
 function validateDateField(?string $val, string $label): ?string {
@@ -88,12 +96,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($id > 0) {
         $row = findActiveByEntityId($table, $id);
         if (!$row) jsonErr('Záznam neexistuje.', 404);
+        if ($table === 'bank_accounts') $row = maskBankAccountFioToken($row);
         jsonOk($row);
     }
 
-    // bank_accounts: soft-update, vlastní řazení (primární první)
+    // bank_accounts: soft-update, vlastní řazení (primární první); token nikdy neposílat
     if ($table === 'bank_accounts') {
-        jsonOk(db()->query("SELECT * FROM bank_accounts WHERE valid_to IS NULL ORDER BY is_primary DESC, sort_order ASC, id ASC")->fetchAll());
+        $rows = db()->query("SELECT * FROM bank_accounts WHERE valid_to IS NULL ORDER BY is_primary DESC, sort_order ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
+        jsonOk(array_map('maskBankAccountFioToken', $rows));
     }
 
     // Joined queries pro přehledněji zobrazené lists
@@ -486,13 +496,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'bank_accounts') {
+            if (isset($data['fio_token']) && trim((string)$data['fio_token']) === '') unset($data['fio_token']);
             if (isset($data['is_primary']) && (int)$data['is_primary'] === 1) {
                 db()->prepare("UPDATE bank_accounts SET is_primary=0 WHERE valid_to IS NULL")->execute();
             }
             $data['is_primary'] = isset($data['is_primary']) ? (int)$data['is_primary'] : 0;
             $data['sort_order'] = isset($data['sort_order']) ? (int)$data['sort_order'] : 0;
             $newId = softInsert($table, $data);
-            jsonOk(findActive($table, $newId), 201);
+            jsonOk(maskBankAccountFioToken(findActive($table, $newId)), 201);
         } else {
             $newId = softInsert($table, $data);
             jsonOk(findActive($table, $newId), 201);
@@ -545,11 +556,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         if ($table === 'bank_accounts') {
+            if (isset($data['fio_token']) && trim((string)$data['fio_token']) === '') unset($data['fio_token']);
             if (isset($data['is_primary']) && (int)$data['is_primary'] === 1) {
                 db()->prepare("UPDATE bank_accounts SET is_primary=0 WHERE valid_to IS NULL")->execute();
             }
             $newId = softUpdate($table, $rowId, $data);
-            jsonOk(findActive($table, $newId));
+            $out = findActive($table, $newId);
+            jsonOk(maskBankAccountFioToken($out));
         } elseif ($table === 'contract_rent_changes') {
             $newId = softUpdate($table, $rowId, [
                 'amount'        => (float)$data['amount'],

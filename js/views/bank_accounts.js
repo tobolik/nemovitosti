@@ -20,12 +20,15 @@ const BankAccountsView = (() => {
             successAddMsg: 'Bankovní účet byl přidán.',
             successEditMsg: 'Bankovní účet byl aktualizován.',
             getValues() {
-                return {
+                const vals = {
                     name:          document.getElementById('bank-name').value.trim(),
                     account_number: document.getElementById('bank-account').value.trim(),
                     is_primary:    document.getElementById('bank-primary').checked ? 1 : 0,
                     sort_order:    parseInt(document.getElementById('bank-sort').value, 10) || 0,
                 };
+                const token = document.getElementById('bank-fio-token').value.trim();
+                if (token) vals.fio_token = token;
+                return vals;
             },
             fillForm(row) {
                 document.getElementById('bank-edit-id').value = String(row.bank_accounts_id ?? row.id);
@@ -33,12 +36,17 @@ const BankAccountsView = (() => {
                 document.getElementById('bank-account').value = row.account_number || '';
                 document.getElementById('bank-primary').checked = !!row.is_primary;
                 document.getElementById('bank-sort').value = row.sort_order ?? 0;
+                const tokenEl = document.getElementById('bank-fio-token');
+                tokenEl.value = '';
+                tokenEl.placeholder = row.fio_token_isset ? 'Zadaný token je uložen (pro změnu zadejte nový)' : 'Token z FIO IB → Nastavení → API (volitelné)';
             },
             resetForm() {
                 document.getElementById('bank-name').value = '';
                 document.getElementById('bank-account').value = '';
                 document.getElementById('bank-primary').checked = false;
                 document.getElementById('bank-sort').value = '0';
+                document.getElementById('bank-fio-token').value = '';
+                document.getElementById('bank-fio-token').placeholder = 'Token z FIO IB → Nastavení → API (volitelné)';
             },
             onSaved: loadList,
         });
@@ -50,6 +58,7 @@ const BankAccountsView = (() => {
         switch (key) {
             case 'name': return (b.name || '').toLowerCase();
             case 'account_number': return (b.account_number || '').toLowerCase();
+            case 'fio_token_isset': return b.fio_token_isset ? 1 : 0;
             case 'is_primary': return b.is_primary ? 1 : 0;
             case 'sort_order': return parseInt(b.sort_order, 10) || 0;
             default: return '';
@@ -79,6 +88,7 @@ const BankAccountsView = (() => {
             [
                 { label: 'Název', sortKey: 'name' },
                 { label: 'Číslo účtu', sortKey: 'account_number', hideMobile: true },
+                { label: 'FIO', sortKey: 'fio_token_isset' },
                 { label: 'Primární', sortKey: 'is_primary' },
                 { label: 'Pořadí', sortKey: 'sort_order', hideMobile: true },
                 { label: 'Akce', act: true },
@@ -87,6 +97,7 @@ const BankAccountsView = (() => {
             (b) => (
                 '<td><strong>' + UI.esc(b.name) + '</strong></td>' +
                 '<td class="col-note col-hide-mobile">' + UI.esc(b.account_number || '—') + '</td>' +
+                '<td>' + (b.fio_token_isset ? '<span class="badge badge-ok" title="Účet propojen s FIO API">FIO</span>' : '—') + '</td>' +
                 '<td>' + (b.is_primary ? '<span class="badge badge-ok">ANO</span>' : '—') + '</td>' +
                 '<td class="col-hide-mobile">' + (b.sort_order ?? 0) + '</td>' +
                 '<td class="td-act">' +

@@ -438,13 +438,18 @@ $monthNames = ['leden','únor','březen','duben','květen','červen','červenec'
 foreach ($properties as $p) {
     $propId = $p['id'];
     $rentedFrom = !empty($p['rented_from']) ? $p['rented_from'] : null;
+    $purchaseDate = !empty($p['purchase_date']) ? $p['purchase_date'] : null;
+    $purchaseMonth = $purchaseDate ? substr($purchaseDate, 0, 7) : null; // YYYY-MM
     for ($m = 1; $m <= 12; $m++) {
         $monthKey = $year . '-' . str_pad((string)$m, 2, '0', STR_PAD_LEFT);
         $firstOfMonth = $monthKey . '-01';
         $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
 
+        // „Nepronajímáno“ jen pokud měsíc je před rented_from A zároveň nemovitost už byla v majetku (od purchase_date)
         if ($rentedFrom !== null && $firstOfMonth < $rentedFrom) {
-            $heatmap[$propId . '_' . $monthKey] = ['type' => 'not_rented', 'monthKey' => $monthKey];
+            if ($purchaseMonth === null || $monthKey >= $purchaseMonth) {
+                $heatmap[$propId . '_' . $monthKey] = ['type' => 'not_rented', 'monthKey' => $monthKey];
+            }
             continue;
         }
 

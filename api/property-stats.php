@@ -124,7 +124,16 @@ if (empty($starts)) {
     ksort($byYear);
     $byYearList = [];
     foreach ($byYear as $yr => $v) {
-        $byYearList[] = ['year' => $yr, 'months_occupied' => $v['months_occupied'], 'rent_received' => 0];
+        $mo = $v['months_occupied'];
+        $monthsElapsed = ($yr < $nowY) ? 12 : (($yr === $nowY) ? $nowM : 0);
+        $utilizationToDate = ($monthsElapsed > 0 && $mo > 0) ? round($mo / $monthsElapsed * 100, 1) : null;
+        $byYearList[] = [
+            'year' => $yr,
+            'months_occupied' => $mo,
+            'rent_received' => 0,
+            'months_elapsed' => $monthsElapsed,
+            'utilization_to_date_pct' => $utilizationToDate,
+        ];
     }
     $byYear = $byYearList;
 }
