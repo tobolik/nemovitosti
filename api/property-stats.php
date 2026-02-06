@@ -22,12 +22,14 @@ $contracts = $stmt->fetchAll();
 $nowY = (int)date('Y');
 $nowM = (int)date('n');
 
-// Vytížení za daný rok: zlomkové měsíce (částečné měsíce na začátku/konci smlouvy)
+// Vytížení za daný rok vždy „k datu“: jen uplynulé měsíce v roce (ne /12)
 $rentedFrom = !empty($prop['rented_from']) ? $prop['rented_from'] : null;
 $monthsInYear = 0;
 $monthsInYearDenom = 0;
 $today = date('Y-m-d');
 for ($m = 1; $m <= 12; $m++) {
+    if ($year > $nowY) break;
+    if ($year === $nowY && $m > $nowM) break;
     $firstOfMonth = sprintf('%04d-%02d-01', $year, $m);
     $lastOfMonth = date('Y-m-t', strtotime($firstOfMonth));
     if ($rentedFrom !== null && $firstOfMonth < $rentedFrom) {

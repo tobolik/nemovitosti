@@ -330,8 +330,8 @@ const PropertiesView = (() => {
         try {
             const data = await Api.propertyStats(propEntityId, year);
             let html = '<div class="prop-stats-grid">' +
-                '<div class="stat"><div class="stat-label">Vytížení (' + year + ')</div><div class="stat-val">' + (data.utilization_rate_year ?? 0) + ' %</div></div>' +
-                '<div class="stat"><div class="stat-label">Vytížení (celkem)</div><div class="stat-val">' + (data.utilization_rate_overall ?? 0) + ' %</div></div>' +
+                '<div class="stat"><div class="stat-label" title="Podíl obsazených měsíců vůči uplynulým v roce (k datu)">Vytížení (' + year + ')</div><div class="stat-val">' + (data.utilization_rate_year ?? 0) + ' %</div></div>' +
+                '<div class="stat"><div class="stat-label" title="Podíl obsazených měsíců vůči uplynulým v celém období (k datu)">Vytížení (celkem)</div><div class="stat-val">' + (data.utilization_rate_overall ?? 0) + ' %</div></div>' +
                 '<div class="stat"><div class="stat-label">Vybraný nájem celkem</div><div class="stat-val green">' + fmtKc(data.total_rent_received) + '</div></div>' +
                 '<div class="stat"><div class="stat-label">Náklady celkem</div><div class="stat-val">' + fmtKc(data.total_costs) + '</div></div>' +
                 '<div class="stat"><div class="stat-label">Roční nájem (aktuální)</div><div class="stat-val">' + fmtKc(data.annual_rent) + '</div></div>';
@@ -374,14 +374,15 @@ const PropertiesView = (() => {
                 let chartBarsRent = '';
                 let chartBarsUtil = '';
                 const mo = (row) => Number(row.months_occupied) || 0;
+                const maxUtilPct = Math.max(1, ...byYear.map(r => r.utilization_to_date_pct ?? 0));
                 byYear.forEach(row => {
                     const rent = row.rent_received || 0;
-                    const utilPct = Math.round((mo(row) / 12) * 100);
+                    const utilPct = row.utilization_to_date_pct != null ? row.utilization_to_date_pct : 0;
                     const pctRent = maxRent > 0 ? (rent / maxRent) * 100 : 0;
                     const titleRent = row.year + ': ' + fmtKc(rent);
-                    const titleUtil = row.year + ': ' + (mo(row).toFixed(2).replace('.', ',')) + ' měs. (' + utilPct + ' %)';
+                    const titleUtil = row.year + ': ' + (mo(row).toFixed(2).replace('.', ',')) + ' měs. (' + utilPct + ' % k datu)';
                     const heightRentPx = Math.max(8, Math.round((pctRent / 100) * chartHeightPx));
-                    const heightUtilPx = Math.max(8, Math.round((utilPct / 100) * chartHeightPx));
+                    const heightUtilPx = Math.max(8, Math.round((utilPct / maxUtilPct) * chartHeightPx));
                     chartBarsRent += '<div class="prop-stats-chart-bar-wrap" title="' + UI.esc(titleRent) + '">' +
                         '<div class="prop-stats-chart-bar rent" style="height:' + heightRentPx + 'px"></div>' +
                         '<span class="prop-stats-chart-label">' + row.year + '</span></div>';
@@ -395,7 +396,7 @@ const PropertiesView = (() => {
                     '<div class="prop-stats-chart">' + chartBarsRent + '</div></div>';
                 chartSectionUtil = '<div class="prop-stats-chart-section">' +
                     '<h4 class="prop-stats-chart-title">Vytížení po letech</h4>' +
-                    '<div class="prop-stats-chart-legend"><span class="dot-util">% obsazených měsíců</span></div>' +
+                    '<div class="prop-stats-chart-legend"><span class="dot-util">Vytížení k datu (%)</span></div>' +
                     '<div class="prop-stats-chart">' + chartBarsUtil + '</div></div>';
             }
 
@@ -438,23 +439,22 @@ const PropertiesView = (() => {
                     sumRent += row.rent_received ?? 0;
                     sumMonthsOccupied += Number(row.months_occupied) || 0;
                 });
-                const totalMonthsPossible = byYear.length * 12;
-                const avgUtilPct = totalMonthsPossible > 0 ? Math.round((sumMonthsOccupied / totalMonthsPossible) * 100) : 0;
+                const sumMonthsElapsed = byYear.reduce((s, r) => s + (Number(r.months_elapsed) || 0), 0);
+                const totalUtilPct = sumMonthsElapsed > 0 ? Math.round((sumMonthsOccupied / sumMonthsElapsed) * 100) : 0;
                 html += '<div class="prop-stats-table-charts-row">' +
                     '<div class="prop-stats-table-col">' +
                     '<h4 style="margin-top:0;margin-bottom:8px;font-size:.9rem">Přehled po letech</h4>' +
-                    '<table class="prop-stats-table"><thead><tr><th>Rok</th><th class="col-num">Obs. měs.</th><th class="col-num" title="Podíl obsazených měsíců vůči celému roku (12). Vhodné pro srovnání roků.">Vytížení (rok)</th><th class="col-num" title="Podíl obsazených měsíců vůči uplynulým měsícům v daném roce. Aktuální stav v běžícím roce.">Vytíž. k datu</th><th class="col-num">Vybraný nájem</th><th class="col-num">Prům./měs.</th></tr></thead><tbody>';
+                    '<table class="prop-stats-table"><thead><tr><th>Rok</th><th class="col-num">Obs. měs.</th><th class="col-num" title="Vytížení k datu: podíl obsazených měsíců vůči uplynulým v daném roce">Vytížení</th><th class="col-num">Vybraný nájem</th><th class="col-num">Prům./měs.</th></tr></thead><tbody>';
                 byYear.forEach(row => {
                     const mo = row.months_occupied ?? 0;
                     const rent = row.rent_received ?? 0;
-                    const utilPct = mo > 0 ? Math.round((mo / 12) * 100) : 0;
                     const utilToDate = row.utilization_to_date_pct != null ? row.utilization_to_date_pct + ' %' : '—';
                     const avgMonth = mo > 0 ? Math.round((rent / mo) * 100) / 100 : 0;
                     const moFmt = typeof mo === 'number' && mo % 1 !== 0 ? mo.toFixed(2).replace('.', ',') : mo;
                     const link = '<a href="#payments&year=' + row.year + '&properties_id=' + propId + '" class="prop-year-link">' + row.year + '</a>';
-                    html += '<tr><td>' + link + '</td><td class="col-num">' + moFmt + '</td><td class="col-num">' + utilPct + ' %</td><td class="col-num">' + utilToDate + '</td><td class="col-num">' + fmtKc(rent) + '</td><td class="col-num">' + (mo > 0 ? fmtKc(avgMonth) : '—') + '</td></tr>';
+                    html += '<tr><td>' + link + '</td><td class="col-num">' + moFmt + '</td><td class="col-num">' + utilToDate + '</td><td class="col-num">' + fmtKc(rent) + '</td><td class="col-num">' + (mo > 0 ? fmtKc(avgMonth) : '—') + '</td></tr>';
                 });
-                html += '<tr class="prop-stats-table-total"><td>Celkem</td><td class="col-num">' + (typeof sumMonthsOccupied === 'number' && sumMonthsOccupied % 1 !== 0 ? sumMonthsOccupied.toFixed(2).replace('.', ',') : sumMonthsOccupied) + '</td><td class="col-num">' + avgUtilPct + ' %</td><td class="col-num">—</td><td class="col-num">' + fmtKc(sumRent) + '</td><td class="col-num">—</td></tr>';
+                html += '<tr class="prop-stats-table-total"><td>Celkem</td><td class="col-num">' + (typeof sumMonthsOccupied === 'number' && sumMonthsOccupied % 1 !== 0 ? sumMonthsOccupied.toFixed(2).replace('.', ',') : sumMonthsOccupied) + '</td><td class="col-num">' + (data.utilization_rate_overall ?? totalUtilPct) + ' %</td><td class="col-num">' + fmtKc(sumRent) + '</td><td class="col-num">—</td></tr>';
                 html += '</tbody></table></div>' +
                     '<div class="prop-stats-charts-side">' + chartSectionRent + chartSectionUtil + '</div></div>';
             }
