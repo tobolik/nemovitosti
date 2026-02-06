@@ -871,21 +871,6 @@ async function openPaymentModal(el) {
     if (monthToEl) monthToEl.value = month;
     yearFromEl.value = year;
     yearToEl.value = year;
-    if (!window._payModalSearchableMonthInited) {
-        window._payModalSearchableMonthInited = true;
-        if (typeof UI.createSearchableSelect === 'function') {
-            UI.createSearchableSelect('pay-modal-month-from');
-            UI.createSearchableSelect('pay-modal-month-to');
-        }
-        yearFromEl.addEventListener('blur', function () {
-            const y = parseYear(yearFromEl.value);
-            if (!isNaN(y)) yearFromEl.value = String(y);
-        });
-        yearToEl.addEventListener('blur', function () {
-            const y = parseYear(yearToEl.value);
-            if (!isNaN(y)) yearToEl.value = String(y);
-        });
-    }
     if (typeof UI.updateSearchableSelectDisplay === 'function') {
         UI.updateSearchableSelectDisplay('pay-modal-month-from');
         UI.updateSearchableSelectDisplay('pay-modal-month-to');
@@ -1245,6 +1230,25 @@ async function openPaymentModal(el) {
     bulkCheckbox.onchange = () => {
         rangeRow.style.display = bulkCheckbox.checked ? '' : 'none';
         if (bulkCheckbox.checked) {
+            if (!window._payModalSearchableMonthInited) {
+                window._payModalSearchableMonthInited = true;
+                if (typeof UI.createSearchableSelect === 'function') {
+                    UI.createSearchableSelect('pay-modal-month-from');
+                    UI.createSearchableSelect('pay-modal-month-to');
+                }
+                function normalizeYearInput(inputEl) {
+                    const y = parseYear(inputEl.value);
+                    if (!isNaN(y)) inputEl.value = String(y);
+                }
+                yearFromEl.addEventListener('blur', function () { normalizeYearInput(yearFromEl); });
+                yearToEl.addEventListener('blur', function () { normalizeYearInput(yearToEl); });
+                yearFromEl.addEventListener('change', function () { normalizeYearInput(yearFromEl); });
+                yearToEl.addEventListener('change', function () { normalizeYearInput(yearToEl); });
+            }
+            if (typeof UI.updateSearchableSelectDisplay === 'function') {
+                UI.updateSearchableSelectDisplay('pay-modal-month-from');
+                UI.updateSearchableSelectDisplay('pay-modal-month-to');
+            }
             updateAmountFromRange();
             if (!amount.value) amount.value = amountVal || '';
         }
