@@ -869,6 +869,9 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .pay-modal-range-row .fg select { min-width: 90px; }
 .pay-modal-add-link { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
 .pay-modal-add-link a { font-size: .9rem; color: var(--primary); }
+.pay-modal-form-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--glass-border); }
+.pay-modal-form-title { margin: 0 0 10px 0; font-size: .95rem; font-weight: 600; color: var(--txt2); }
+.pay-modal-range-row .fg input[type="number"] { min-width: 70px; }
 .pay-modal-type-wrap { padding-left: 12px; border-left: 3px solid transparent; border-radius: 0 var(--r) var(--r) 0; }
 .pay-modal-type-wrap.pay-type-rent { border-left-color: transparent; }
 .pay-modal-type-wrap.pay-type-deposit { border-left-color: rgba(59, 130, 246, .6); }

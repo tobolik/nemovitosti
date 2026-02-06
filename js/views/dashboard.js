@@ -811,6 +811,8 @@ async function openPaymentModal(el) {
     const editIdEl = document.getElementById('pay-modal-edit-id');
     const typeSelect = document.getElementById('pay-modal-type');
     const typeWrap = document.getElementById('pay-modal-type-wrap');
+    const formSection = document.getElementById('pay-modal-form-section');
+    const formTitle = document.getElementById('pay-modal-form-title');
     const bulkWrap = document.getElementById('pay-modal-bulk-wrap');
     const bulkCheckbox = document.getElementById('pay-modal-bulk');
     const rangeRow = document.getElementById('pay-modal-range-row');
@@ -818,6 +820,18 @@ async function openPaymentModal(el) {
     const yearFromEl = document.getElementById('pay-modal-year-from');
     const monthToEl = document.getElementById('pay-modal-month-to');
     const yearToEl = document.getElementById('pay-modal-year-to');
+    function parseYear(v) {
+        const n = parseInt(String(v).trim(), 10);
+        if (isNaN(n)) return NaN;
+        if (n >= 100 && n <= 2100) return n;
+        if (n >= 0 && n < 100) return 2000 + n;
+        return n;
+    }
+    function parseMonth(v) {
+        const n = parseInt(String(v).trim(), 10);
+        if (isNaN(n) || n < 1 || n > 12) return NaN;
+        return n;
+    }
 
     const paymentsPromise = propertyId
         ? Api.crudList('payments', { properties_id: propertyId, period_year: year, period_month: parseInt(month, 10) })
@@ -853,34 +867,18 @@ async function openPaymentModal(el) {
     bulkCheckbox.checked = false;
     rangeRow.style.display = 'none';
     const nowY = new Date().getFullYear();
-    const contractStart = (el.dataset.contractStart || '').trim();
-    const contractEnd = (el.dataset.contractEnd || '').trim();
-    let startYear = contractStart ? parseInt(contractStart.slice(0, 4), 10) : (nowY - 10);
-    let endYear = contractEnd ? parseInt(contractEnd.slice(0, 4), 10) : (nowY + 2);
-    if (isNaN(startYear)) startYear = nowY - 10;
-    if (isNaN(endYear)) endYear = nowY + 2;
-    if (endYear < startYear) endYear = startYear;
-    const yearOpts = [];
-    for (let y = startYear; y <= endYear; y++) {
-        yearOpts.push('<option value="' + y + '"' + (y === parseInt(year, 10) ? ' selected' : '') + '>' + y + '</option>');
-    }
-    yearFromEl.innerHTML = yearOpts.join('');
-    yearToEl.innerHTML = yearOpts.join('');
     monthFromEl.value = month;
     monthToEl.value = month;
     yearFromEl.value = year;
     yearToEl.value = year;
-    if (typeof UI.updateSearchableSelectDisplay === 'function') {
-        ['pay-modal-year-from', 'pay-modal-year-to'].forEach(UI.updateSearchableSelectDisplay);
-    }
-    if (!window._payModalSearchableInited) {
-        window._payModalSearchableInited = true;
-        ['pay-modal-month-from', 'pay-modal-year-from', 'pay-modal-month-to', 'pay-modal-year-to'].forEach(id => {
-            if (document.getElementById(id) && typeof UI.createSearchableSelect === 'function') UI.createSearchableSelect(id);
-        });
-    }
-    if (typeof UI.updateSearchableSelectDisplay === 'function') {
-        ['pay-modal-month-from', 'pay-modal-month-to'].forEach(UI.updateSearchableSelectDisplay);
+
+    const showFormInitially = (forMonth.length === 0);
+    if (showFormInitially) {
+        if (formSection) formSection.style.display = '';
+        if (formTitle) { formTitle.style.display = ''; formTitle.textContent = 'Přidat platbu'; }
+    } else {
+        if (formSection) formSection.style.display = 'none';
+        if (formTitle) { formTitle.style.display = 'none'; formTitle.textContent = ''; }
     }
 
     let rentChanges = [];
@@ -901,10 +899,10 @@ async function openPaymentModal(el) {
     }
     function calcRentForRange() {
         if (!bulkCheckbox.checked) return null;
-        const yFrom = parseInt(yearFromEl.value, 10);
-        const mFrom = parseInt(monthFromEl.value, 10);
-        const yTo = parseInt(yearToEl.value, 10);
-        const mTo = parseInt(monthToEl.value, 10);
+        const yFrom = parseYear(yearFromEl.value);
+        const mFrom = parseMonth(monthFromEl.value);
+        const yTo = parseYear(yearToEl.value);
+        const mTo = parseMonth(monthToEl.value);
         if (isNaN(yFrom) || isNaN(mFrom) || isNaN(yTo) || isNaN(mTo)) return null;
         const tsFrom = yFrom * 12 + mFrom;
         const tsTo = yTo * 12 + mTo;
@@ -1014,6 +1012,10 @@ async function openPaymentModal(el) {
         existingWrap.innerHTML = html;
     }
     renderExisting();
+    if (!showFormInitially) {
+        const pref = document.getElementById('pay-modal-prefill-msg');
+        if (pref) pref.style.display = 'none';
+    }
 
     const prefillMsgEl = document.getElementById('pay-modal-prefill-msg');
     if (prefillMsgEl) prefillMsgEl.style.display = 'none';
@@ -1064,48 +1066,7 @@ async function openPaymentModal(el) {
         prefillMsgEl.style.display = 'block';
     }
 
-    // Předvyplnění z jediné platby za měsíc – NEPOUŽÍT při přidání z tabulky (3/2025 +) ani z požadavku (Energie +).
-    if (!paymentRequestId && forMonth.length === 1 && !el.dataset.forceAddNew) {
-        const p = forMonth[0];
-        const method = p.payment_method || 'account';
-        const pt = p.payment_type || 'rent';
-        const payEntityId = String((p.payments_id ?? p.id) || '');
-        editIdEl.value = payEntityId;
-        editIdEl.dataset.batchId = String(p.payment_batch_id || '');
-        editIdEl.dataset.originalAmount = String(p.amount ?? '');
-        editIdEl.dataset.linkedRequestId = String(p.linked_payment_request_id || '');
-        amount.value = p.amount ?? '';
-        dateInput.value = p.payment_date ? p.payment_date.slice(0, 10) : new Date().toISOString().slice(0, 10);
-        methodSelect.value = method === 'cash' ? 'cash' : 'account';
-        accountSelect.value = p.bank_accounts_id || '';
-        accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
-        typeSelect.value = ['rent','deposit','deposit_return','energy','other'].includes(pt) ? pt : 'rent';
-        setTypeWrapClass(typeSelect.value);
-        paid.checked = true;
-        dateWrap.style.display = 'block';
-        methodWrap.style.display = 'flex';
-        batchHintEl.style.display = p.payment_batch_id ? 'block' : 'none';
-        bulkWrap.style.display = 'none';
-        noteEl.value = p.note ?? '';
-        const counterpartInput = document.getElementById('pay-modal-counterpart-account');
-        if (counterpartInput) counterpartInput.value = p.counterpart_account ?? '';
-        if (requestLinkWrap && linkedRequestSel) {
-            requestLinkWrap.style.display = '';
-            const prId = r => r.payment_requests_id ?? r.id;
-            const options = ['<option value="">— Žádný —</option>'];
-            paymentRequests.forEach(r => {
-                const rid = prId(r);
-                const isUnoccupied = !r.paid_at;
-                const isThisPayment = (r.payments_id != null && String(r.payments_id) === payEntityId);
-                if (isUnoccupied || isThisPayment) {
-                    const label = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč' + (isThisPayment ? ' (tato platba)' : ' (nevyřízeno)');
-                    options.push('<option value="' + rid + '">' + UI.esc(label) + '</option>');
-                }
-            });
-            linkedRequestSel.innerHTML = options.join('');
-            linkedRequestSel.value = editIdEl.dataset.linkedRequestId || '';
-        }
-    } else {
+    if (showFormInitially) {
         bulkWrap.style.display = editIdEl.value ? 'none' : 'block';
         if (requestLinkWrap && linkedRequestSel) {
             if (!editIdEl.value) {
@@ -1135,6 +1096,8 @@ async function openPaymentModal(el) {
         const delBtn = e.target.closest('[data-action="delete"]');
         const addLink = e.target.closest('[data-action="add"]');
         if (editBtn) {
+            if (formSection) formSection.style.display = '';
+            if (formTitle) { formTitle.style.display = ''; formTitle.textContent = 'Upravit platbu'; }
             const pt = editBtn.dataset.type || 'rent';
             const payId = String(editBtn.dataset.id || '');
             const paymentTenantName = (editBtn.dataset.tenantName != null && editBtn.dataset.tenantName !== '') ? editBtn.dataset.tenantName : tenantName;
@@ -1207,6 +1170,8 @@ async function openPaymentModal(el) {
             await loadDashboard(parseInt(year, 10));
         } else if (addLink) {
             e.preventDefault();
+            if (formSection) formSection.style.display = '';
+            if (formTitle) { formTitle.style.display = ''; formTitle.textContent = 'Přidat platbu'; }
             if (info && typeof initialInfoHtml !== 'undefined') info.innerHTML = initialInfoHtml;
             editIdEl.value = '';
             delete editIdEl.dataset.batchId;
@@ -1267,8 +1232,11 @@ async function openPaymentModal(el) {
     };
     function addRangeChangeListeners() {
         [monthFromEl, yearFromEl, monthToEl, yearToEl].forEach(el => {
+            if (!el) return;
             el.removeEventListener('change', _payModalRangeChange);
+            el.removeEventListener('input', _payModalRangeChange);
             el.addEventListener('change', _payModalRangeChange);
+            el.addEventListener('input', _payModalRangeChange);
         });
     }
     function _payModalRangeChange() {
@@ -1344,10 +1312,14 @@ async function openPaymentModal(el) {
                         counterpart_account: counterpartEl && (counterpartEl.value || '').trim() ? counterpartEl.value.trim() : null,
                     };
                     if (bulk) {
-                        const yFrom = parseInt(yearFromEl.value, 10);
-                        const mFrom = parseInt(monthFromEl.value, 10);
-                        const yTo = parseInt(yearToEl.value, 10);
-                        const mTo = parseInt(monthToEl.value, 10);
+                        const yFrom = parseYear(yearFromEl.value);
+                        const mFrom = parseMonth(monthFromEl.value);
+                        const yTo = parseYear(yearToEl.value);
+                        const mTo = parseMonth(monthToEl.value);
+                        if (isNaN(yFrom) || isNaN(mFrom) || isNaN(yTo) || isNaN(mTo)) {
+                            alert('Zadejte platný rozsah: měsíc 1–12, rok např. 26 nebo 2026.');
+                            return;
+                        }
                         const tsFrom = yFrom * 12 + mFrom;
                         const tsTo = yTo * 12 + mTo;
                         if (tsFrom > tsTo) {
