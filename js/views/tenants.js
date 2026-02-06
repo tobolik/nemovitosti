@@ -65,7 +65,8 @@ const TenantsView = (() => {
             let html = '<table class="tbl tbl-sm" style="margin-bottom:0"><thead><tr><th>Číslo účtu</th><th class="th-act"></th></tr></thead><tbody>';
             data.forEach(ba => {
                 const acc = UI.esc(ba.account_number || '');
-                html += '<tr><td>' + acc + '</td><td class="td-act"><button type="button" class="btn btn-danger btn-sm" data-action="del" data-id="' + ba.id + '">Smazat</button></td></tr>';
+                const entityId = ba.tenant_bank_accounts_id ?? ba.id;
+                html += '<tr><td>' + acc + '</td><td class="td-act"><button type="button" class="btn btn-danger btn-sm" data-action="del" data-id="' + entityId + '">Smazat</button></td></tr>';
             });
             html += '</tbody></table>';
             listEl.innerHTML = html;
