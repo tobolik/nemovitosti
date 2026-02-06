@@ -445,7 +445,7 @@ foreach ($properties as $p) {
         $firstOfMonth = $monthKey . '-01';
         $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
 
-        // „Nepronajímáno“ jen pokud měsíc je před rented_from A zároveň nemovitost už byla v majetku (od purchase_date)
+        // „Není v pronájmu“ jen pokud měsíc je před rented_from A zároveň nemovitost už byla v majetku (od purchase_date)
         if ($rentedFrom !== null && $firstOfMonth < $rentedFrom) {
             if ($purchaseMonth === null || $monthKey >= $purchaseMonth) {
                 $heatmap[$propId . '_' . $monthKey] = ['type' => 'not_rented', 'monthKey' => $monthKey];

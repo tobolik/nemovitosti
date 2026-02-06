@@ -196,7 +196,7 @@ async function loadDashboard(year) {
                 let content = '';
                 let isBeforePurchase = false;
                 if (cell.type === 'not_rented') {
-                    content = 'Nepronajímáno';
+                    content = 'Není v pronájmu';
                 } else if (cell.type === 'empty') {
                     const purchaseDate = prop.purchase_date || '';
                     const purchaseYear = purchaseDate ? parseInt(purchaseDate.substring(0, 4), 10) : null;
