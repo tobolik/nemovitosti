@@ -533,6 +533,8 @@ foreach ($properties as $p) {
                     'rent_changes' => array_map(function ($rc) {
                         return ['effective_from' => $rc['effective_from'] ?? '', 'amount' => (float)($rc['amount'] ?? 0)];
                     }, $rentChangesByContract[$primaryEntityId] ?? []),
+                    'default_payment_method' => $primaryContract['default_payment_method'] ?? null,
+                    'default_bank_accounts_id' => isset($primaryContract['default_bank_accounts_id']) ? (int)$primaryContract['default_bank_accounts_id'] : null,
                 ] : null,
                     'monthKey'             => $monthKey,
                     'amount'               => $expectedTotalOnly,
@@ -644,6 +646,8 @@ foreach ($properties as $p) {
                     'rent_changes' => array_map(function ($rc) {
                         return ['effective_from' => $rc['effective_from'] ?? '', 'amount' => (float)($rc['amount'] ?? 0)];
                     }, $rentChangesByContract[$primaryEntityId] ?? []),
+                    'default_payment_method' => $primaryContract['default_payment_method'] ?? null,
+                    'default_bank_accounts_id' => isset($primaryContract['default_bank_accounts_id']) ? (int)$primaryContract['default_bank_accounts_id'] : null,
                 ],
                 'monthKey'             => $monthKey,
                 'amount'               => $expectedTotal,

@@ -228,9 +228,11 @@ async function loadDashboard(year) {
                     ? JSON.stringify(contract.rent_changes).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
                     : '';
                 const monthlyRent = contract && (contract.monthly_rent != null) ? parseFloat(contract.monthly_rent) : 0;
+                const defaultPaymentMethod = contract && (contract.default_payment_method === 'account' || contract.default_payment_method === 'cash') ? contract.default_payment_method : '';
+                const defaultBankAccountId = contract && contract.default_bank_accounts_id != null && contract.default_bank_accounts_id !== '' ? String(contract.default_bank_accounts_id) : '';
                 const propIdForCell = prop.properties_id ?? prop.id;
                 const dataAttrs = !isEmptyOrNotRented
-                    ? ' data-property-id="' + propIdForCell + '" data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"' + (contractStart ? ' data-contract-start="' + contractStart.replace(/"/g, '&quot;') + '"' : '') + (contractEnd ? ' data-contract-end="' + contractEnd.replace(/"/g, '&quot;') + '"' : '') + (rentChangesJson ? ' data-rent-changes="' + rentChangesJson + '"' : '') + (monthlyRent > 0 ? ' data-monthly-rent="' + monthlyRent + '"' : '')
+                    ? ' data-property-id="' + propIdForCell + '" data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"' + (contractStart ? ' data-contract-start="' + contractStart.replace(/"/g, '&quot;') + '"' : '') + (contractEnd ? ' data-contract-end="' + contractEnd.replace(/"/g, '&quot;') + '"' : '') + (rentChangesJson ? ' data-rent-changes="' + rentChangesJson + '"' : '') + (monthlyRent > 0 ? ' data-monthly-rent="' + monthlyRent + '"' : '') + (defaultPaymentMethod ? ' data-default-payment-method="' + defaultPaymentMethod.replace(/"/g, '&quot;') + '"' : '') + (defaultBankAccountId ? ' data-default-bank-account-id="' + defaultBankAccountId.replace(/"/g, '&quot;') + '"' : '')
                     : ' data-property-id="' + propIdForCell + '" data-month-key="' + monthKey + '"';
 
                 let titleAttr = '';
@@ -846,8 +848,20 @@ async function openPaymentModal(el) {
     ]);
     let payments = paymentsResult || [];
     let forMonth = propertyId ? payments : payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
+    let defaultMethod = (el.dataset.defaultPaymentMethod === 'account' || el.dataset.defaultPaymentMethod === 'cash') ? el.dataset.defaultPaymentMethod : '';
+    let defaultAccountId = (el.dataset.defaultBankAccountId != null && el.dataset.defaultBankAccountId !== '') ? String(el.dataset.defaultBankAccountId) : '';
+    if (!defaultMethod && !defaultAccountId && contractsId) {
+        try {
+            const contractRow = await Api.crudGet('contracts', parseInt(contractsId, 10));
+            if (contractRow) {
+                defaultMethod = (contractRow.default_payment_method === 'account' || contractRow.default_payment_method === 'cash') ? contractRow.default_payment_method : '';
+                defaultAccountId = (contractRow.default_bank_accounts_id != null && contractRow.default_bank_accounts_id !== '') ? String(contractRow.default_bank_accounts_id) : '';
+            }
+        } catch (_) {}
+    }
     const primaryAccount = bankAccounts.find(b => b.is_primary);
-    const defaultAccId = primaryAccount ? (primaryAccount.bank_accounts_id ?? primaryAccount.id) : '';
+    const fallbackAccId = primaryAccount ? (primaryAccount.bank_accounts_id ?? primaryAccount.id) : '';
+    const defaultAccId = (defaultAccountId && bankAccounts.some(b => String(b.bank_accounts_id ?? b.id) === defaultAccountId)) ? defaultAccountId : fallbackAccId;
     accountSelect.innerHTML = '<option value="">— Vyberte účet —</option>' +
         bankAccounts.map(b => {
             const bid = b.bank_accounts_id ?? b.id;
@@ -855,6 +869,8 @@ async function openPaymentModal(el) {
                 UI.esc(b.name) + (b.account_number ? ' – ' + UI.esc(b.account_number) : '') +
             '</option>';
         }).join('');
+    if (defaultMethod) methodSelect.value = defaultMethod;
+    accountWrap.style.display = (methodSelect.value === 'account' && paid.checked) ? 'block' : 'none';
 
     document.getElementById('pay-modal-contract-id').value = contractId;
     document.getElementById('pay-modal-month-key').value = monthKey;
@@ -1244,6 +1260,37 @@ async function openPaymentModal(el) {
                 yearToEl.addEventListener('blur', function () { normalizeYearInput(yearToEl); });
                 yearFromEl.addEventListener('change', function () { normalizeYearInput(yearFromEl); });
                 yearToEl.addEventListener('change', function () { normalizeYearInput(yearToEl); });
+                function yearArrowHandler(el, e) {
+                    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+                    e.preventDefault();
+                    const delta = e.key === 'ArrowUp' ? 1 : -1;
+                    let y = parseYear(el.value);
+                    if (isNaN(y)) y = new Date().getFullYear();
+                    el.value = String(y + delta);
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                yearFromEl.addEventListener('keydown', function (e) { yearArrowHandler(yearFromEl, e); });
+                yearToEl.addEventListener('keydown', function (e) { yearArrowHandler(yearToEl, e); });
+                function monthArrowHandler(selectEl, selectId, e) {
+                    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+                    const wrap = document.querySelector('.searchable-select-wrap[data-for="' + selectId + '"]');
+                    const dropdown = wrap && wrap.querySelector('.searchable-select-dropdown');
+                    if (dropdown && dropdown.classList.contains('show')) return;
+                    e.preventDefault();
+                    const delta = e.key === 'ArrowUp' ? 1 : -1;
+                    let m = parseInt(selectEl.value, 10) || 1;
+                    m += delta;
+                    if (m > 12) m = 1;
+                    if (m < 1) m = 12;
+                    selectEl.value = String(m);
+                    if (typeof UI.updateSearchableSelectDisplay === 'function') UI.updateSearchableSelectDisplay(selectId);
+                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                const wrapFrom = document.querySelector('.searchable-select-wrap[data-for="pay-modal-month-from"]');
+                const wrapTo = document.querySelector('.searchable-select-wrap[data-for="pay-modal-month-to"]');
+                if (wrapFrom) wrapFrom.querySelector('.searchable-select-input').addEventListener('keydown', function (e) { monthArrowHandler(monthFromEl, 'pay-modal-month-from', e); });
+                if (wrapTo) wrapTo.querySelector('.searchable-select-input').addEventListener('keydown', function (e) { monthArrowHandler(monthToEl, 'pay-modal-month-to', e); });
             }
             if (typeof UI.updateSearchableSelectDisplay === 'function') {
                 UI.updateSearchableSelectDisplay('pay-modal-month-from');

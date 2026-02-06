@@ -290,6 +290,8 @@ const ContractsView = (() => {
                     deposit_paid_date: document.getElementById('con-deposit-paid-date').value || null,
                     deposit_return_date: document.getElementById('con-deposit-return-date').value || null,
                     note:           document.getElementById('con-note').value.trim(),
+                    default_payment_method: (() => { const v = document.getElementById('con-default-payment-method').value; return v === 'account' || v === 'cash' ? v : null; })(),
+                    default_bank_accounts_id: (() => { const v = document.getElementById('con-default-account').value; const n = parseInt(v, 10); return (v && !isNaN(n) && n > 0) ? n : null; })(),
                 };
             },
             fillForm(row) {
@@ -306,6 +308,15 @@ const ContractsView = (() => {
                 document.getElementById('con-deposit-paid-date').value = row.deposit_paid_date ? row.deposit_paid_date.slice(0, 10) : '';
                 document.getElementById('con-deposit-return-date').value = row.deposit_return_date ? row.deposit_return_date.slice(0, 10) : '';
                 document.getElementById('con-note').value     = row.note           || '';
+                const defMethod = (row.default_payment_method === 'account' || row.default_payment_method === 'cash') ? row.default_payment_method : '';
+                document.getElementById('con-default-payment-method').value = defMethod;
+                const defAccWrap = document.getElementById('con-default-account-wrap');
+                if (defAccWrap) defAccWrap.style.display = defMethod === 'account' ? '' : 'none';
+                const defAcc = document.getElementById('con-default-account');
+                if (defAcc) {
+                    const accId = row.default_bank_accounts_id != null ? Number(row.default_bank_accounts_id) : 0;
+                    defAcc.value = accId > 0 ? String(accId) : '';
+                }
                 if (typeof UI.updateSearchableSelectDisplay === 'function') {
                     UI.updateSearchableSelectDisplay('con-property');
                     UI.updateSearchableSelectDisplay('con-tenant');
@@ -318,8 +329,10 @@ const ContractsView = (() => {
                 document.getElementById('con-rent-changes-wrap').style.display = 'block';
             },
             resetForm() {
-                ['con-property','con-tenant','con-start','con-end','con-rent','con-first-month-rent','con-contract-url','con-deposit-amount','con-deposit-paid-date','con-deposit-return-date','con-note']
+                ['con-property','con-tenant','con-start','con-end','con-rent','con-first-month-rent','con-contract-url','con-deposit-amount','con-deposit-paid-date','con-deposit-return-date','con-note','con-default-payment-method','con-default-account']
                     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+                const defAccWrap = document.getElementById('con-default-account-wrap');
+                if (defAccWrap) defAccWrap.style.display = 'none';
                 document.getElementById('con-first-month-wrap').style.display = 'none';
                 document.getElementById('con-rent-changes-wrap').style.display = 'none';
                 const prWrap = document.getElementById('con-payment-requests-wrap');
@@ -362,12 +375,20 @@ const ContractsView = (() => {
 
     document.getElementById('con-start').addEventListener('change', toggleFirstMonthRentVisibility);
     document.getElementById('con-end').addEventListener('change', toggleLastMonthRentVisibility);
+    const conDefaultMethodEl = document.getElementById('con-default-payment-method');
+    const conDefaultAccWrap = document.getElementById('con-default-account-wrap');
+    if (conDefaultMethodEl && conDefaultAccWrap) {
+        conDefaultMethodEl.addEventListener('change', function () {
+            conDefaultAccWrap.style.display = conDefaultMethodEl.value === 'account' ? '' : 'none';
+        });
+    }
 
     // ── fill dropdowns ──────────────────────────────────────────────────
     async function fillDropdowns() {
-        const [props, tens] = await Promise.all([
+        const [props, tens, bankAccounts] = await Promise.all([
             Api.crudList('properties'),
             Api.crudList('tenants'),
+            Api.crudList('bank_accounts'),
         ]);
 
         // Použijeme properties_id (entity_id) pro stabilitu při soft-update nemovitosti
@@ -383,6 +404,16 @@ const ContractsView = (() => {
             tens.map(t =>
                 '<option value="' + (t.tenants_id ?? t.id) + '">' + UI.esc(t.name) + '</option>'
             ).join('');
+
+        const accSel = document.getElementById('con-default-account');
+        if (accSel) {
+            const list = bankAccounts || [];
+            accSel.innerHTML = '<option value="">— Vyberte účet —</option>' +
+                list.map(b => {
+                    const bid = b.bank_accounts_id ?? b.id;
+                    return '<option value="' + bid + '">' + UI.esc(b.name) + (b.account_number ? ' – ' + UI.esc(b.account_number) : '') + '</option>';
+                }).join('');
+        }
     }
 
     // ── řazení tabulky smluv (jedna úroveň = jeden sloupec; Ctrl+Klik = přidat další) ──────────────────────────────────────────────
