@@ -23,7 +23,7 @@ if ($bankAccountsId <= 0) {
 }
 
 $stmt = db()->prepare("
-    SELECT id, bank_accounts_id, name, fio_token
+    SELECT id, bank_accounts_id, name, fio_token, currency
     FROM bank_accounts
     WHERE (bank_accounts_id = ? OR id = ?) AND valid_to IS NULL
     LIMIT 1
@@ -61,7 +61,11 @@ $ctx = stream_context_create([
 $raw = @file_get_contents($url, false, $ctx);
 if ($raw === false) {
     $err = error_get_last();
-    jsonErr('Nepodařilo se připojit k FIO API. ' . (isset($err['message']) ? $err['message'] : ''));
+    $msg = isset($err['message']) ? $err['message'] : '';
+    if (strpos($msg, '409') !== false) {
+        jsonErr('FIO API omezuje počet požadavků (max. 1× za 30 sekund). Zkuste to znovu za chvíli.');
+    }
+    jsonErr('Nepodařilo se připojit k FIO API. ' . $msg);
 }
 $data = json_decode($raw, true);
 if (!is_array($data)) {
@@ -82,6 +86,8 @@ if (!isset($data['accountStatement']['transactionList'])) {
 }
 
 $baId = (int)($account['bank_accounts_id'] ?? $account['id']);
+$accountCurrency = isset($account['currency']) && trim((string)$account['currency']) !== ''
+    ? strtoupper(substr(trim($account['currency']), 0, 3)) : 'CZK';
 // Protiúčty z tabulky tenant_bank_accounts (včetně historických nájemníků – pro import i starších záznamů)
 $allowedCounterparts = [];
 $accounts = db()->query("
@@ -168,6 +174,7 @@ $skipped_filter++;
             'bank_accounts_id'    => $baId,
             'payment_date'        => $dateNorm,
             'amount'              => $amountNum,
+            'currency'            => $accountCurrency,
             'counterpart_account' => $counterpartFull !== '' ? $counterpartFull : null,
             'note'                => $message !== '' ? $message : null,
             'fio_transaction_id'  => $fioId !== '' ? $fioId : null,

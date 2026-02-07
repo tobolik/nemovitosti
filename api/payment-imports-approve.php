@@ -63,6 +63,8 @@ foreach ($ids as $rawId) {
     }
 
     $bankTransactionId = !empty(trim((string)($imp['fio_transaction_id'] ?? ''))) ? trim($imp['fio_transaction_id']) : null;
+    $currency = isset($imp['currency']) && trim((string)$imp['currency']) !== ''
+        ? strtoupper(substr(trim($imp['currency']), 0, 3)) : 'CZK';
     $uid = $_SESSION['uid'] ?? null;
     $firstPaymentEntityId = null;
     foreach ($months as [$y, $m]) {
@@ -71,6 +73,7 @@ foreach ($ids as $rawId) {
             'period_year'         => $y,
             'period_month'        => $m,
             'amount'              => $amountPerMonth,
+            'currency'            => $currency,
             'payment_date'        => $paymentDate,
             'payment_method'      => 'account',
             'bank_accounts_id'    => $bankAccountId > 0 ? $bankAccountId : null,

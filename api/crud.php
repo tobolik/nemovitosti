@@ -13,11 +13,11 @@ $FIELDS = [
     'tenants'    => ['name','type','birth_date','email','phone','address','ic','dic','note'],
     'tenant_bank_accounts' => ['tenants_id','account_number'],
     'contracts'  => ['properties_id','tenants_id','contract_start','contract_end','monthly_rent','first_month_rent','last_month_rent','contract_url','deposit_amount','deposit_paid_date','deposit_return_date','note','default_payment_method','default_bank_accounts_id'],
-    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','counterpart_account','bank_transaction_id','payment_batch_id','payment_method','bank_accounts_id','payment_type','approved_at'],
-    'bank_accounts' => ['name','account_number','is_primary','sort_order','fio_token'],
+    'payments'   => ['contracts_id','period_year','period_month','amount','currency','payment_date','note','counterpart_account','bank_transaction_id','payment_batch_id','payment_method','bank_accounts_id','payment_type','approved_at'],
+    'bank_accounts' => ['name','account_number','currency','is_primary','sort_order','fio_token'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
     'payment_requests' => ['contracts_id','amount','type','note','due_date'],
-    'payment_imports' => ['bank_accounts_id','payment_date','amount','counterpart_account','note','fio_transaction_id','contracts_id','period_year','period_month','period_year_to','period_month_to','payment_type'],
+    'payment_imports' => ['bank_accounts_id','payment_date','amount','currency','counterpart_account','note','fio_transaction_id','contracts_id','period_year','period_month','period_year_to','period_month_to','payment_type'],
 ];
 
 // Seznam nemovitostí včetně ročního nájmu a ROI (když je zadána odhadní cena)
@@ -62,11 +62,11 @@ $FIELD_LABELS = [
     'tenants'    => ['name'=>'Jméno / Název','birth_date'=>'Datum narození'],
     'tenant_bank_accounts' => ['tenants_id'=>'Nájemník','account_number'=>'Číslo účtu'],
     'contracts'  => ['properties_id'=>'Nemovitost','tenants_id'=>'Nájemník','contract_start'=>'Začátek smlouvy','contract_end'=>'Konec smlouvy','monthly_rent'=>'Měsíční nájemné','first_month_rent'=>'Nájem za první měsíc (poměrná část)','last_month_rent'=>'Nájem za poslední měsíc (poměrná část)','deposit_amount'=>'Kauce','deposit_paid_date'=>'Datum přijetí kauce','deposit_return_date'=>'Datum vrácení kauce','note'=>'Poznámka','default_payment_method'=>'Výchozí způsob platby','default_bank_accounts_id'=>'Výchozí bankovní účet'],
-    'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','payment_date'=>'Datum platby','note'=>'Poznámka','counterpart_account'=>'Číslo protiúčtu','payment_method'=>'Způsob platby','bank_accounts_id'=>'Bankovní účet','payment_type'=>'Typ platby','approved_at'=>'Schváleno'],
-    'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu','fio_token'=>'FIO API token'],
+    'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','currency'=>'Měna','payment_date'=>'Datum platby','note'=>'Poznámka','counterpart_account'=>'Číslo protiúčtu','payment_method'=>'Způsob platby','bank_accounts_id'=>'Bankovní účet','payment_type'=>'Typ platby','approved_at'=>'Schváleno'],
+    'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu','currency'=>'Měna','fio_token'=>'FIO API token'],
     'contract_rent_changes' => ['contracts_id'=>'Smlouva','amount'=>'Částka','effective_from'=>'Platné od'],
     'payment_requests' => ['contracts_id'=>'Smlouva','amount'=>'Částka','type'=>'Typ','note'=>'Poznámka','due_date'=>'Splatnost'],
-    'payment_imports' => ['contracts_id'=>'Smlouva','period_year'=>'Rok od','period_month'=>'Měsíc od','period_year_to'=>'Rok do','period_month_to'=>'Měsíc do','payment_type'=>'Typ platby'],
+    'payment_imports' => ['contracts_id'=>'Smlouva','period_year'=>'Rok od','period_month'=>'Měsíc od','period_year_to'=>'Rok do','period_month_to'=>'Měsíc do','currency'=>'Měna','payment_type'=>'Typ platby'],
 ];
 
 $table = $_GET['table'] ?? body()['table'] ?? '';
