@@ -160,6 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $to = isset($_GET['to']) ? trim($_GET['to']) : '';
         $onlyToReview = isset($_GET['to_review']) && ($_GET['to_review'] === '1' || $_GET['to_review'] === 'true');
         $onlyHistory = isset($_GET['history']) && ($_GET['history'] === '1' || $_GET['history'] === 'true');
+        $onlyMatchingCounterpart = !isset($_GET['only_matching_counterpart']) || $_GET['only_matching_counterpart'] === '1' || $_GET['only_matching_counterpart'] === 'true';
         $sql = "
             SELECT pi.*, c.contracts_id AS c_entity_id, p.name AS property_name, t.name AS tenant_name,
                    CONCAT(t.name, ' – ', p.name) AS contract_label
@@ -187,6 +188,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $s = db()->prepare($sql);
         $s->execute($params);
         $rows = $s->fetchAll(PDO::FETCH_ASSOC);
+        // Shoda protiúčtu s čísly účtů nájemců (pro zobrazení v UI)
+        $allowedCounterparts = [];
+        $tbaRows = db()->query("
+            SELECT DISTINCT TRIM(tba.account_number) AS account_number
+            FROM tenant_bank_accounts tba
+            INNER JOIN tenants t ON t.tenants_id = tba.tenants_id
+            WHERE tba.valid_to IS NULL AND TRIM(tba.account_number) != ''
+        ")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($tbaRows as $acc) {
+            $norm = strtolower(preg_replace('/\s+/', '', $acc));
+            if ($norm !== '') {
+                $allowedCounterparts[$norm] = true;
+                $base = preg_replace('/\/.*$/', '', $norm);
+                if ($base !== '') $allowedCounterparts[$base] = true;
+            }
+        }
+        $hasTenantAccounts = count($allowedCounterparts) > 0;
+        foreach ($rows as &$row) {
+            $counterpart = isset($row['counterpart_account']) ? trim((string)$row['counterpart_account']) : '';
+            $norm = $counterpart !== '' ? strtolower(preg_replace('/\s+/', '', $counterpart)) : '';
+            $base = $norm !== '' ? preg_replace('/\/.*$/', '', $norm) : '';
+            $row['counterpart_matches'] = !$hasTenantAccounts ? null : ($norm !== '' && (
+                isset($allowedCounterparts[$norm]) || ($base !== '' && isset($allowedCounterparts[$base]))
+            );
+        }
+        unset($row);
+        // Filtr: jen řádky s protiúčtem odpovídajícím účtu nájemce (výchozí = jen k párování)
+        if ($onlyMatchingCounterpart && $hasTenantAccounts) {
+            $rows = array_values(array_filter($rows, function ($r) {
+                return $r['counterpart_matches'] === true;
+            }));
+        }
+        // Převyplnění: pro smlouvu+období už existuje platba
+        $existingPaymentsKey = [];
+        $existingSt = db()->query("
+            SELECT contracts_id, period_year, period_month
+            FROM payments
+            WHERE valid_to IS NULL
+        ");
+        while ($ex = $existingSt->fetch(PDO::FETCH_ASSOC)) {
+            $k = (int)$ex['contracts_id'] . '_' . (int)$ex['period_year'] . '_' . (int)$ex['period_month'];
+            $existingPaymentsKey[$k] = true;
+        }
+        foreach ($rows as &$row) {
+            $cid = (int)($row['contracts_id'] ?? 0);
+            $py = (int)($row['period_year'] ?? 0);
+            $pm = (int)($row['period_month'] ?? 0);
+            $row['overpayment'] = ($cid > 0 && $py > 0 && $pm > 0) && isset($existingPaymentsKey[$cid . '_' . $py . '_' . $pm]);
+        }
+        unset($row);
         // Auto-párování: návrh smlouva/období/typ podle částky, data a protiúčtu
         $contractsWithRent = db()->query("
             SELECT c.contracts_id, c.id, c.tenants_id, c.monthly_rent

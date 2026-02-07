@@ -118,6 +118,7 @@ const Api = (() => {
         if (params && params.to) q.set('to', params.to);
         if (params && params.to_review === true) q.set('to_review', '1');
         if (params && params.history === true) q.set('history', '1');
+        if (params && params.only_matching_counterpart === false) q.set('only_matching_counterpart', '0');
         return get('/api/crud.php?table=payment_imports' + (q.toString() ? '&' + q.toString() : ''));
     }
 

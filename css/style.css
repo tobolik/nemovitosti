@@ -963,6 +963,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 }
 .badge-ok { background: rgba(22,163,74,.35); color: #86efac; font-weight: 600; }
 .badge-danger { background: rgba(220,38,38,.4); color: #fecaca; font-weight: 600; }
+.badge-warn { background: rgba(245,158,11,.3); color: #fde047; font-weight: 600; }
 .badge-info { background: rgba(147,51,234,.2); color: var(--purple-300); }
 .badge-admin { background: rgba(253,224,71,.2); color: #fde047; }
 .badge-user { background: var(--glass-hover); color: var(--txt2); }
@@ -1016,6 +1017,16 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
   background: rgba(59,130,246,.2);
   color: #93c5fd;
 }
+
+/* Kontrola importů – odkaz na platbu vytvořenou z importu */
+.import-link-payment {
+  color: var(--primary);
+  font-size: .8em;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+.import-link-payment:hover { text-decoration: underline; }
+.tbl td.col-status { white-space: nowrap; }
 
 /* ============================================================
    ALERTS

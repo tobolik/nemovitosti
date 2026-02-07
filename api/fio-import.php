@@ -88,7 +88,7 @@ if (!isset($data['accountStatement']['transactionList'])) {
 $baId = (int)($account['bank_accounts_id'] ?? $account['id']);
 $accountCurrency = isset($account['currency']) && trim((string)$account['currency']) !== ''
     ? strtoupper(substr(trim($account['currency']), 0, 3)) : 'CZK';
-// Protiúčty z tabulky tenant_bank_accounts (včetně historických nájemníků – pro import i starších záznamů)
+// Protiúčty z tabulky tenant_bank_accounts – importujeme jen příchozí platby od čísel účtů nájemců
 $allowedCounterparts = [];
 $accounts = db()->query("
     SELECT DISTINCT tba.account_number
@@ -100,9 +100,13 @@ foreach ($accounts as $acc) {
     $norm = strtolower(preg_replace('/\s+/', '', trim($acc)));
     if ($norm !== '') {
         $allowedCounterparts[$norm] = true;
+        $base = preg_replace('/\/.*$/', '', $norm);
+        if ($base !== '') {
+            $allowedCounterparts[$base] = true;
+        }
     }
 }
-$filterByCounterpart = count($allowedCounterparts) > 0; // pokud žádný nájemník nemá protiúčty, stáhneme vše (zpětná kompatibilita)
+$filterByCounterpart = count($allowedCounterparts) > 0;
 
 // Duplicita: stačí kontrolovat fio_transaction_id (jednoznačný u FIO)
 $checkStmt = db()->prepare('SELECT id FROM payment_imports WHERE fio_transaction_id = ? LIMIT 1');
@@ -158,9 +162,13 @@ if (is_array($txList)) {
         $fioId = $col('column22') !== '' ? $col('column22') : $col('column14');
         $counterpartFull = trim($counterpart . ($bankCode !== '' ? '/' . $bankCode : ''), '/');
         $counterpartNorm = $counterpartFull !== '' ? strtolower(preg_replace('/\s+/', '', $counterpartFull)) : '';
-        if ($filterByCounterpart && ($counterpartNorm === '' || !isset($allowedCounterparts[$counterpartNorm]))) {
-$skipped_filter++;
-            continue; // tento pohyb není od protiúčtu uloženého u žádného nájemníka
+        $counterpartBase = $counterpartNorm !== '' ? preg_replace('/\/.*$/', '', $counterpartNorm) : '';
+        $matchesCounterpart = $counterpartNorm !== '' && (
+            isset($allowedCounterparts[$counterpartNorm]) || ($counterpartBase !== '' && isset($allowedCounterparts[$counterpartBase]))
+        );
+        if ($filterByCounterpart && !$matchesCounterpart) {
+            $skipped_filter++;
+            continue;
         }
 
         if ($fioId !== '') {

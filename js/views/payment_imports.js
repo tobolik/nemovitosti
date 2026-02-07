@@ -34,13 +34,16 @@ const PaymentImportsView = (() => {
         const acc = document.getElementById('import-filter-account');
         const from = document.getElementById('import-filter-from');
         const to = document.getElementById('import-filter-to');
+        const onlyMatchingEl = document.getElementById('import-filter-only-matching');
         const params = {
             bank_accounts_id: acc && acc.value ? parseInt(acc.value, 10) : undefined,
             from: from && from.value ? from.value : undefined,
             to: to && to.value ? to.value : undefined,
+            only_matching_counterpart: onlyMatchingEl ? onlyMatchingEl.checked : true,
         };
         if (status && status.value === 'to_review') params.to_review = true;
         if (status && status.value === 'history') params.history = true;
+        if (params.only_matching_counterpart === false) params.only_matching_counterpart = false;
         return params;
     }
 
@@ -81,12 +84,16 @@ const PaymentImportsView = (() => {
         const ready = Array.from(checked).filter(cb => {
             const id = cb.getAttribute('data-id');
             const row = _cache.find(r => String(r.id) === String(id));
-            return row && !row.approved_at && row.contracts_id && row.period_year && row.period_month && row.payment_type;
+            return row && !row.approved_at && !row.overpayment && row.contracts_id && row.period_year && row.period_month && row.payment_type;
         });
         btn.disabled = ready.length === 0;
         btn.textContent = ready.length > 0 ? 'Hromadně schválit vybrané (' + ready.length + ')' : 'Hromadně schválit vybrané';
     }
 
+    function currencyLabel(code) {
+        const c = (code || 'CZK').toString().toUpperCase();
+        return c === 'CZK' ? 'Kč' : c;
+    }
     function renderRow(imp) {
         const id = imp.id;
         const isProcessed = !!imp.approved_at;
@@ -96,14 +103,31 @@ const PaymentImportsView = (() => {
         const monthFrom = '<select class="import-month-from" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + monthOptions(imp.period_month) + '</select>';
         const yearTo = '<select class="import-year-to" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + yearOptions(imp.period_year_to) + '</select>';
         const monthTo = '<select class="import-month-to" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + monthOptions(imp.period_month_to) + '</select>';
-        const statusCell = isProcessed ? '<span class="badge badge-ok" title="Zpracováno">✓</span>' : '—';
+        let statusCell = '—';
+        if (isProcessed && imp.payments_id) {
+            statusCell = '<span class="badge badge-ok" title="Zpracováno">✓</span> <a href="#payments" class="import-link-payment" title="Platba z tohoto importu">→ Platba</a>';
+        } else if (isProcessed) {
+            statusCell = '<span class="badge badge-ok" title="Zpracováno">✓</span>';
+        } else if (imp.overpayment) {
+            statusCell = '<span class="badge badge-warn" title="Pro toto období a smlouvu již platba existuje (převyplnění)">Převyplnění</span>';
+        }
+        const curr = currencyLabel(imp.currency);
+        const counterpartFull = imp.counterpart_account || '';
+        const noteFull = imp.note || '';
+        const shodaCell = imp.counterpart_matches === true
+            ? '<span class="badge badge-ok" title="Protiúčet odpovídá účtu nájemce">✓</span>'
+            : imp.counterpart_matches === false
+                ? '<span class="badge badge-warn" title="Protiúčet neodpovídá žádnému číslu účtu nájemce">Nesedí</span>'
+                : '—';
         return '<tr data-id="' + id + '"' + (isProcessed ? ' class="import-row-processed"' : '') + '>' +
-            '<td><input type="checkbox" class="import-cb" data-id="' + id + '"' + (isProcessed ? ' disabled' : (paired ? '' : ' disabled title="Vyplňte smlouvu, období a typ platby"')) + '></td>' +
-            '<td>' + statusCell + '</td>' +
+            '<td><input type="checkbox" class="import-cb" data-id="' + id + '"' + (isProcessed ? ' disabled' : imp.overpayment ? ' disabled title="Převyplnění – platba pro toto období již existuje"' : (paired ? '' : ' disabled title="Vyplňte smlouvu, období a typ platby"')) + '></td>' +
+            '<td class="col-status">' + statusCell + '</td>' +
             '<td>' + (imp.payment_date ? UI.fmtDate(imp.payment_date) : '—') + '</td>' +
-            '<td>' + UI.fmt(imp.amount) + ' Kč</td>' +
-            '<td class="col-note">' + UI.esc(imp.counterpart_account || '—') + '</td>' +
-            '<td class="col-note">' + UI.esc(imp.note || '—') + '</td>' +
+            '<td class="col-amount">' + UI.fmt(imp.amount) + ' ' + UI.esc(curr) + '</td>' +
+            '<td class="col-hide-mobile">' + UI.esc((imp.currency || 'CZK').toString().toUpperCase()) + '</td>' +
+            '<td class="col-note cell-note-wrap"><span class="cell-note-truncate" title="' + UI.esc(counterpartFull) + '">' + UI.esc(counterpartFull || '—') + '</span></td>' +
+            '<td class="col-note cell-note-wrap col-hide-mobile"><span class="cell-note-truncate" title="' + UI.esc(noteFull) + '">' + UI.esc(noteFull || '—') + '</span></td>' +
+            '<td class="col-shoda">' + shodaCell + '</td>' +
             '<td class="import-cell-contract">' + contractSel + '</td>' +
             '<td><span class="import-period-from">' + yearFrom + ' ' + monthFrom + '</span></td>' +
             '<td><span class="import-period-to">' + yearTo + ' ' + monthTo + '</span></td>' +
