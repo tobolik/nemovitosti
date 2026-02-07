@@ -2,32 +2,9 @@
 // api/_bootstrap.php – sdílený základ pro všechny API endpointy
 declare(strict_types=1);
 
-// Diagnostika: každý krok zapíše řádek do api/diag.txt – podle posledního řádku uvidíte, kde skript skončil
-function apiDiag(string $step): void {
-    @file_put_contents(__DIR__ . '/diag.txt', date('c') . ' ' . $step . "\n", FILE_APPEND | LOCK_EX);
-}
-apiDiag('1_bootstrap_start');
-
-const API_LOG_PREFIX = 'NEMOVITOSTI-API-500';
-
-/** Zapisuje do api/log/api-500.log (v adresáři skriptu – obvykle má zápis). Případně do PHP error_log. */
-function apiLog500(string $message): void {
-    $full = API_LOG_PREFIX . ' ' . $message;
-    error_log($full);
-    $logFile = __DIR__ . '/log/api-500.log';  // api/log/api-500.log
-    $dir = dirname($logFile);
-    if (!is_dir($dir)) {
-        @mkdir($dir, 0755, true);
-    }
-    if (is_dir($dir) && is_writable($dir)) {
-        @file_put_contents($logFile, date('c') . ' ' . $message . "\n", FILE_APPEND | LOCK_EX);
-    }
-}
-
 ob_start();
 set_exception_handler(function(Throwable $e) {
     if (ob_get_level()) ob_end_clean();
-    apiLog500('EXCEPTION: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
     header('Content-Type: application/json');
     $msg = (defined('DEBUG') && DEBUG) ? $e->getMessage() : 'Chyba serveru.';
@@ -35,16 +12,7 @@ set_exception_handler(function(Throwable $e) {
     exit;
 });
 
-// Fatální chyby (např. undefined variable v PHP 8) neprojdou exception handlerem – zachytíme je tady
-register_shutdown_function(function () {
-    $err = error_get_last();
-    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
-        apiLog500('FATAL: ' . ($err['message'] ?? '') . ' | ' . ($err['file'] ?? '') . ':' . ($err['line'] ?? ''));
-    }
-});
-
 require __DIR__ . '/../config.php';
-apiDiag('2_config_loaded');
 
 // ── PDO singleton ───────────────────────────────────────────────────────────
 function db(): PDO {

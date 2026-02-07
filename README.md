@@ -29,7 +29,6 @@ Verze v patičce (`index.html`). Při změnách navýšit podle [Semantic Versio
 | [docs/PROPMANAGER-RENAME.md](docs/PROPMANAGER-RENAME.md) | (starší) Návrh přejmenování na PropManager |
 | [docs/DOMLY-RENAME.md](docs/DOMLY-RENAME.md) | Návrh přejmenování na Domly (domly.cz) – repo, branding, design |
 
-- **Diagnostika 500:** kroky v **`api/diag.txt`**. Poslední řádek: `0_crud_entry` = přišel požadavek na crud, `1_bootstrap_start`, `2_config_loaded`, `3_crud_after_bootstrap`, `4_after_login`, `5_request table=X`. Jen 1+2 = ty záznamy jsou z auth/dashboard; u 500 na crud hledej řádek `0_crud_entry` – chybí-li, crud se nespustil. Detail: **`api/log/api-500.log`**.
 - **Testy:** `php tests/run-tests.php` (kontrola přítomnosti soft-update a CSRF; s config + DB běží i kontroly funkcí).
 - **Demo data:** po schema + migracích lze naplnit `seed-demo.sql`; přihlášení `admin@propmanager.demo` / `password`.
 
