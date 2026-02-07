@@ -20,29 +20,6 @@ $FIELDS = [
     'payment_imports' => ['bank_accounts_id','payment_date','amount','currency','counterpart_account','note','fio_transaction_id','contracts_id','period_year','period_month','period_year_to','period_month_to','payment_type'],
 ];
 
-// Seznam nemovitostí včetně ročního nájmu a ROI (když je zadána odhadní cena)
-if ($table === 'properties' && $id <= 0) {
-    $rows = db()->query("
-        SELECT p.*,
-            (SELECT COALESCE(SUM(c.monthly_rent), 0) * 12
-             FROM contracts c
-             WHERE (c.properties_id = p.properties_id OR c.properties_id = p.id)
-               AND c.valid_to IS NULL
-               AND (c.contract_end IS NULL OR c.contract_end >= CURDATE())
-            ) AS annual_rent
-        FROM properties p
-        WHERE p.valid_to IS NULL
-        ORDER BY p.name ASC
-    ")->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($rows as &$r) {
-        $r['annual_rent'] = (float)($r['annual_rent'] ?? 0);
-        $val = (float)($r['valuation_amount'] ?? 0);
-        $r['roi_pct'] = $val > 0 ? round($r['annual_rent'] / $val * 100, 1) : null;
-    }
-    unset($r);
-    jsonOk($rows);
-}
-
 // Povinná pole při přidávání
 $REQUIRED = [
     'properties' => ['name','address'],
