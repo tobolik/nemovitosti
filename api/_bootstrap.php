@@ -62,16 +62,22 @@ function db(): PDO {
 }
 
 // ── Session ─────────────────────────────────────────────────────────────────
+// Pole u session_set_cookie_params až od PHP 7.3; na starších verzích použij starou signaturu
 (function(){
     if (session_status() !== PHP_SESSION_NONE) return;
     ini_set('session.gc_maxlifetime', (string)SESSION_LIFE);
-    session_set_cookie_params([
-        'lifetime' => SESSION_LIFE,
-        'path'     => '/',
-        'secure'   => ($_SERVER['HTTPS'] ?? '') === 'on',
-        'httponly' => true,
-        'samesite' => 'Strict',
-    ]);
+    $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    if (PHP_VERSION_ID >= 70300) {
+        session_set_cookie_params([
+            'lifetime' => SESSION_LIFE,
+            'path'     => '/',
+            'secure'   => $secure,
+            'httponly' => true,
+            'samesite' => 'Strict',
+        ]);
+    } else {
+        session_set_cookie_params(SESSION_LIFE, '/', '', $secure, true);
+    }
     session_name(SESSION_NAME);
     session_start();
 })();

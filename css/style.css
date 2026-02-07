@@ -337,6 +337,7 @@ footer {
 footer a { color: var(--txt2); text-decoration: none; }
 footer a:hover { color: var(--purple-300); }
 footer .footer-version { opacity: .8; }
+footer .footer-php-version { margin-left: 0.5rem; opacity: .7; font-size: 0.9em; }
 
 /* ── VIEWS ────────────────────────────────────────────────── */
 .view { display: none; }

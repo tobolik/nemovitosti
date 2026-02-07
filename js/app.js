@@ -65,6 +65,8 @@ const App = (() => {
         Api.setCsrf(user.csrf);
 
         document.getElementById('nav-username').textContent = user.name;
+        const phpVerEl = document.getElementById('footer-php-version');
+        if (phpVerEl && user.php_version) phpVerEl.textContent = 'PHP ' + user.php_version;
         // Users tab: only for admin
         document.getElementById('nav-users').style.display = user.role === 'admin' ? '' : 'none';
 

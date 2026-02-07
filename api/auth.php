@@ -14,6 +14,7 @@ if ($method === 'GET') {
         'email' => $_SESSION['email'],
         'role'  => $_SESSION['role'],
         'csrf'  => csrfToken(),
+        'php_version' => PHP_VERSION,
     ]);
 }
 
@@ -50,6 +51,7 @@ if ($method === 'POST') {
             'email' => $u['email'],
             'role'  => $u['role'],
             'csrf'  => $_SESSION['csrf'],
+            'php_version' => PHP_VERSION,
         ]);
     }
 
