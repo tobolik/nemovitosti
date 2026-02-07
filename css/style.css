@@ -1026,6 +1026,34 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
   white-space: nowrap;
 }
 .import-link-payment:hover { text-decoration: underline; }
+/* Kontrola importů: nenapárované selecty bílé, napárované průhledné (barva tabulky) */
+#import-table .searchable-select-wrap .searchable-select-input {
+  background: rgba(255,255,255,.96);
+  color: #1e293b;
+  border: 1px solid rgba(255,255,255,.4);
+}
+#import-table .searchable-select-wrap .searchable-select-input::placeholder {
+  color: #64748b;
+}
+#import-table td.import-cell-paired .searchable-select-wrap .searchable-select-input,
+#import-table tr.import-row-processed .searchable-select-wrap .searchable-select-input {
+  background: transparent;
+  color: var(--txt);
+  border-color: rgba(255,255,255,.18);
+}
+#import-table td.import-cell-paired .searchable-select-wrap .searchable-select-input::placeholder,
+#import-table tr.import-row-processed .searchable-select-wrap .searchable-select-input::placeholder {
+  color: var(--txt3);
+}
+#import-table td.import-cell-paired select,
+#import-table tr.import-row-processed select {
+  background: transparent;
+  color: inherit;
+}
+#import-table td.import-cell-paired .searchable-select-wrap .searchable-select-native,
+#import-table tr.import-row-processed .searchable-select-wrap .searchable-select-native {
+  background: transparent;
+}
 .tbl td.col-status { white-space: nowrap; }
 
 /* ============================================================

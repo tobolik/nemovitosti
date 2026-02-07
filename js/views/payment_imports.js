@@ -51,7 +51,7 @@ const PaymentImportsView = (() => {
         const labels = ['', 'Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'];
         let html = '<option value="">—</option>';
         for (let m = 1; m <= 12; m++) {
-            html += '<option value="' + m + '"' + (selected === m ? ' selected' : '') + '>' + labels[m] + '</option>';
+            html += '<option value="' + m + '"' + (selected === m ? ' selected' : '') + '>' + m + ' – ' + labels[m] + '</option>';
         }
         return html;
     }
@@ -98,14 +98,15 @@ const PaymentImportsView = (() => {
         const id = imp.id;
         const isProcessed = !!imp.approved_at;
         const paired = !!(imp.contracts_id && imp.period_year && imp.period_month && imp.payment_type);
-        const contractSel = '<select class="import-contract" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + contractOptions(imp.contracts_id) + '</select>';
-        const yearFrom = '<select class="import-year-from" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + yearOptions(imp.period_year) + '</select>';
-        const monthFrom = '<select class="import-month-from" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + monthOptions(imp.period_month) + '</select>';
-        const yearTo = '<select class="import-year-to" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + yearOptions(imp.period_year_to) + '</select>';
-        const monthTo = '<select class="import-month-to" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + monthOptions(imp.period_month_to) + '</select>';
+        const sid = (name) => 'import-' + name + '-' + id;
+        const contractSel = '<select id="' + sid('contract') + '" class="import-contract" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + contractOptions(imp.contracts_id) + '</select>';
+        const yearFrom = '<select id="' + sid('year-from') + '" class="import-year-from" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + yearOptions(imp.period_year) + '</select>';
+        const monthFrom = '<select id="' + sid('month-from') + '" class="import-month-from" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + monthOptions(imp.period_month) + '</select>';
+        const yearTo = '<select id="' + sid('year-to') + '" class="import-year-to" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + yearOptions(imp.period_year_to) + '</select>';
+        const monthTo = '<select id="' + sid('month-to') + '" class="import-month-to" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + monthOptions(imp.period_month_to) + '</select>';
         let statusCell = '—';
         if (isProcessed && imp.payments_id) {
-            statusCell = '<span class="badge badge-ok" title="Zpracováno">✓</span> <a href="#payments" class="import-link-payment" title="Platba z tohoto importu">→ Platba</a>';
+            statusCell = '<span class="badge badge-ok" title="Zpracováno">✓</span> <span class="pay-from-bank" title="Platba vytvořena z tohoto importu (rozlišení od ručně zadaných)">🏦</span> <a href="#payments" class="import-link-payment" title="Platba z tohoto importu (ID ' + (imp.payments_id || '') + ')">→ Platba</a>';
         } else if (isProcessed) {
             statusCell = '<span class="badge badge-ok" title="Zpracováno">✓</span>';
         } else if (imp.overpayment) {
@@ -126,12 +127,12 @@ const PaymentImportsView = (() => {
             '<td class="col-amount">' + UI.fmt(imp.amount) + ' ' + UI.esc(curr) + '</td>' +
             '<td class="col-hide-mobile">' + UI.esc((imp.currency || 'CZK').toString().toUpperCase()) + '</td>' +
             '<td class="col-note cell-note-wrap"><span class="cell-note-truncate" title="' + UI.esc(counterpartFull) + '">' + UI.esc(counterpartFull || '—') + '</span></td>' +
-            '<td class="col-note cell-note-wrap col-hide-mobile"><span class="cell-note-truncate" title="' + UI.esc(noteFull) + '">' + UI.esc(noteFull || '—') + '</span></td>' +
             '<td class="col-shoda">' + shodaCell + '</td>' +
-            '<td class="import-cell-contract">' + contractSel + '</td>' +
-            '<td><span class="import-period-from">' + yearFrom + ' ' + monthFrom + '</span></td>' +
-            '<td><span class="import-period-to">' + yearTo + ' ' + monthTo + '</span></td>' +
-            '<td><select class="import-type" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + typeOptions(imp.payment_type || '') + '</select></td>' +
+            '<td class="col-note cell-note-wrap col-hide-mobile"><span class="cell-note-truncate" title="' + UI.esc(noteFull) + '">' + UI.esc(noteFull || '—') + '</span></td>' +
+            '<td class="import-cell-contract' + (imp.contracts_id ? ' import-cell-paired' : '') + '">' + contractSel + '</td>' +
+            '<td class="import-cell-period-from' + (imp.period_year && imp.period_month ? ' import-cell-paired' : '') + '"><span class="import-period-from">' + yearFrom + ' ' + monthFrom + '</span></td>' +
+            '<td class="import-cell-period-to' + (imp.period_year_to && imp.period_month_to ? ' import-cell-paired' : '') + '"><span class="import-period-to">' + yearTo + ' ' + monthTo + '</span></td>' +
+            '<td class="import-cell-type' + (imp.payment_type ? ' import-cell-paired' : '') + '"><select id="' + sid('type') + '" class="import-type" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + typeOptions(imp.payment_type || '') + '</select></td>' +
             '<td class="td-act">' + (isProcessed ? '' : '<button type="button" class="btn btn-ghost btn-sm import-del" data-id="' + id + '">Smazat</button>') + '</td>' +
             '</tr>';
     }
@@ -157,22 +158,82 @@ const PaymentImportsView = (() => {
         if (wrap) wrap.style.display = 'block';
         tbody.innerHTML = _cache.map(imp => renderRow(imp)).join('');
 
+        // Searchable selecty (včetně vyhledávání číslem u měsíců/roků)
+        const selectNames = ['contract', 'year-from', 'month-from', 'year-to', 'month-to', 'type'];
+        _cache.forEach(imp => {
+            if (imp.approved_at) return; /* zpracované řádky necháme jako nativní disabled selecty */
+            selectNames.forEach(name => {
+                const selectId = 'import-' + name + '-' + imp.id;
+                const sel = document.getElementById(selectId);
+                if (sel && sel.tagName === 'SELECT' && !sel.disabled && !sel.closest('.searchable-select-wrap')) {
+                    if (typeof UI.createSearchableSelect === 'function') UI.createSearchableSelect(selectId);
+                }
+            });
+        });
+        // Šipky pro měsíc/rok když je dropdown zavřený (jako v heatmapě plateb)
+        const nowYear = new Date().getFullYear();
+        _cache.forEach(imp => {
+            if (imp.approved_at) return;
+            ['year-from', 'year-to'].forEach(name => {
+                const selectId = 'import-' + name + '-' + imp.id;
+                const selectEl = document.getElementById(selectId);
+                const wrap = document.querySelector('.searchable-select-wrap[data-for="' + selectId + '"]');
+                const input = wrap && wrap.querySelector('.searchable-select-input');
+                if (!selectEl || !input) return;
+                input.addEventListener('keydown', function (e) {
+                    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+                    const dropdown = wrap.querySelector('.searchable-select-dropdown');
+                    if (dropdown && dropdown.classList.contains('show')) return;
+                    e.preventDefault();
+                    const delta = e.key === 'ArrowUp' ? 1 : -1;
+                    let y = parseInt(selectEl.value, 10) || nowYear;
+                    y += delta;
+                    if (y > nowYear) y = nowYear;
+                    if (y < nowYear - 15) y = nowYear - 15;
+                    selectEl.value = String(y);
+                    if (typeof UI.updateSearchableSelectDisplay === 'function') UI.updateSearchableSelectDisplay(selectId);
+                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            });
+            ['month-from', 'month-to'].forEach(name => {
+                const selectId = 'import-' + name + '-' + imp.id;
+                const selectEl = document.getElementById(selectId);
+                const wrap = document.querySelector('.searchable-select-wrap[data-for="' + selectId + '"]');
+                const input = wrap && wrap.querySelector('.searchable-select-input');
+                if (!selectEl || !input) return;
+                input.addEventListener('keydown', function (e) {
+                    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+                    const dropdown = wrap.querySelector('.searchable-select-dropdown');
+                    if (dropdown && dropdown.classList.contains('show')) return;
+                    e.preventDefault();
+                    const delta = e.key === 'ArrowUp' ? 1 : -1;
+                    let m = parseInt(selectEl.value, 10) || 1;
+                    m += delta;
+                    if (m > 12) m = 1;
+                    if (m < 1) m = 12;
+                    selectEl.value = String(m);
+                    if (typeof UI.updateSearchableSelectDisplay === 'function') UI.updateSearchableSelectDisplay(selectId);
+                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            });
+        });
+
         tbody.querySelectorAll('.import-contract').forEach(el => {
             el.addEventListener('change', () => savePairing(parseInt(el.getAttribute('data-id'), 10), 'contracts_id', el.value));
         });
         tbody.querySelectorAll('.import-year-from, .import-month-from').forEach(el => {
             el.addEventListener('change', () => {
                 const id = parseInt(el.getAttribute('data-id'), 10);
-                const y = document.querySelector('.import-year-from[data-id="' + id + '"]');
-                const m = document.querySelector('.import-month-from[data-id="' + id + '"]');
+                const y = document.getElementById('import-year-from-' + id);
+                const m = document.getElementById('import-month-from-' + id);
                 savePairing(id, 'period', { period_year: y ? y.value : '', period_month: m ? m.value : '' });
             });
         });
         tbody.querySelectorAll('.import-year-to, .import-month-to').forEach(el => {
             el.addEventListener('change', () => {
                 const id = parseInt(el.getAttribute('data-id'), 10);
-                const y = document.querySelector('.import-year-to[data-id="' + id + '"]');
-                const m = document.querySelector('.import-month-to[data-id="' + id + '"]');
+                const y = document.getElementById('import-year-to-' + id);
+                const m = document.getElementById('import-month-to-' + id);
                 savePairing(id, 'period_to', { period_year_to: y ? y.value : '', period_month_to: m ? m.value : '' });
             });
         });
@@ -208,6 +269,17 @@ const PaymentImportsView = (() => {
         try {
             await Api.paymentImportEdit(id, data);
             Object.assign(row, data);
+            const tr = document.querySelector('#import-tbody tr[data-id="' + id + '"]');
+            if (tr) {
+                const contractTd = tr.querySelector('td.import-cell-contract');
+                const periodFromTd = tr.querySelector('td.import-cell-period-from');
+                const periodToTd = tr.querySelector('td.import-cell-period-to');
+                const typeTd = tr.querySelector('td.import-cell-type');
+                if (contractTd) contractTd.classList.toggle('import-cell-paired', !!row.contracts_id);
+                if (periodFromTd) periodFromTd.classList.toggle('import-cell-paired', !!(row.period_year && row.period_month));
+                if (periodToTd) periodToTd.classList.toggle('import-cell-paired', !!(row.period_year_to && row.period_month_to));
+                if (typeTd) typeTd.classList.toggle('import-cell-paired', !!row.payment_type);
+            }
             const cb = document.querySelector('.import-cb[data-id="' + id + '"]');
             if (cb) {
                 const paired = !!(row.contracts_id && row.period_year && row.period_month);

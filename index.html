@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=2.1.18">
+<link rel="stylesheet" href="css/style.css?v=2.1.20">
 </head>
 <body>
 
@@ -486,7 +486,7 @@
         </div>
         <div class="list-actions" style="margin-bottom:8px"><button type="button" class="btn btn-pri" id="import-approve-btn" disabled>Hromadně schválit vybrané</button></div>
         <div id="import-alert" class="alert" style="display:none"></div>
-        <div id="import-table-wrap" class="tbl-wrap"><table class="tbl tbl-striped" id="import-table"><thead><tr><th class="th-cb"><input type="checkbox" id="import-select-all" title="Vybrat vše"></th><th>Stav</th><th>Datum</th><th>Částka</th><th class="col-hide-mobile">Měna</th><th>Protiúčet</th><th class="col-hide-mobile">Zpráva</th><th>Shoda</th><th>Smlouva</th><th>Období od</th><th>Období do</th><th>Typ</th><th class="th-act"></th></tr></thead><tbody id="import-tbody"></tbody></table></div>
+        <div id="import-table-wrap" class="tbl-wrap"><table class="tbl tbl-striped" id="import-table"><thead><tr><th class="th-cb"><input type="checkbox" id="import-select-all" title="Vybrat vše"></th><th>Stav</th><th>Datum</th><th>Částka</th><th class="col-hide-mobile">Měna</th><th>Protiúčet</th><th>Shoda</th><th class="col-hide-mobile">Zpráva</th><th>Smlouva</th><th>Období od</th><th>Období do</th><th>Typ</th><th class="th-act"></th></tr></thead><tbody id="import-tbody"></tbody></table></div>
         <div id="import-empty" class="empty" style="display:none">Žádné importy. Naimportujte pohyby v sekci <a href="#bank_accounts">Bankovní účty</a> → Načíst z FIO.</div>
       </div>
 
@@ -521,7 +521,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v2.1.18</span>
+    <span class="footer-version">v2.1.20</span>
     © 2026 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
   </footer>
@@ -735,17 +735,17 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=2.1.18"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=2.1.18"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=2.1.18"></script>
-<script src="js/app.js?v=2.1.18"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=2.1.18"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=2.1.18"></script>
-<script src="js/views/tenants.js?v=2.1.18"></script>
-<script src="js/views/contracts.js?v=2.1.18"></script>
-<script src="js/views/payments.js?v=2.1.18"></script>
-<script src="js/views/bank_accounts.js?v=2.1.18"></script>
-<script src="js/views/payment_imports.js?v=2.1.18"></script>
-<script src="js/views/users.js?v=2.1.18"></script>
+<script src="js/api.js?v=2.1.20"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=2.1.20"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=2.1.20"></script>
+<script src="js/app.js?v=2.1.20"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=2.1.20"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=2.1.20"></script>
+<script src="js/views/tenants.js?v=2.1.20"></script>
+<script src="js/views/contracts.js?v=2.1.20"></script>
+<script src="js/views/payments.js?v=2.1.20"></script>
+<script src="js/views/bank_accounts.js?v=2.1.20"></script>
+<script src="js/views/payment_imports.js?v=2.1.20"></script>
+<script src="js/views/users.js?v=2.1.20"></script>
 </body>
 </html>
