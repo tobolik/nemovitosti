@@ -59,12 +59,24 @@ $ctx = stream_context_create([
 ]);
 $raw = @file_get_contents($url, false, $ctx);
 if ($raw === false) {
-    jsonErr('Nepodařilo se připojit k FIO API. Zkontrolujte token a připojení.');
+    $err = error_get_last();
+    jsonErr('Nepodařilo se připojit k FIO API. ' . (isset($err['message']) ? $err['message'] : 'Zkontrolujte token a připojení.'));
 }
 
 $data = json_decode($raw, true);
 if (!is_array($data)) {
-    jsonErr('FIO API vrátilo neplatnou odpověď.');
+    $jsonErr = json_last_error_msg();
+    $preview = mb_substr(preg_replace('/\s+/', ' ', trim($raw)), 0, 300);
+    $debug = ' [Debug: délka=' . strlen($raw) . ', json_err=' . $jsonErr . ', začátek=' . $preview . (strlen($raw) > 300 ? '…' : '') . ']';
+    jsonErr('FIO API vrátilo neplatnou odpověď.' . $debug);
+}
+if (isset($data['errorDescription']) || isset($data['error'])) {
+    $msg = $data['errorDescription'] ?? $data['error'] ?? 'Neznámá chyba FIO';
+    jsonErr('FIO API: ' . (is_string($msg) ? $msg : json_encode($msg)));
+}
+if (!isset($data['accountStatement']['transactionList'])) {
+    $keys = is_array($data) ? implode(', ', array_keys($data)) : '–';
+    jsonErr('FIO API nevrátilo očekávanou strukturu. Klíče: ' . $keys);
 }
 
 // Struktura: accountStatement.transactionList.transaction[]; každý pohyb má column0 (datum), column1 (objem), column2 (protiúčet), atd.

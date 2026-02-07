@@ -214,7 +214,7 @@ const Api = (() => {
     return {
         setCsrf, getCsrf,
         authCheck, authLogin, authLogout,
-        crudList, crudGet, crudAdd, crudEdit, crudDelete, paymentsEditBatch, paymentsDeleteBatch, paymentsApprove, paymentRequestLink, paymentRequestUnlink,
+        crudList, crudGet, crudAdd, crudEdit, crudDelete, paymentsEditBatch, paymentsDeleteBatch, paymentsApprove, paymentRequestLink, paymentRequestUnlink, paymentRequestCloseWithoutPayment,
         fioFetch, fioImport,
         paymentImportsList, paymentImportEdit, paymentImportDelete, paymentImportsApprove,
         dashboardLoad,

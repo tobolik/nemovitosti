@@ -56,11 +56,25 @@ $url = 'https://www.fio.cz/ib_api/rest/periods/' . rawurlencode($token) . '/' . 
 $ctx = stream_context_create(['http' => ['timeout' => 30, 'header' => "Accept: application/json\r\n"]]);
 $raw = @file_get_contents($url, false, $ctx);
 if ($raw === false) {
-    jsonErr('Nepodařilo se připojit k FIO API.');
+    $err = error_get_last();
+    jsonErr('Nepodařilo se připojit k FIO API. ' . (isset($err['message']) ? $err['message'] : ''));
 }
 $data = json_decode($raw, true);
 if (!is_array($data)) {
-    jsonErr('FIO API vrátilo neplatnou odpověď.');
+    $jsonErr = json_last_error_msg();
+    $preview = mb_substr(preg_replace('/\s+/', ' ', trim($raw)), 0, 300);
+    $debug = ' [Debug: požadavek from=' . $from . ', to=' . $to . ', bank_accounts_id=' . $bankAccountsId
+        . '; odpověď délka=' . strlen($raw) . ', json_err=' . $jsonErr . ', začátek=' . $preview . (strlen($raw) > 300 ? '…' : '') . ']';
+    jsonErr('FIO API vrátilo neplatnou odpověď.' . $debug);
+}
+// FIO může vrátit JSON s chybovou strukturou (např. errorDescription)
+if (isset($data['errorDescription']) || isset($data['error'])) {
+    $msg = $data['errorDescription'] ?? $data['error'] ?? 'Neznámá chyba FIO';
+    jsonErr('FIO API: ' . (is_string($msg) ? $msg : json_encode($msg)));
+}
+if (!isset($data['accountStatement']['transactionList'])) {
+    $keys = is_array($data) ? implode(', ', array_keys($data)) : '–';
+    jsonErr('FIO API nevrátilo očekávanou strukturu (accountStatement.transactionList). Klíče v odpovědi: ' . $keys);
 }
 
 $baId = (int)($account['bank_accounts_id'] ?? $account['id']);
