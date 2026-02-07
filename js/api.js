@@ -110,12 +110,14 @@ const Api = (() => {
         return post('/api/fio-import.php', { bank_accounts_id: bankAccountsId, from: from || undefined, to: to || undefined });
     }
 
-    /** Seznam importů (filtry: bank_accounts_id, from, to). */
+    /** Seznam importů (filtry: bank_accounts_id, from, to, to_review, history). */
     function paymentImportsList(params) {
         const q = new URLSearchParams();
         if (params && params.bank_accounts_id) q.set('bank_accounts_id', params.bank_accounts_id);
         if (params && params.from) q.set('from', params.from);
         if (params && params.to) q.set('to', params.to);
+        if (params && params.to_review === true) q.set('to_review', '1');
+        if (params && params.history === true) q.set('history', '1');
         return get('/api/crud.php?table=payment_imports' + (q.toString() ? '&' + q.toString() : ''));
     }
 

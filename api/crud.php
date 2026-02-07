@@ -13,7 +13,7 @@ $FIELDS = [
     'tenants'    => ['name','type','birth_date','email','phone','address','ic','dic','note'],
     'tenant_bank_accounts' => ['tenants_id','account_number'],
     'contracts'  => ['properties_id','tenants_id','contract_start','contract_end','monthly_rent','first_month_rent','last_month_rent','contract_url','deposit_amount','deposit_paid_date','deposit_return_date','note','default_payment_method','default_bank_accounts_id'],
-    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','counterpart_account','payment_batch_id','payment_method','bank_accounts_id','payment_type','approved_at'],
+    'payments'   => ['contracts_id','period_year','period_month','amount','payment_date','note','counterpart_account','bank_transaction_id','payment_batch_id','payment_method','bank_accounts_id','payment_type','approved_at'],
     'bank_accounts' => ['name','account_number','is_primary','sort_order','fio_token'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
     'payment_requests' => ['contracts_id','amount','type','note','due_date'],
@@ -80,6 +80,48 @@ function maskBankAccountFioToken(array $row): array {
     return $row;
 }
 
+/** Návrh párování importu: podle částky, data a protiúčtu najde vhodnou smlouvu a období (nájem). */
+function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string $counterpartAccount, array $contractsWithRent, array $rentChangesByContract): ?array {
+    if ($amount <= 0 || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $paymentDate, $m)) return null;
+    $y = (int)$m[1]; $mo = (int)$m[2];
+    $counterpartNorm = $counterpartAccount !== null && $counterpartAccount !== '' ? strtolower(preg_replace('/\s+/', '', trim($counterpartAccount))) : '';
+    $best = null;
+    $bestScore = -1;
+    foreach ($contractsWithRent as $c) {
+        $expectedRent = getRentForMonth((float)$c['monthly_rent'], (int)$c['contracts_id'], $y, $mo, $rentChangesByContract);
+        $diff = abs($expectedRent - $amount);
+        if ($diff > 0.02) continue; // tolerance 2 haléře
+        $score = 0;
+        if ($counterpartNorm !== '') {
+            $tenantAccounts = db()->prepare("
+                SELECT 1 FROM tenant_bank_accounts tba
+                WHERE tba.tenants_id = ? AND tba.valid_to IS NULL
+                AND LOWER(REPLACE(TRIM(tba.account_number), ' ', '')) = ?
+            ");
+            $tenantAccounts->execute([(int)$c['tenants_id'], $counterpartNorm]);
+            if ($tenantAccounts->fetch()) $score = 10; // protiúčet odpovídá nájemníkovi
+        } else {
+            $score = 1;
+        }
+        if ($score > $bestScore || ($score === $bestScore && $diff < ($best['diff'] ?? 999))) {
+            $bestScore = $score;
+            $best = [
+                'suggested_contracts_id' => (int)($c['contracts_id'] ?? $c['id']),
+                'suggested_period_year'  => $y,
+                'suggested_period_month' => $mo,
+                'suggested_payment_type' => 'rent',
+                'diff' => $diff,
+            ];
+        }
+    }
+    return $best ? [
+        'suggested_contracts_id' => $best['suggested_contracts_id'],
+        'suggested_period_year'  => $best['suggested_period_year'],
+        'suggested_period_month' => $best['suggested_period_month'],
+        'suggested_payment_type' => $best['suggested_payment_type'],
+    ] : null;
+}
+
 /** Ověří, zda řetězec YYYY-MM-DD představuje platné datum. Vrací chybovou zprávu nebo null. */
 function validateDateField(?string $val, string $label): ?string {
     if ($val === null || $val === '') return null;
@@ -100,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Jednotlivý záznam – parametr id = entity_id (properties_id, contracts_id, …); u payment_imports id = primární klíč
     if ($id > 0) {
         if ($table === 'payment_imports') {
-            $s = db()->prepare('SELECT * FROM payment_imports WHERE id = ?');
+            $s = db()->prepare('SELECT * FROM payment_imports WHERE id = ? AND valid_to IS NULL');
             $s->execute([$id]);
             $row = $s->fetch(PDO::FETCH_ASSOC);
         } else {
@@ -111,11 +153,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         jsonOk($row);
     }
 
-    // payment_imports: bez valid_to, join na smlouvy
+    // payment_imports: soft-update, jen aktivní řádky; volitelně filtr approved_at (to_review / history)
     if ($table === 'payment_imports') {
         $baId = isset($_GET['bank_accounts_id']) ? (int)$_GET['bank_accounts_id'] : 0;
         $from = isset($_GET['from']) ? trim($_GET['from']) : '';
         $to = isset($_GET['to']) ? trim($_GET['to']) : '';
+        $onlyToReview = isset($_GET['to_review']) && ($_GET['to_review'] === '1' || $_GET['to_review'] === 'true');
+        $onlyHistory = isset($_GET['history']) && ($_GET['history'] === '1' || $_GET['history'] === 'true');
         $sql = "
             SELECT pi.*, c.contracts_id AS c_entity_id, p.name AS property_name, t.name AS tenant_name,
                    CONCAT(t.name, ' – ', p.name) AS contract_label
@@ -123,7 +167,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             LEFT JOIN contracts c ON c.contracts_id = pi.contracts_id AND c.valid_to IS NULL
             LEFT JOIN properties p ON p.properties_id = c.properties_id AND p.valid_to IS NULL
             LEFT JOIN tenants t ON t.tenants_id = c.tenants_id AND t.valid_to IS NULL
-            WHERE 1=1";
+            WHERE pi.valid_to IS NULL";
+        if ($onlyToReview) $sql .= " AND pi.approved_at IS NULL";
+        if ($onlyHistory) $sql .= " AND pi.approved_at IS NOT NULL";
         $params = [];
         if ($baId > 0) {
             $sql .= " AND pi.bank_accounts_id = ?";
@@ -140,7 +186,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $sql .= " ORDER BY pi.payment_date DESC, pi.id DESC";
         $s = db()->prepare($sql);
         $s->execute($params);
-        jsonOk($s->fetchAll(PDO::FETCH_ASSOC));
+        $rows = $s->fetchAll(PDO::FETCH_ASSOC);
+        // Auto-párování: návrh smlouva/období/typ podle částky, data a protiúčtu
+        $contractsWithRent = db()->query("
+            SELECT c.contracts_id, c.id, c.tenants_id, c.monthly_rent
+            FROM contracts c
+            WHERE c.valid_to IS NULL AND (c.contract_end IS NULL OR c.contract_end >= CURDATE())
+        ")->fetchAll(PDO::FETCH_ASSOC);
+        $rentChangesRaw = db()->query("SELECT * FROM contract_rent_changes WHERE valid_to IS NULL ORDER BY contracts_id, effective_from ASC")->fetchAll();
+        $rentChangesByContract = [];
+        foreach ($rentChangesRaw as $rc) {
+            $cid2 = (int)$rc['contracts_id'];
+            if (!isset($rentChangesByContract[$cid2])) $rentChangesByContract[$cid2] = [];
+            $rentChangesByContract[$cid2][] = $rc;
+        }
+        foreach ($rows as &$row) {
+            $suggestion = suggestPaymentImportPairing(
+                (float)$row['amount'],
+                (string)$row['payment_date'],
+                isset($row['counterpart_account']) ? trim((string)$row['counterpart_account']) : null,
+                $contractsWithRent,
+                $rentChangesByContract
+            );
+            if ($suggestion) {
+                $row['suggested_contracts_id'] = $suggestion['suggested_contracts_id'];
+                $row['suggested_period_year'] = $suggestion['suggested_period_year'];
+                $row['suggested_period_month'] = $suggestion['suggested_period_month'];
+                $row['suggested_payment_type'] = $suggestion['suggested_payment_type'];
+            }
+        }
+        unset($row);
+        jsonOk($rows);
     }
 
     // bank_accounts: soft-update, vlastní řazení (primární první); token nikdy neposílat
@@ -623,7 +699,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($table === 'payment_imports') {
             $rowId = $entityId;
-            $s = db()->prepare('SELECT * FROM payment_imports WHERE id = ?');
+            $s = db()->prepare('SELECT * FROM payment_imports WHERE id = ? AND valid_to IS NULL');
             $s->execute([$rowId]);
             $row = $s->fetch(PDO::FETCH_ASSOC);
             if (!$row) jsonErr('Záznam neexistuje.', 404);
@@ -632,19 +708,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($allowed as $f) {
                 if (!array_key_exists($f, $data)) continue;
                 if ($f === 'payment_type') {
-                    $upd[$f] = in_array($data[$f] ?? '', ['rent', 'deposit', 'deposit_return', 'energy', 'other']) ? $data[$f] : 'rent';
+                    $v = $data[$f] ?? null;
+                    $upd[$f] = in_array($v, ['rent', 'deposit', 'deposit_return', 'energy', 'other']) ? $v : null;
                 } else {
                     $v = $data[$f];
                     $upd[$f] = ($v === null || $v === '') ? null : (int)$v;
                 }
             }
             if (!empty($upd)) {
-                $sets = implode(', ', array_map(fn($k) => "`$k`=?", array_keys($upd)));
-                db()->prepare("UPDATE payment_imports SET $sets WHERE id = ?")->execute([...array_values($upd), $rowId]);
+                $newId = softUpdate('payment_imports', $rowId, $upd);
+                $out = findActive('payment_imports', $newId);
+                jsonOk($out);
+            } else {
+                jsonOk($row);
             }
-            $s2 = db()->prepare('SELECT * FROM payment_imports WHERE id = ?');
-            $s2->execute([$rowId]);
-            jsonOk($s2->fetch(PDO::FETCH_ASSOC));
         }
 
         $row = findActiveByEntityId($table, $entityId);
@@ -767,7 +844,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $entityId = (int)($b['id'] ?? 0);
         if (!$entityId) jsonErr('Chybí ID.');
         if ($table === 'payment_imports') {
-            db()->prepare('DELETE FROM payment_imports WHERE id = ?')->execute([$entityId]);
+            $s = db()->prepare('SELECT id FROM payment_imports WHERE id = ? AND valid_to IS NULL');
+            $s->execute([$entityId]);
+            $r = $s->fetch(PDO::FETCH_ASSOC);
+            if (!$r) jsonErr('Záznam neexistuje.', 404);
+            softDelete('payment_imports', (int)$r['id']);
             jsonOk(['deleted' => $entityId]);
         }
         $row = findActiveByEntityId($table, $entityId);

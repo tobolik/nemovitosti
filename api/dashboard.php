@@ -101,7 +101,7 @@ foreach ($prLinkStmt->fetchAll() as $pr) {
 $paymentsByContract = [];
 $paymentsListByContract = [];
 $s = db()->prepare("
-    SELECT p.payments_id, p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type
+    SELECT p.payments_id, p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type, p.bank_transaction_id
     FROM payments p
     JOIN contracts c ON c.contracts_id = p.contracts_id AND c.valid_to IS NULL
     WHERE p.valid_to IS NULL AND p.contracts_id = ? AND p.approved_at IS NOT NULL
@@ -135,6 +135,7 @@ foreach ($contracts as $c) {
         $paymentsListByContract[$entityId][$key][] = [
             'amount' => $amt,
             'payment_date' => !empty($row['payment_date']) ? $row['payment_date'] : null,
+            'bank_transaction_id' => !empty($row['bank_transaction_id']) ? $row['bank_transaction_id'] : null,
         ];
     }
 }

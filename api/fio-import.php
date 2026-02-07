@@ -82,12 +82,12 @@ if (!isset($data['accountStatement']['transactionList'])) {
 }
 
 $baId = (int)($account['bank_accounts_id'] ?? $account['id']);
-// Protiúčty z tabulky tenant_bank_accounts (účty nájemníků) – importovat jen pohyby z těchto účtů (pokud je alespoň jeden vyplněn)
+// Protiúčty z tabulky tenant_bank_accounts (včetně historických nájemníků – pro import i starších záznamů)
 $allowedCounterparts = [];
 $accounts = db()->query("
     SELECT DISTINCT tba.account_number
     FROM tenant_bank_accounts tba
-    INNER JOIN tenants t ON t.tenants_id = tba.tenants_id AND t.valid_to IS NULL
+    INNER JOIN tenants t ON t.tenants_id = tba.tenants_id
     WHERE tba.valid_to IS NULL AND TRIM(tba.account_number) != ''
 ")->fetchAll(PDO::FETCH_COLUMN);
 foreach ($accounts as $acc) {
@@ -98,11 +98,8 @@ foreach ($accounts as $acc) {
 }
 $filterByCounterpart = count($allowedCounterparts) > 0; // pokud žádný nájemník nemá protiúčty, stáhneme vše (zpětná kompatibilita)
 
-$checkStmt = db()->prepare('SELECT id FROM payment_imports WHERE bank_accounts_id = ? AND fio_transaction_id = ?');
-$insertStmt = db()->prepare('
-    INSERT INTO payment_imports (bank_accounts_id, payment_date, amount, counterpart_account, note, fio_transaction_id, payment_type)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-');
+// Duplicita: stačí kontrolovat fio_transaction_id (jednoznačný u FIO)
+$checkStmt = db()->prepare('SELECT id FROM payment_imports WHERE fio_transaction_id = ? LIMIT 1');
 
 $txList = $data['accountStatement']['transactionList']['transaction'] ?? null;
 if ($txList !== null && !is_array($txList)) {
@@ -143,23 +140,25 @@ $skipped_filter++;
             continue; // tento pohyb není od protiúčtu uloženého u žádného nájemníka
         }
 
-        $checkStmt->execute([$baId, $fioId !== '' ? $fioId : null]);
-        if ($checkStmt->fetch()) {
-            $skipped++;
-            continue;
+        if ($fioId !== '') {
+            $checkStmt->execute([$fioId]);
+            if ($checkStmt->fetch()) {
+                $skipped++;
+                continue;
+            }
         }
-        $insertStmt->execute([
-            $baId,
-            $dateNorm,
-            $amountNum,
-            $counterpartFull !== '' ? $counterpartFull : null,
-            $message !== '' ? $message : null,
-            $fioId !== '' ? $fioId : null,
-            'rent',
+        $newId = softInsert('payment_imports', [
+            'bank_accounts_id'    => $baId,
+            'payment_date'        => $dateNorm,
+            'amount'              => $amountNum,
+            'counterpart_account' => $counterpartFull !== '' ? $counterpartFull : null,
+            'note'                => $message !== '' ? $message : null,
+            'fio_transaction_id'  => $fioId !== '' ? $fioId : null,
+            'payment_type'        => null,
         ]);
         $imported++;
         $items[] = [
-            'id' => (int)db()->lastInsertId(),
+            'id' => $newId,
             'payment_date' => $dateNorm,
             'amount' => $amountNum,
             'counterpart_account' => $counterpartFull,

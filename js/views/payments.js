@@ -534,7 +534,7 @@ const PaymentsView = (() => {
                     '<td class="col-hide-mobile">' + approvedBadge + '</td>' +
                     '<td>' + UI.MONTHS[p.period_month] + ' ' + p.period_year + batchHint + '</td>' +
                     '<td class="col-hide-mobile">' + UI.esc(typeLabel) + '</td>' +
-                    '<td>' + UI.fmt(amt) + ' Kč</td>' +
+                    '<td>' + (p.bank_transaction_id ? '<span class="pay-from-bank" title="Platba z bankovního importu">🏦</span> ' : '') + UI.fmt(amt) + ' Kč</td>' +
                     '<td class="col-hide-mobile">' + (p.payment_date ? UI.fmtDate(p.payment_date) : '—') + '</td>' +
                     '<td class="col-hide-mobile">' + UI.esc(methodLabel) + '</td>' +
                     '<td class="col-hide-mobile">' + (p.counterpart_account ? UI.esc(p.counterpart_account) : '<span style="color:var(--txt3)">—</span>') + '</td>' +

@@ -30,14 +30,18 @@ const PaymentImportsView = (() => {
     }
 
     function getFilterParams() {
+        const status = document.getElementById('import-filter-status');
         const acc = document.getElementById('import-filter-account');
         const from = document.getElementById('import-filter-from');
         const to = document.getElementById('import-filter-to');
-        return {
+        const params = {
             bank_accounts_id: acc && acc.value ? parseInt(acc.value, 10) : undefined,
             from: from && from.value ? from.value : undefined,
             to: to && to.value ? to.value : undefined,
         };
+        if (status && status.value === 'to_review') params.to_review = true;
+        if (status && status.value === 'history') params.history = true;
+        return params;
     }
 
     function monthOptions(selected) {
@@ -60,7 +64,8 @@ const PaymentImportsView = (() => {
 
     function typeOptions(selected) {
         const types = [{ v: 'rent', l: 'Nájem' }, { v: 'deposit', l: 'Kauce' }, { v: 'deposit_return', l: 'Vrácení kauce' }, { v: 'energy', l: 'Energie' }, { v: 'other', l: 'Jiné' }];
-        return types.map(t => '<option value="' + t.v + '"' + (selected === t.v ? ' selected' : '') + '>' + t.l + '</option>').join('');
+        return '<option value=""' + (selected === '' || selected === null || selected === undefined ? ' selected' : '') + '>—</option>' +
+            types.map(t => '<option value="' + t.v + '"' + (selected === t.v ? ' selected' : '') + '>' + t.l + '</option>').join('');
     }
 
     function contractOptions(selected) {
@@ -76,7 +81,7 @@ const PaymentImportsView = (() => {
         const ready = Array.from(checked).filter(cb => {
             const id = cb.getAttribute('data-id');
             const row = _cache.find(r => String(r.id) === String(id));
-            return row && row.contracts_id && row.period_year && row.period_month;
+            return row && !row.approved_at && row.contracts_id && row.period_year && row.period_month && row.payment_type;
         });
         btn.disabled = ready.length === 0;
         btn.textContent = ready.length > 0 ? 'Hromadně schválit vybrané (' + ready.length + ')' : 'Hromadně schválit vybrané';
@@ -84,14 +89,17 @@ const PaymentImportsView = (() => {
 
     function renderRow(imp) {
         const id = imp.id;
-        const paired = !!(imp.contracts_id && imp.period_year && imp.period_month);
-        const contractSel = '<select class="import-contract" data-id="' + id + '">' + contractOptions(imp.contracts_id) + '</select>';
-        const yearFrom = '<select class="import-year-from" data-id="' + id + '">' + yearOptions(imp.period_year) + '</select>';
-        const monthFrom = '<select class="import-month-from" data-id="' + id + '">' + monthOptions(imp.period_month) + '</select>';
-        const yearTo = '<select class="import-year-to" data-id="' + id + '">' + yearOptions(imp.period_year_to) + '</select>';
-        const monthTo = '<select class="import-month-to" data-id="' + id + '">' + monthOptions(imp.period_month_to) + '</select>';
-        return '<tr data-id="' + id + '">' +
-            '<td><input type="checkbox" class="import-cb" data-id="' + id + '"' + (paired ? '' : ' disabled title="Nejprve napárujte smlouvu a období"') + '></td>' +
+        const isProcessed = !!imp.approved_at;
+        const paired = !!(imp.contracts_id && imp.period_year && imp.period_month && imp.payment_type);
+        const contractSel = '<select class="import-contract" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + contractOptions(imp.contracts_id) + '</select>';
+        const yearFrom = '<select class="import-year-from" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + yearOptions(imp.period_year) + '</select>';
+        const monthFrom = '<select class="import-month-from" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + monthOptions(imp.period_month) + '</select>';
+        const yearTo = '<select class="import-year-to" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + yearOptions(imp.period_year_to) + '</select>';
+        const monthTo = '<select class="import-month-to" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + monthOptions(imp.period_month_to) + '</select>';
+        const statusCell = isProcessed ? '<span class="badge badge-ok" title="Zpracováno">✓</span>' : '—';
+        return '<tr data-id="' + id + '"' + (isProcessed ? ' class="import-row-processed"' : '') + '>' +
+            '<td><input type="checkbox" class="import-cb" data-id="' + id + '"' + (isProcessed ? ' disabled' : (paired ? '' : ' disabled title="Vyplňte smlouvu, období a typ platby"')) + '></td>' +
+            '<td>' + statusCell + '</td>' +
             '<td>' + (imp.payment_date ? UI.fmtDate(imp.payment_date) : '—') + '</td>' +
             '<td>' + UI.fmt(imp.amount) + ' Kč</td>' +
             '<td class="col-note">' + UI.esc(imp.counterpart_account || '—') + '</td>' +
@@ -99,8 +107,8 @@ const PaymentImportsView = (() => {
             '<td class="import-cell-contract">' + contractSel + '</td>' +
             '<td><span class="import-period-from">' + yearFrom + ' ' + monthFrom + '</span></td>' +
             '<td><span class="import-period-to">' + yearTo + ' ' + monthTo + '</span></td>' +
-            '<td><select class="import-type" data-id="' + id + '">' + typeOptions(imp.payment_type || 'rent') + '</select></td>' +
-            '<td class="td-act"><button type="button" class="btn btn-ghost btn-sm import-del" data-id="' + id + '">Smazat</button></td>' +
+            '<td><select class="import-type" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + typeOptions(imp.payment_type || '') + '</select></td>' +
+            '<td class="td-act">' + (isProcessed ? '' : '<button type="button" class="btn btn-ghost btn-sm import-del" data-id="' + id + '">Smazat</button>') + '</td>' +
             '</tr>';
     }
 

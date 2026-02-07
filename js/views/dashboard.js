@@ -244,7 +244,8 @@ async function loadDashboard(year) {
                         tipParts.push('Uhrazené platby:');
                         cell.payment_details.forEach(function(p) {
                             const dt = p.payment_date ? UI.fmtDate(p.payment_date) : '—';
-                            tipParts.push('• ' + UI.fmt(p.amount) + ' Kč (' + dt + ')');
+                            const bankIcon = p.bank_transaction_id ? '🏦 ' : '';
+                            tipParts.push('• ' + bankIcon + UI.fmt(p.amount) + ' Kč (' + dt + ')');
                         });
                     }
                     if (remaining > 0) {
