@@ -46,15 +46,12 @@ if (strtotime($from) > strtotime($to)) {
     jsonErr('Datum od nesmí být po datu do.');
 }
 
-// FIO API: periods – formát data d.m.Y
-$fromFio = date('d.m.Y', strtotime($from));
-$toFio = date('d.m.Y', strtotime($to));
-$url = 'https://www.fio.cz/ib_api/rest/periods/' . rawurlencode($token) . '/' . $fromFio . '/' . $toFio . '/transactions.json';
-
+// FIO API: fioapi.fio.cz/v1/rest/, formát data Y-m-d
+$url = 'https://fioapi.fio.cz/v1/rest/periods/' . rawurlencode($token) . '/' . $from . '/' . $to . '/transactions.json';
 $ctx = stream_context_create([
     'http' => [
         'timeout' => 30,
-        'header' => "Accept: application/json\r\n",
+        'header' => "Accept: application/json\r\nUser-Agent: Nemovitosti/1.0 (FIO API client)\r\n",
     ],
 ]);
 $raw = @file_get_contents($url, false, $ctx);
