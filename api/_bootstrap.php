@@ -4,10 +4,20 @@ declare(strict_types=1);
 
 const API_LOG_PREFIX = 'NEMOVITOSTI-API-500';  // grep tím v error logu najdete přesně naše chyby
 
+/** Zapisuje zprávu do PHP error_log a do souboru log/api-500.log v projektu (vždy na známém místě). */
+function apiLog500(string $message): void {
+    $full = API_LOG_PREFIX . ' ' . $message;
+    error_log($full);
+    $logFile = __DIR__ . '/../log/api-500.log';
+    $dir = dirname($logFile);
+    if (!is_dir($dir)) @mkdir($dir, 0755, true);
+    @file_put_contents($logFile, date('c') . ' ' . $message . "\n", FILE_APPEND | LOCK_EX);
+}
+
 ob_start();
 set_exception_handler(function(Throwable $e) {
     if (ob_get_level()) ob_end_clean();
-    error_log(API_LOG_PREFIX . '-EXCEPTION: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
+    apiLog500('EXCEPTION: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
     header('Content-Type: application/json');
     $msg = (defined('DEBUG') && DEBUG) ? $e->getMessage() : 'Chyba serveru.';
@@ -19,7 +29,7 @@ set_exception_handler(function(Throwable $e) {
 register_shutdown_function(function () {
     $err = error_get_last();
     if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
-        error_log(API_LOG_PREFIX . '-FATAL: ' . ($err['message'] ?? '') . ' | ' . ($err['file'] ?? '') . ':' . ($err['line'] ?? ''));
+        apiLog500('FATAL: ' . ($err['message'] ?? '') . ' | ' . ($err['file'] ?? '') . ':' . ($err['line'] ?? ''));
     }
 });
 

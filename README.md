@@ -29,6 +29,7 @@ Verze v patičce (`index.html`). Při změnách navýšit podle [Semantic Versio
 | [docs/PROPMANAGER-RENAME.md](docs/PROPMANAGER-RENAME.md) | (starší) Návrh přejmenování na PropManager |
 | [docs/DOMLY-RENAME.md](docs/DOMLY-RENAME.md) | Návrh přejmenování na Domly (domly.cz) – repo, branding, design |
 
+- **Log 500 chyb API:** při chybě 500 se zapisuje do **`log/api-500.log`** v kořeni projektu (soubor se vytvoří sám). Hledej řádky `NEMOVITOSTI-API-500` – REQUEST (tabulka, metoda), pak EXCEPTION nebo FATAL s přesnou chybou.
 - **Testy:** `php tests/run-tests.php` (kontrola přítomnosti soft-update a CSRF; s config + DB běží i kontroly funkcí).
 - **Demo data:** po schema + migracích lze naplnit `seed-demo.sql`; přihlášení `admin@propmanager.demo` / `password`.
 

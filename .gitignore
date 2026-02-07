@@ -1,1 +1,3 @@
 config.php
+# Log 500 chyb API (generuje se na serveru)
+log/
