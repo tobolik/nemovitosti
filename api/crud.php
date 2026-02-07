@@ -49,6 +49,10 @@ $FIELD_LABELS = [
 $table = $_GET['table'] ?? body()['table'] ?? '';
 if (!isset($FIELDS[$table])) jsonErr('Neznámá tabulka.');
 
+if (defined('API_LOG_PREFIX')) {
+    error_log(API_LOG_PREFIX . '-REQUEST: table=' . $table . ' method=' . ($_SERVER['REQUEST_METHOD'] ?? ''));
+}
+
 /** U bank_accounts nevracíme fio_token do klienta, jen příznak fio_token_isset */
 function maskBankAccountFioToken(array $row): array {
     $isset = isset($row['fio_token']) && trim((string)$row['fio_token']) !== '';

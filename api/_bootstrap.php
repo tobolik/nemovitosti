@@ -2,16 +2,25 @@
 // api/_bootstrap.php – sdílený základ pro všechny API endpointy
 declare(strict_types=1);
 
+const API_LOG_PREFIX = 'NEMOVITOSTI-API-500';  // grep tím v error logu najdete přesně naše chyby
+
 ob_start();
 set_exception_handler(function(Throwable $e) {
     if (ob_get_level()) ob_end_clean();
-    // Vždy zapsat do error logu (bez ohledu na DEBUG), aby admin viděl příčinu 500
-    error_log('API 500: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    error_log(API_LOG_PREFIX . '-EXCEPTION: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
     header('Content-Type: application/json');
     $msg = (defined('DEBUG') && DEBUG) ? $e->getMessage() : 'Chyba serveru.';
     echo json_encode(['ok'=>false,'error'=>$msg], JSON_UNESCAPED_UNICODE);
     exit;
+});
+
+// Fatální chyby (např. undefined variable v PHP 8) neprojdou exception handlerem – zachytíme je tady
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        error_log(API_LOG_PREFIX . '-FATAL: ' . ($err['message'] ?? '') . ' | ' . ($err['file'] ?? '') . ':' . ($err['line'] ?? ''));
+    }
 });
 
 require __DIR__ . '/../config.php';
