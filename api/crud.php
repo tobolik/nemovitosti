@@ -4,6 +4,7 @@
 // GET  ?table=X&id=N     → single record
 // POST { action, table, ...fields }  → add / edit / delete
 declare(strict_types=1);
+@file_put_contents(__DIR__ . '/diag.txt', date('c') . ' 0_crud_entry' . "\n", FILE_APPEND | LOCK_EX);
 require __DIR__ . '/_bootstrap.php';
 apiDiag('3_crud_after_bootstrap');
 requireLogin();
