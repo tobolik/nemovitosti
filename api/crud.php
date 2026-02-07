@@ -196,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $base = $norm !== '' ? preg_replace('/\/.*$/', '', $norm) : '';
             $row['counterpart_matches'] = !$hasTenantAccounts ? null : ($norm !== '' && (
                 isset($allowedCounterparts[$norm]) || ($base !== '' && isset($allowedCounterparts[$base]))
-            );
+            ));
         }
         unset($row);
         // Filtr: jen řádky s protiúčtem odpovídajícím účtu nájemce (výchozí = jen k párování)
