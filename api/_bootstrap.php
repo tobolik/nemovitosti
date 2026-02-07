@@ -5,6 +5,8 @@ declare(strict_types=1);
 ob_start();
 set_exception_handler(function(Throwable $e) {
     if (ob_get_level()) ob_end_clean();
+    // Vždy zapsat do error logu (bez ohledu na DEBUG), aby admin viděl příčinu 500
+    error_log('API 500: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
     header('Content-Type: application/json');
     $msg = (defined('DEBUG') && DEBUG) ? $e->getMessage() : 'Chyba serveru.';
