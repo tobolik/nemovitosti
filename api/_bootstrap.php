@@ -44,10 +44,17 @@ function db(): PDO {
     session_start();
 })();
 
+// ── Security headers (pro JSON odpovědi) ────────────────────────────────────
+function _securityHeaders(): void {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+}
+
 // ── JSON response helpers ───────────────────────────────────────────────────
 function jsonOk($data = null, int $code = 200): never {
     if (ob_get_level()) ob_end_clean();
     http_response_code($code);
+    _securityHeaders();
     header('Content-Type: application/json');
     echo json_encode(['ok'=>true,'data'=>$data], JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
     exit;
