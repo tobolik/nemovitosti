@@ -5,7 +5,9 @@
 // POST { action, table, ...fields }  → add / edit / delete
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
+apiDiag('3_crud_after_bootstrap');
 requireLogin();
+apiDiag('4_after_login');
 
 // Whitelist: tabulka → povolená pole
 $FIELDS = [
@@ -52,6 +54,7 @@ if (!isset($FIELDS[$table])) jsonErr('Neznámá tabulka.');
 if (function_exists('apiLog500')) {
     apiLog500('REQUEST: table=' . $table . ' method=' . ($_SERVER['REQUEST_METHOD'] ?? ''));
 }
+apiDiag('5_request table=' . $table);
 
 /** U bank_accounts nevracíme fio_token do klienta, jen příznak fio_token_isset */
 function maskBankAccountFioToken(array $row): array {

@@ -2,16 +2,26 @@
 // api/_bootstrap.php – sdílený základ pro všechny API endpointy
 declare(strict_types=1);
 
-const API_LOG_PREFIX = 'NEMOVITOSTI-API-500';  // grep tím v error logu najdete přesně naše chyby
+// Diagnostika: každý krok zapíše řádek do api/diag.txt – podle posledního řádku uvidíte, kde skript skončil
+function apiDiag(string $step): void {
+    @file_put_contents(__DIR__ . '/diag.txt', date('c') . ' ' . $step . "\n", FILE_APPEND | LOCK_EX);
+}
+apiDiag('1_bootstrap_start');
 
-/** Zapisuje zprávu do PHP error_log a do souboru log/api-500.log v projektu (vždy na známém místě). */
+const API_LOG_PREFIX = 'NEMOVITOSTI-API-500';
+
+/** Zapisuje do api/log/api-500.log (v adresáři skriptu – obvykle má zápis). Případně do PHP error_log. */
 function apiLog500(string $message): void {
     $full = API_LOG_PREFIX . ' ' . $message;
     error_log($full);
-    $logFile = __DIR__ . '/../log/api-500.log';
+    $logFile = __DIR__ . '/log/api-500.log';  // api/log/api-500.log
     $dir = dirname($logFile);
-    if (!is_dir($dir)) @mkdir($dir, 0755, true);
-    @file_put_contents($logFile, date('c') . ' ' . $message . "\n", FILE_APPEND | LOCK_EX);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+    if (is_dir($dir) && is_writable($dir)) {
+        @file_put_contents($logFile, date('c') . ' ' . $message . "\n", FILE_APPEND | LOCK_EX);
+    }
 }
 
 ob_start();
@@ -34,6 +44,7 @@ register_shutdown_function(function () {
 });
 
 require __DIR__ . '/../config.php';
+apiDiag('2_config_loaded');
 
 // ── PDO singleton ───────────────────────────────────────────────────────────
 function db(): PDO {
