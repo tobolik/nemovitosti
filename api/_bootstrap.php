@@ -83,7 +83,7 @@ function _securityHeaders(): void {
 }
 
 // ── JSON response helpers ───────────────────────────────────────────────────
-function jsonOk($data = null, int $code = 200): never {
+function jsonOk($data = null, int $code = 200): void {
     if (ob_get_level()) ob_end_clean();
     http_response_code($code);
     _securityHeaders();
@@ -92,7 +92,7 @@ function jsonOk($data = null, int $code = 200): never {
     exit;
 }
 
-function jsonErr(string $msg, int $code = 400): never {
+function jsonErr(string $msg, int $code = 400): void {
     if (ob_get_level()) ob_end_clean();
     http_response_code($code);
     _securityHeaders();
