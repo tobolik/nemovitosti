@@ -112,9 +112,17 @@ $items = [];
 
 if (is_array($txList)) {
     foreach ($txList as $t) {
+        // FIO API: buď přímé klíče column0, column1, … nebo pole column/columns s objekty {id/name, value}
         $col = static function ($key) use ($t) {
             $v = $t[$key] ?? null;
-            return is_array($v) && isset($v['value']) ? $v['value'] : (is_string($v) ? $v : '');
+            if (is_array($v) && isset($v['value'])) return (string)$v['value'];
+            if (is_string($v)) return $v;
+            foreach (($t['column'] ?? $t['columns'] ?? []) as $c) {
+                if (!is_array($c)) continue;
+                $id = $c['id'] ?? $c['name'] ?? null;
+                if ((string)$id === (string)$key && isset($c['value'])) return (string)$c['value'];
+            }
+            return '';
         };
         $amount = $col('column1');
         $amountNum = 0.0;
@@ -124,10 +132,19 @@ if (is_array($txList)) {
         if ($amountNum <= 0) {
             continue;
         }
-        $date = $col('column0');
-        $dateNorm = $date;
-        if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $date, $m)) {
+        // Datum: FIO může vracet column0 nebo date; cílový formát Y-m-d
+        $date = trim($col('column0'));
+        if ($date === '') $date = trim($col('date'));
+        $dateNorm = null;
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', trim($date), $m)) {
+            $dateNorm = $m[1] . '-' . $m[2] . '-' . $m[3];
+        } elseif (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', trim($date), $m)) {
             $dateNorm = $m[3] . '-' . str_pad($m[2], 2, '0', STR_PAD_LEFT) . '-' . str_pad($m[1], 2, '0', STR_PAD_LEFT);
+        } elseif ($date !== '' && strtotime($date) !== false) {
+            $dateNorm = date('Y-m-d', strtotime($date));
+        }
+        if ($dateNorm === null || $dateNorm === '') {
+            $dateNorm = date('Y-m-d');
         }
         $counterpart = $col('column2');
         $bankCode = $col('column3');
