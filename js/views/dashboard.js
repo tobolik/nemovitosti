@@ -870,6 +870,15 @@ async function openPaymentModal(el) {
         if (p.period_year != null && p.period_month != null) return String(p.period_year) + '-' + String(p.period_month).padStart(2, '0');
         return null;
     }
+    function paymentContributesToMonth(p, key) {
+        if (effectiveMonthKey(p) === key) return true;
+        const linkedIdsStr = (p.linked_payment_request_ids != null && String(p.linked_payment_request_ids).trim() !== '') ? String(p.linked_payment_request_ids).trim() : ((p.linked_payment_request_id != null && p.linked_payment_request_id !== '') ? String(p.linked_payment_request_id) : '');
+        const linkedIds = linkedIdsStr ? linkedIdsStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+        if (linkedIds.length === 0) return false;
+        const getReqId = r => String(r.payment_requests_id ?? r.id);
+        const linkedReqs = paymentRequests.filter(r => linkedIds.includes(getReqId(r)));
+        return linkedReqs.some(r => String(r.due_date || '').slice(0, 7) === key);
+    }
     const paymentsPromise = propertyId
         ? Api.crudList('payments', { properties_id: propertyId })
         : Api.crudList('payments', { contracts_id: contractsId });
@@ -882,7 +891,7 @@ async function openPaymentModal(el) {
         requestsPromise
     ]);
     let payments = paymentsResult || [];
-    let forMonth = payments.filter(p => effectiveMonthKey(p) === monthKey);
+    let forMonth = payments.filter(p => paymentContributesToMonth(p, monthKey));
     let defaultMethod = (el.dataset.defaultPaymentMethod === 'account' || el.dataset.defaultPaymentMethod === 'cash') ? el.dataset.defaultPaymentMethod : '';
     let defaultAccountId = (el.dataset.defaultBankAccountId != null && el.dataset.defaultBankAccountId !== '') ? String(el.dataset.defaultBankAccountId) : '';
     if (!defaultMethod && !defaultAccountId && contractsId) {
@@ -1103,7 +1112,10 @@ async function openPaymentModal(el) {
                 parts.push(reqLabel + ' (' + reqDate + ') ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč');
             });
             const hasBreakdown = parts.length > 1 || (parts.length === 1 && linkedReqs.length > 0);
-            const displayTypeLabel = hasBreakdown ? 'Nájem+požadavky' : (typeLabels[pt] || 'Nájem');
+            const hasRentPart = remainder !== 0 && periodLabel;
+            const displayTypeLabel = hasBreakdown
+                ? (hasRentPart ? 'Nájem+požadavky' : (typeLabels[pt] || 'Požadavky'))
+                : (typeLabels[pt] || 'Nájem');
             const typeBadge = '<span class="pay-modal-type-badge pay-type-' + pt + '">' + UI.esc(displayTypeLabel) + '</span>';
             const batchTag = p.payment_batch_id ? ' <span class="tag tag-batch" title="Součást jedné platby za více měsíců">dávka</span>' : '';
             const payEntityId = p.payments_id ?? p.id;
@@ -1502,9 +1514,10 @@ async function openPaymentModal(el) {
                     if (!confirm(msg)) return;
                     await Api.paymentsDeleteBatch(batchId);
                 } else {
-                    const platLabel = forMonth.length === 1 ? '1 platba' : (forMonth.length >= 2 && forMonth.length <= 4 ? forMonth.length + ' platby' : forMonth.length + ' plateb');
+                    const toDelete = forMonth.filter(p => effectiveMonthKey(p) === monthKey);
+                    const platLabel = toDelete.length === 1 ? '1 platba' : (toDelete.length >= 2 && toDelete.length <= 4 ? toDelete.length + ' platby' : toDelete.length + ' plateb');
                     if (!confirm('Opravdu smazat všechny platby za tento měsíc? (' + platLabel + ')')) return;
-                    for (const p of forMonth) {
+                    for (const p of toDelete) {
                         await Api.crudDelete('payments', p.payments_id ?? p.id);
                     }
                 }
