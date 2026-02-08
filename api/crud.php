@@ -122,6 +122,14 @@ function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string
                 $moFrom = $mo - ($n - 1);
                 $yFrom = $y;
                 while ($moFrom < 1) { $moFrom += 12; $yFrom--; }
+                $yTo = $y;
+                $moTo = $mo;
+                if ($n === 12) {
+                    $yFrom = $y;
+                    $moFrom = 1;
+                    $yTo = $y;
+                    $moTo = 12;
+                }
                 $diff = abs($expected - $amount);
                 if ($score > $bestScore || ($score === $bestScore && $diff < ($best['diff'] ?? 999))) {
                     $bestScore = $score;
@@ -129,8 +137,61 @@ function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string
                         'suggested_contracts_id' => $cid,
                         'suggested_period_year'  => $yFrom,
                         'suggested_period_month' => $moFrom,
-                        'suggested_period_year_to'  => $y,
-                        'suggested_period_month_to' => $mo,
+                        'suggested_period_year_to'  => $yTo,
+                        'suggested_period_month_to' => $moTo,
+                        'suggested_payment_type' => 'rent',
+                        'diff' => $diff,
+                    ];
+                }
+            }
+        }
+    }
+    // 3) Žádná shoda N× konstantní nájem – zkusit součet nájmů za rozsah měsíců (změny nájmu: např. 12×2200 + 3300 = 29700)
+    if ($best === null) {
+        foreach ($contractsWithRent as $c) {
+            $cid = (int)($c['contracts_id'] ?? $c['id']);
+            $baseRent = (float)$c['monthly_rent'];
+            $score = 0;
+            if ($counterpartNorm !== '') {
+                $tenantAccounts = db()->prepare("
+                    SELECT 1 FROM tenant_bank_accounts tba
+                    WHERE tba.tenants_id = ? AND tba.valid_to IS NULL
+                    AND LOWER(REPLACE(TRIM(tba.account_number), ' ', '')) = ?
+                ");
+                $tenantAccounts->execute([(int)$c['tenants_id'], $counterpartNorm]);
+                if ($tenantAccounts->fetch()) $score = 10;
+            } else {
+                $score = 1;
+            }
+            $requestsSum = (float)($unpaidRequestsByContract[$cid] ?? 0);
+            for ($len = 2; $len <= 24; $len++) {
+                $moTo = $mo;
+                $yTo = $y;
+                $moFrom = $moTo - ($len - 1);
+                $yFrom = $yTo;
+                while ($moFrom < 1) { $moFrom += 12; $yFrom--; }
+                $sum = 0.0;
+                $cy = $yFrom;
+                $cm = $moFrom;
+                for ($i = 0; $i < $len; $i++) {
+                    $sum += getRentForMonth($baseRent, $cid, $cy, $cm, $rentChangesByContract);
+                    $cm++;
+                    if ($cm > 12) { $cm = 1; $cy++; }
+                }
+                $expected = $sum + $requestsSum;
+                $diff = abs($expected - $amount);
+                if ($diff > 0.02 * $len + 0.02) continue;
+                $moTo = $moFrom + ($len - 1);
+                $yTo = $yFrom;
+                while ($moTo > 12) { $moTo -= 12; $yTo++; }
+                if ($score > $bestScore || ($score === $bestScore && $diff < ($best['diff'] ?? 999))) {
+                    $bestScore = $score;
+                    $best = [
+                        'suggested_contracts_id' => $cid,
+                        'suggested_period_year'  => $yFrom,
+                        'suggested_period_month' => $moFrom,
+                        'suggested_period_year_to'  => $yTo,
+                        'suggested_period_month_to' => $moTo,
                         'suggested_payment_type' => 'rent',
                         'diff' => $diff,
                     ];

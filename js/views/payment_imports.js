@@ -148,14 +148,13 @@ const PaymentImportsView = (() => {
             '</td>';
         const trClass = [isProcessed && 'import-row-processed', paired && 'import-row-has-paired'].filter(Boolean).join(' ');
         return '<tr data-id="' + id + '"' + (trClass ? ' class="' + trClass + '"' : '') + '>' +
-            '<td><input type="checkbox" class="import-cb" data-id="' + id + '"' + (isProcessed ? ' disabled' : imp.overpayment ? ' disabled title="Spárováno – platba pro toto období již existuje"' : (paired ? '' : ' disabled title="Vyplňte smlouvu, období a typ platby"')) + '></td>' +
+            '<td class="import-col-cb"><input type="checkbox" class="import-cb" data-id="' + id + '"' + (isProcessed ? ' disabled' : imp.overpayment ? ' disabled title="Spárováno – platba pro toto období již existuje"' : (paired ? '' : ' disabled title="Vyplňte smlouvu, období a typ platby"')) + '></td>' +
             '<td class="col-status">' + statusCell + '</td>' +
-            '<td>' + (imp.payment_date ? UI.fmtDate(imp.payment_date) : '—') + '</td>' +
-            '<td class="col-amount">' + UI.fmt(imp.amount) + ' ' + UI.esc(curr) + '</td>' +
-            '<td class="col-hide-mobile">' + UI.esc((imp.currency || 'CZK').toString().toUpperCase()) + '</td>' +
-            '<td class="col-note cell-note-wrap"><span class="cell-note-truncate" title="' + UI.esc(counterpartFull) + '">' + UI.esc(counterpartFull || '—') + '</span></td>' +
+            '<td class="import-col-date">' + (imp.payment_date ? UI.fmtDate(imp.payment_date) : '—') + '</td>' +
+            '<td class="import-col-amount">' + UI.fmt(imp.amount) + ' ' + UI.esc(curr) + '</td>' +
+            '<td class="import-col-counterpart" title="' + UI.esc(counterpartFull) + '">' + UI.esc(counterpartFull || '—') + '</td>' +
             '<td class="col-shoda">' + shodaCell + '</td>' +
-            '<td class="col-note cell-note-wrap col-hide-mobile"><span class="cell-note-truncate" title="' + UI.esc(noteFull) + '">' + UI.esc(noteFull || '—') + '</span></td>' +
+            '<td class="import-col-msg cell-note-wrap"><span class="cell-note-truncate" title="' + UI.esc(noteFull) + '">' + UI.esc(noteFull || '—') + '</span></td>' +
             pairingCell +
             '<td class="td-act">' + (isProcessed ? '' : '<button type="button" class="btn btn-ghost btn-sm import-del" data-id="' + id + '">Smazat</button>') + '</td>' +
             '</tr>';

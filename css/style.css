@@ -1084,6 +1084,17 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 }
 .tbl td.col-status { white-space: nowrap; }
 
+/* Importy: úzký sloupec checkboxu, zarovnání datum/částka doprava, protiúčet celý, zpráva širší */
+#import-table th.import-col-cb,
+#import-table td.import-col-cb { width: 1%; min-width: 2.25rem; max-width: 2.5rem; text-align: center; }
+#import-table th.import-col-date,
+#import-table td.import-col-date { text-align: right; white-space: nowrap; }
+#import-table th.import-col-amount,
+#import-table td.import-col-amount { text-align: right; white-space: nowrap; }
+#import-table td.import-col-counterpart { min-width: 10rem; overflow: visible; word-break: break-all; }
+#import-table th.import-col-msg,
+#import-table td.import-col-msg { min-width: 280px; max-width: 520px; }
+
 /* ============================================================
    ALERTS
    ============================================================ */
