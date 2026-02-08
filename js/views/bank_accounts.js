@@ -178,9 +178,6 @@ const BankAccountsView = (() => {
         }
     }
 
-    /** FIO API umí obvykle max. cca 2 roky zpět – starší období vrací 422 */
-    const FIO_MAX_MONTHS_BACK = 24;
-
     function applyFioFetchContractDates(contractId) {
         const c = (_contracts || []).find(x => String(x.contracts_id ?? x.id) === String(contractId));
         if (!c) return;
@@ -192,10 +189,7 @@ const BankAccountsView = (() => {
             d.setMonth(d.getMonth() + 1);
             end = d.toISOString().slice(0, 10);
         }
-        let from = addMonthsToDate(start, -1);
-        const today = new Date().toISOString().slice(0, 10);
-        const minFrom = addMonthsToDate(today, -FIO_MAX_MONTHS_BACK);
-        if (from < minFrom) from = minFrom;
+        const from = addMonthsToDate(start, -1);
         const fromEl = document.getElementById('fio-fetch-from');
         const toEl = document.getElementById('fio-fetch-to');
         if (fromEl) fromEl.value = from;
