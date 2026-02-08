@@ -1096,7 +1096,7 @@ async function openPaymentModal(el) {
             const tenantAttr = (p.tenant_name != null && p.tenant_name !== '') ? (' data-tenant-name="' + String(p.tenant_name).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"') : '';
             const periodY = (p.period_year != null && p.period_year !== '') ? String(p.period_year) : '';
             const periodM = (p.period_month != null && p.period_month !== '') ? String(p.period_month) : '';
-            const breakdownLine = parts.length ? ('<div class="pay-modal-breakdown-line">' + parts.join(', ') + '</div>') : '';
+            const breakdownLine = hasBreakdown && parts.length ? ('<div class="pay-modal-breakdown-line">' + parts.join(', ') + '</div>') : '';
             html += '<li class="pay-modal-existing-item pay-modal-by-contract-' + contractIndex + '">' +
                 '<span>' + typeBadge + ' ' + amt + ' Kč (' + dt + ')' + batchTag + tenantLabel + (breakdownLine ? breakdownLine : '') + '</span> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-contracts-id="' + cid + '"' + tenantAttr + ' data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '" data-linked-request-ids="' + String(linkedIdsStr).replace(/"/g, '&quot;') + '" data-period-year="' + periodY + '" data-period-month="' + periodM + '"' + noteAttr + '>Upravit</button> ' +
