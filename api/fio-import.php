@@ -78,16 +78,24 @@ $data = json_decode($raw, true);
 // Při 4xx/5xx zobrazit zprávu z těla (FIO posílá errorDescription), jinak běžná chyba
 if ($httpCode >= 400) {
     $msg = 'FIO API vrátilo HTTP ' . $httpCode . '.';
+    $hasDetail = false;
     if (is_array($data)) {
         $detail = $data['errorDescription'] ?? $data['error'] ?? $data['message'] ?? null;
         if ($detail !== null && $detail !== '') {
             $msg .= ' ' . (is_string($detail) ? $detail : json_encode($detail));
+            $hasDetail = true;
         }
     }
     if ($httpCode === 409) {
         $msg = 'FIO API omezuje počet požadavků (max. 1× za 30 sekund). Zkuste to znovu za chvíli.';
-    } elseif ($httpCode === 422 && $msg === 'FIO API vrátilo HTTP 422.') {
-        $msg .= ' Časté příčiny: období v budoucnosti, neplatný nebo vypršený token.';
+    } elseif ($httpCode === 422) {
+        if (!$hasDetail) {
+            $msg .= ' Časté příčiny: období v budoucnosti, neplatný nebo vypršený token. Zkontrolujte token v úpravě účtu.';
+            $preview = mb_substr(preg_replace('/\s+/', ' ', trim($raw)), 0, 200);
+            if ($preview !== '') {
+                $msg .= ' Odpověď: ' . $preview . (strlen(trim($raw)) > 200 ? '…' : '');
+            }
+        }
     }
     jsonErr($msg);
 }
