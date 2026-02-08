@@ -1080,7 +1080,7 @@ async function openPaymentModal(el) {
             const parts = [];
             if (remainder !== 0 && periodLabel) parts.push('Nájem (' + periodLabel + ') ' + UI.fmt(remainder) + ' Kč');
             linkedReqs.forEach(r => {
-                const reqLabel = r.note ? UI.esc(r.note) : (requestTypeLabelsShort[r.type] || 'Požadavek');
+                const reqLabel = requestTypeLabelsShort[r.type] || 'Požadavek';
                 const reqDate = r.due_date ? UI.fmtDate(r.due_date) : '';
                 parts.push(reqLabel + ' (' + reqDate + ') ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč');
             });
