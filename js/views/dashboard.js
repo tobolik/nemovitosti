@@ -1104,14 +1104,16 @@ async function openPaymentModal(el) {
             const allocatedSum = linkedReqs.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
             const remainder = Math.round((parseFloat(p.amount) || 0) - allocatedSum, 2);
             const periodLabel = (p.period_year && p.period_month && parseInt(p.period_month, 10) >= 1 && parseInt(p.period_month, 10) <= 12) ? ((typeof UI !== 'undefined' && UI.MONTHS ? UI.MONTHS[parseInt(p.period_month, 10)] : ['leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'][parseInt(p.period_month, 10) - 1]) + ' ' + p.period_year) : '';
-            const parts = [];
-            if (remainder !== 0 && periodLabel) parts.push('Nájem (' + periodLabel + ') ' + UI.fmt(remainder) + ' Kč');
+            const paymentMonthKey = (p.period_year != null && p.period_month != null) ? (String(p.period_year) + '-' + String(p.period_month).padStart(2, '0')) : '';
+            const partsWithMonth = [];
+            if (remainder !== 0 && periodLabel) partsWithMonth.push({ text: 'Nájem (' + periodLabel + ') ' + UI.fmt(remainder) + ' Kč', partMonthKey: paymentMonthKey });
             linkedReqs.forEach(r => {
                 const reqLabel = requestTypeLabelsShort[r.type] || 'Požadavek';
                 const reqDate = r.due_date ? UI.fmtDate(r.due_date) : '';
-                parts.push(reqLabel + ' (' + reqDate + ') ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč');
+                const reqMonthKey = r.due_date ? String(r.due_date).slice(0, 7) : '';
+                partsWithMonth.push({ text: reqLabel + ' (' + reqDate + ') ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč', partMonthKey: reqMonthKey });
             });
-            const hasBreakdown = parts.length > 1 || (parts.length === 1 && linkedReqs.length > 0);
+            const hasBreakdown = partsWithMonth.length > 1 || (partsWithMonth.length === 1 && linkedReqs.length > 0);
             const hasRentPart = remainder !== 0 && periodLabel;
             const displayTypeLabel = hasBreakdown
                 ? (hasRentPart ? 'Nájem+požadavky' : (typeLabels[pt] || 'Požadavky'))
@@ -1126,7 +1128,12 @@ async function openPaymentModal(el) {
             const tenantAttr = (p.tenant_name != null && p.tenant_name !== '') ? (' data-tenant-name="' + String(p.tenant_name).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"') : '';
             const periodY = (p.period_year != null && p.period_year !== '') ? String(p.period_year) : '';
             const periodM = (p.period_month != null && p.period_month !== '') ? String(p.period_month) : '';
-            const breakdownLine = hasBreakdown && parts.length ? ('<div class="pay-modal-breakdown-line">' + parts.join(', ') + '</div>') : '';
+            const breakdownLine = hasBreakdown && partsWithMonth.length
+                ? ('<div class="pay-modal-breakdown-line">' + partsWithMonth.map(function (part) {
+                    const active = part.partMonthKey === monthKey;
+                    return '<span class="pay-modal-breakdown-part pay-modal-breakdown-part--' + (active ? 'active' : 'inactive') + '">' + part.text + '</span>';
+                }).join(', ') + '</div>')
+                : '';
             html += '<li class="pay-modal-existing-item pay-modal-by-contract-' + contractIndex + '">' +
                 '<span>' + typeBadge + ' ' + amt + ' Kč (' + dt + ')' + batchTag + tenantLabel + (breakdownLine ? breakdownLine : '') + '</span> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-contracts-id="' + cid + '"' + tenantAttr + ' data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '" data-linked-request-ids="' + String(linkedIdsStr).replace(/"/g, '&quot;') + '" data-period-year="' + periodY + '" data-period-month="' + periodM + '"' + noteAttr + '>Upravit</button> ' +
@@ -1284,6 +1291,8 @@ async function openPaymentModal(el) {
             methodWrap.style.display = 'flex';
             batchHintEl.style.display = editBtn.dataset.batchId ? 'block' : 'none';
             bulkWrap.style.display = 'none';
+            const addLinkWrapEdit = document.querySelector('.pay-modal-add-link');
+            if (addLinkWrapEdit) addLinkWrapEdit.style.display = '';
             const periodWrapEdit = document.getElementById('pay-modal-period-wrap');
             if (periodWrapEdit) periodWrapEdit.style.display = 'block';
             if (requestLinkWrap && requestLinkList) {
