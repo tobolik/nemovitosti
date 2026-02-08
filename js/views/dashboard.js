@@ -946,7 +946,7 @@ async function openPaymentModal(el) {
         const periodYearAdd = document.getElementById('pay-modal-period-year');
         if (periodWrapAdd && periodMonthAdd && periodYearAdd) {
             periodWrapAdd.style.display = 'block';
-            periodMonthAdd.value = month;
+            periodMonthAdd.value = String(parseInt(month, 10) || 1);
             periodYearAdd.value = year;
         }
     } else {
