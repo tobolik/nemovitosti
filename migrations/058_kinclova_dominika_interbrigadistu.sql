@@ -34,22 +34,22 @@ SET @ba_id := (
 -- first_month_rent = 5 806 + 1 400 = 7 206 (dle smlouvy); kauce 15 000, vrácena 10.1.2023
 INSERT INTO contracts (contracts_id, properties_id, tenants_id, contract_start, contract_end, monthly_rent, first_month_rent,
   deposit_amount, deposit_paid_date, deposit_return_date, default_payment_method, default_bank_accounts_id, valid_from, valid_to, valid_user_from, valid_user_to)
-SELECT NULL, @properties_id, @tenants_id, DATE('2021-03-01'), DATE('2022-12-31'),
+SELECT NULL, @properties_id, @tenants_id, DATE('2021-03-07'), DATE('2022-12-31'),
   8900.00, 7206.00, 15000.00, DATE('2021-03-08'), DATE('2023-01-10'), 'account', @ba_id, NOW(), NULL, NULL, NULL
 FROM DUAL
 WHERE @tenants_id IS NOT NULL AND @properties_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1 FROM contracts c
     WHERE c.valid_to IS NULL AND c.tenants_id = @tenants_id AND c.properties_id = @properties_id
-      AND c.contract_start = '2021-03-01'
+      AND c.contract_start = '2021-03-07'
   );
 
 UPDATE contracts SET contracts_id = id
-WHERE valid_to IS NULL AND contracts_id IS NULL AND tenants_id = @tenants_id AND properties_id = @properties_id AND contract_start = '2021-03-01';
+WHERE valid_to IS NULL AND contracts_id IS NULL AND tenants_id = @tenants_id AND properties_id = @properties_id AND contract_start = '2021-03-07';
 
 SET @contracts_id := (
   SELECT COALESCE(c.contracts_id, c.id) FROM contracts c
-  WHERE c.valid_to IS NULL AND c.tenants_id = @tenants_id AND c.properties_id = @properties_id AND c.contract_start = '2021-03-01'
+  WHERE c.valid_to IS NULL AND c.tenants_id = @tenants_id AND c.properties_id = @properties_id AND c.contract_start = '2021-03-07'
   LIMIT 1
 );
 

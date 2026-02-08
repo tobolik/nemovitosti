@@ -92,11 +92,13 @@ function getExpectedTotalForMonth(array $c, int $year, int $m, array $rentChange
 // paidTotal: všechny platby (pro součet v sekci Nájemník)
 $paymentsByContract = [];
 $paymentsListByContract = [];
+// Kauce, vrácení kauce a vyúčtování (other) započítat i bez approved_at, aby heatmapa odpovídala modalu a byla vyrovnaná.
 $s = db()->prepare("
     SELECT p.payments_id, p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type, p.bank_transaction_id
     FROM payments p
     JOIN contracts c ON c.contracts_id = p.contracts_id AND c.valid_to IS NULL
-    WHERE p.valid_to IS NULL AND p.contracts_id = ? AND p.approved_at IS NOT NULL
+    WHERE p.valid_to IS NULL AND p.contracts_id = ?
+      AND (p.approved_at IS NOT NULL OR p.payment_type IN ('deposit','deposit_return','other'))
 ");
 foreach ($contracts as $c) {
     $entityId = $c['contracts_id'] ?? $c['id'];
@@ -104,10 +106,11 @@ foreach ($contracts as $c) {
     $paymentsByContract[$entityId] = [];
     $paymentsListByContract[$entityId] = [];
     foreach ($s->fetchAll() as $row) {
-        $periodKey = $row['period_year'] . '-' . str_pad((string)$row['period_month'], 2, '0', STR_PAD_LEFT);
-        $pt = $row['payment_type'] ?? 'rent';
-        $usePaymentDateMonth = ($pt === 'deposit' || $pt === 'deposit_return') && !empty($row['payment_date']);
-        $key = $usePaymentDateMonth ? date('Y-m', strtotime($row['payment_date'])) : $periodKey;
+        $periodMonth = (int)($row['period_month'] ?? 0);
+        $periodYear = (int)($row['period_year'] ?? 0);
+        $periodKey = $periodYear . '-' . str_pad((string)$periodMonth, 2, '0', STR_PAD_LEFT);
+        $hasValidPeriod = $periodMonth >= 1 && $periodMonth <= 12 && $periodYear >= 2000 && $periodYear <= 2100;
+        $key = $hasValidPeriod ? $periodKey : (!empty($row['payment_date']) ? date('Y-m', strtotime($row['payment_date'])) : $periodKey);
         if (!isset($paymentsByContract[$entityId][$key])) {
             $paymentsByContract[$entityId][$key] = ['amount' => 0, 'amount_rent' => 0, 'payment_date' => null, 'payment_count' => 0];
         }
@@ -172,6 +175,31 @@ foreach ($contracts as $c) {
     $pid = (int)$c['properties_id'];
     $contractToProperty[$eid] = $pid;
     if ($eid !== $rid) $contractToProperty[$rid] = $pid;
+}
+// Platby po nemovitosti a měsíci – aby se do „uhrazeno“ započítaly i kauce/platby smluv, které v daném měsíci ještě neběží (viz docs/heatmap-predpis-platby-logika.md)
+$paymentsByPropertyMonth = [];
+$paymentsListByPropertyMonth = [];
+foreach ($contracts as $c) {
+    $eid = (int)($c['contracts_id'] ?? $c['id']);
+    $pid = (int)$c['properties_id'];
+    $byMonth = $paymentsByContract[$eid] ?? [];
+    foreach ($byMonth as $monthKey => $data) {
+        if (!isset($paymentsByPropertyMonth[$pid])) $paymentsByPropertyMonth[$pid] = [];
+        if (!isset($paymentsByPropertyMonth[$pid][$monthKey])) {
+            $paymentsByPropertyMonth[$pid][$monthKey] = ['amount' => 0, 'payment_date' => null, 'payment_count' => 0];
+        }
+        $paymentsByPropertyMonth[$pid][$monthKey]['amount'] += (float)($data['amount'] ?? 0);
+        $paymentsByPropertyMonth[$pid][$monthKey]['payment_count'] += (int)($data['payment_count'] ?? 0);
+        if (!empty($data['payment_date']) && ($paymentsByPropertyMonth[$pid][$monthKey]['payment_date'] === null || $data['payment_date'] > $paymentsByPropertyMonth[$pid][$monthKey]['payment_date'])) {
+            $paymentsByPropertyMonth[$pid][$monthKey]['payment_date'] = $data['payment_date'];
+        }
+        if (!isset($paymentsListByPropertyMonth[$pid])) $paymentsListByPropertyMonth[$pid] = [];
+        if (!isset($paymentsListByPropertyMonth[$pid][$monthKey])) $paymentsListByPropertyMonth[$pid][$monthKey] = [];
+        $paymentsListByPropertyMonth[$pid][$monthKey] = array_merge(
+            $paymentsListByPropertyMonth[$pid][$monthKey],
+            $paymentsListByContract[$eid][$monthKey] ?? []
+        );
+    }
 }
 $paymentRequestsListByContractMonth = [];
 // Nevyřízené požadavky (paid_at IS NULL) podle smlouvy a měsíce – pro oranžový okraj buňky a tooltip
@@ -468,22 +496,15 @@ foreach ($properties as $p) {
         }
 
         if (count($candidates) === 0) {
-            // Může být platba (např. kauce) v měsíci, kdy smlouva ještě neběžela – zobrazit buňku „jen platba“
+            // Může být platba (např. kauce) v měsíci, kdy smlouva ještě neběžela – uhrazeno = všechny platby nemovitosti (paymentsByPropertyMonth)
             $contractsForProperty = array_filter($contracts, function ($c) use ($propEntityId) {
                 return (int)$c['properties_id'] === $propEntityId;
             });
-            $paidTotalOnly = 0.0;
-            $paymentDetailsOnly = [];
-            foreach ($contractsForProperty as $c) {
-                $entityId = (int)($c['contracts_id'] ?? $c['id']);
-                $paid = $paymentsByContract[$entityId][$monthKey] ?? null;
-                if ($paid && ((float)($paid['amount'] ?? 0) > 0)) {
-                    $paidTotalOnly += (float)($paid['amount'] ?? 0);
-                    $paymentDetailsOnly = array_merge($paymentDetailsOnly, $paymentsListByContract[$entityId][$monthKey] ?? []);
-                }
-            }
+            $paidForPropMonthOnly = $paymentsByPropertyMonth[$propEntityId][$monthKey] ?? null;
+            $paidTotalOnly = $paidForPropMonthOnly ? (float)($paidForPropMonthOnly['amount'] ?? 0) : 0.0;
+            $paymentDetailsOnly = $paymentsListByPropertyMonth[$propEntityId][$monthKey] ?? [];
             $requestsForPropertyMonth = $paymentRequestsByPropertyMonth[$propEntityId][$monthKey] ?? 0.0;
-            if ($paidTotalOnly > 0 || $requestsForPropertyMonth != 0) {
+            if ($paidTotalOnly != 0 || $requestsForPropertyMonth != 0) {
                 $expectedTotalOnly = round($requestsForPropertyMonth, 2);
                 $primaryContract = reset($contractsForProperty) ?: null;
                 $primaryEntityId = $primaryContract ? (int)($primaryContract['contracts_id'] ?? $primaryContract['id']) : 0;
@@ -558,15 +579,6 @@ foreach ($properties as $p) {
                 $entityId = (int)($c['contracts_id'] ?? $c['id']);
                 $rentForContract = getExpectedRentForMonth($c, $year, $m, $rentChangesByContract);
                 $expectedRent += $rentForContract;
-                $paid = $paymentsByContract[$entityId][$monthKey] ?? null;
-                if ($paid) {
-                    $paidTotal += (float)($paid['amount'] ?? 0);
-                    $paymentCount += (int)($paid['payment_count'] ?? 0);
-                    if (!empty($paid['payment_date']) && ($paymentDate === null || $paid['payment_date'] > $paymentDate)) {
-                        $paymentDate = $paid['payment_date'];
-                    }
-                    $paymentDetails = array_merge($paymentDetails, $paymentsListByContract[$entityId][$monthKey] ?? []);
-                }
                 if ($rentForContract > 0) {
                     $label = count($candidates) > 1 ? 'Nájem (' . ($c['tenant_name'] ?? '') . ')' : 'Nájem';
                     $monthBreakdown[] = ['type' => 'rent', 'label' => $label, 'amount' => round($rentForContract, 2)];
@@ -579,6 +591,14 @@ foreach ($properties as $p) {
                     && ($c['contract_start'] ?? '') > $firstOfMonth) {
                     $isContractStartMonth = true;
                 }
+            }
+            // Uhrazeno = všechny platby nemovitosti v tomto měsíci (včetně kauce zaplacené před začátkem smlouvy)
+            $paidForPropertyMonth = $paymentsByPropertyMonth[$propEntityId][$monthKey] ?? null;
+            if ($paidForPropertyMonth) {
+                $paidTotal = (float)($paidForPropertyMonth['amount'] ?? 0);
+                $paymentCount = (int)($paidForPropertyMonth['payment_count'] ?? 0);
+                $paymentDate = !empty($paidForPropertyMonth['payment_date']) ? $paidForPropertyMonth['payment_date'] : null;
+                $paymentDetails = $paymentsListByPropertyMonth[$propEntityId][$monthKey] ?? [];
             }
             // Při zvýšení nájmu v tomto měsíci přidat do „Co uhradit“ i variantu nového nájmu (od data)
             foreach ($candidates as $c) {
