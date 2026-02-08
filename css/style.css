@@ -890,9 +890,9 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .pay-modal-breakdown-line { font-size: .8rem; color: var(--txt3); margin-top: 4px; margin-left: 0; }
 .pay-modal-range-row .fg select { min-width: 90px; }
 .pay-modal-request-checkboxes { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; max-height: 200px; overflow-y: auto; padding: 8px; background: var(--bg2); border-radius: var(--r); }
-.pay-modal-request-cb { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: .9rem; cursor: pointer; padding: 2px 0; flex-wrap: nowrap; line-height: 1.4; }
-.pay-modal-request-cb input { flex-shrink: 0; margin: 0; order: 0; vertical-align: middle; align-self: center; }
-.pay-modal-request-cb-text { flex: 1; min-width: 0; order: 1; line-height: 1.4; }
+.pay-modal-request-cb { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; font-size: .9rem; cursor: pointer; padding: 2px 0; flex-wrap: nowrap; line-height: 1.4; }
+.pay-modal-request-cb-text { flex: 1; min-width: 0; line-height: 1.4; }
+.pay-modal-request-cb input { flex-shrink: 0; margin: 0; margin-left: 8px; vertical-align: middle; align-self: center; }
 .pay-modal-add-link { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
 .pay-modal-add-link a { font-size: .9rem; color: var(--primary); }
 .pay-modal-form-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--glass-border); }
@@ -996,6 +996,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 
 .tags { display: flex; flex-wrap: wrap; gap: 4px; max-width: 250px; }
 .dash-unpaid-tags { max-width: 100%; }
+.dash-unpaid-tags .tag { white-space: nowrap; }
 .dash-unpaid-cell { white-space: normal; }
 .dash-p-col { width: 2.5em; text-align: center; vertical-align: middle; }
 .dash-add-req-btn { width: 28px; height: 28px; padding: 0; font-size: 1.1rem; line-height: 1; border-radius: var(--r); }
@@ -1422,6 +1423,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 }
 
 @media (max-width: 480px) {
+  .dash-unpaid-tags .tag { white-space: normal; }
   .page-title { 
     font-size: 1.1rem;
     padding-left: 52px;

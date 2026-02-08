@@ -1060,7 +1060,7 @@ async function openPaymentModal(el) {
             const label = typeLabel + ' ' + amtStr + ' Kč' + (dateStr ? ' (' + dateStr + ' – ' + statusStr + ')' : ' (' + statusStr + ')');
             const titleAttr = (r.note != null && String(r.note).trim() !== '') ? (' title="' + String(r.note).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"') : '';
             const checked = idSet.has(String(rid)) ? ' checked' : '';
-            html += '<label class="pay-modal-request-cb"' + titleAttr + '><input type="checkbox" name="pay-modal-pr" value="' + rid + '"' + checked + '><span class="pay-modal-request-cb-text">' + UI.esc(label) + '</span></label>';
+            html += '<label class="pay-modal-request-cb"' + titleAttr + '><span class="pay-modal-request-cb-text">' + UI.esc(label) + '</span><input type="checkbox" name="pay-modal-pr" value="' + rid + '"' + checked + '></label>';
         });
         if (!html) html = '<p class="text-muted" style="font-size:.9rem">Žádné požadavky k propojení.</p>';
         requestLinkList.innerHTML = html;
