@@ -478,6 +478,7 @@ footer .footer-php-version { margin-left: 0.5rem; opacity: .7; font-size: 0.9em;
   min-width: 260px;
 }
 .form-actions { margin-top: 18px; display: flex; gap: 9px; align-items: center; }
+#modal-payment .form-actions { padding-bottom: 16px; }
 .select-with-btn, .input-with-btn {
   display: flex;
   gap: 8px;
@@ -869,8 +870,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .heatmap-sum-label { font-weight: 600; color: var(--txt); font-size: .9rem; }
 .heatmap-sum-cell { color: var(--txt2); font-size: .84rem; }
 .heatmap-sum-total { font-weight: 700; color: var(--txt); font-size: .9rem; }
-.pay-modal-partial, .pay-modal-full { margin-top: 8px; padding: 8px; background: var(--bg2); border-radius: var(--r); font-size: .9rem; }
-.pay-modal-full { color: var(--green-600); }
+.pay-modal-partial, .pay-modal-full { margin-top: 4px; color: var(--txt); }
 .pay-modal-full.pay-modal-overpaid { color: var(--orange-600); }
 .pay-modal-batch-hint { margin: 8px 0; padding: 8px 12px; background: rgba(234,88,12,.15); border-radius: var(--r); font-size: .85rem; color: var(--orange-600); border: 1px solid rgba(234,88,12,.3); }
 .pay-modal-prefill-msg { margin: 8px 0 4px 0; padding: 8px 12px; background: rgba(59,130,246,.12); border-radius: var(--r); font-size: .85rem; color: var(--txt); border: 1px solid rgba(59,130,246,.25); }
@@ -894,6 +894,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .pay-modal-existing-item--outside-month .pay-modal-main-label,
 .pay-modal-existing-item--outside-month .pay-modal-main-date,
 .pay-modal-existing-item--outside-month .pay-modal-main-amount { color: var(--txt3); font-weight: 500; }
+.pay-modal-existing-item--same-month { background: #fff !important; }
+.pay-modal-existing-item--same-month .pay-modal-main-label,
+.pay-modal-existing-item--same-month .pay-modal-main-date,
+.pay-modal-existing-item--same-month .pay-modal-main-amount { color: #1e293b; font-weight: 600; }
+.pay-modal-existing-item--same-month .pay-modal-tenant-label { color: #64748b; }
 .pay-modal-sum-amount { color: var(--accent); font-weight: 600; }
 .pay-modal-uncheck-hint { margin-left: 10px; font-size: .85rem; color: var(--txt2); }
 .pay-modal-tenant-label { font-size: .8rem; color: var(--txt3); margin-left: 6px; font-weight: 500; }
@@ -910,16 +915,19 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .pay-modal-breakdown-part--active .pay-modal-breakdown-date,
 .pay-modal-breakdown-part--active .pay-modal-breakdown-amount { color: var(--txt); font-weight: 600; }
 .pay-modal-range-row .fg select { min-width: 90px; }
+.pay-modal-requests-block { background: var(--bg2); padding: 12px; border-radius: var(--r); margin-top: 4px; }
+.pay-modal-requests-block .pay-modal-request-checkboxes { background: transparent; padding: 0; }
 .pay-modal-request-checkboxes { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; max-height: 200px; overflow-y: auto; padding: 8px; background: var(--bg2); border-radius: var(--r); }
 .pay-modal-request-cb { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; font-size: .9rem; cursor: pointer; padding: 2px 0; line-height: 1.4; }
 .pay-modal-request-cb-text { min-width: 0; line-height: 1.4; }
 .pay-modal-request-cb input { margin: 0; vertical-align: middle; justify-self: end; }
-.pay-modal-add-link { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.pay-modal-add-block { margin-top: 10px; padding: 10px 12px; background: var(--bg2); border-radius: var(--r); }
+.pay-modal-add-link { margin: 0; padding: 0; border: none; }
 .pay-modal-add-link a { font-size: .9rem; color: var(--primary); }
-.pay-modal-form-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--glass-border); }
-.pay-modal-form-section--contract-0 { border-left: 3px solid rgba(59, 130, 246, .5); background: rgba(59, 130, 246, .12); padding-left: 10px; margin-left: -10px; padding-top: 12px; margin-top: 12px; border-radius: 0 var(--r) var(--r) 0; }
-.pay-modal-form-section--contract-1 { border-left: 3px solid rgba(34, 197, 94, .5); background: rgba(34, 197, 94, .12); padding-left: 10px; margin-left: -10px; padding-top: 12px; margin-top: 12px; border-radius: 0 var(--r) var(--r) 0; }
-.pay-modal-form-section--contract-2 { border-left: 3px solid rgba(168, 85, 247, .5); background: rgba(168, 85, 247, .12); padding-left: 10px; margin-left: -10px; padding-top: 12px; margin-top: 12px; border-radius: 0 var(--r) var(--r) 0; }
+.pay-modal-form-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--glass-border); border-radius: var(--r); }
+.pay-modal-form-section--contract-0 { border-left: 3px solid rgba(59, 130, 246, .5); background: rgba(59, 130, 246, .12); padding-left: 10px; margin-left: -10px; padding-top: 12px; margin-top: 12px; border-radius: var(--r); }
+.pay-modal-form-section--contract-1 { border-left: 3px solid rgba(34, 197, 94, .5); background: rgba(34, 197, 94, .12); padding-left: 10px; margin-left: -10px; padding-top: 12px; margin-top: 12px; border-radius: var(--r); }
+.pay-modal-form-section--contract-2 { border-left: 3px solid rgba(168, 85, 247, .5); background: rgba(168, 85, 247, .12); padding-left: 10px; margin-left: -10px; padding-top: 12px; margin-top: 12px; border-radius: var(--r); }
 .pay-modal-form-title { margin: 0 0 10px 0; font-size: .95rem; font-weight: 600; color: var(--txt2); }
 .pay-modal-range-row .fg input[type="number"] { min-width: 70px; }
 .pay-modal-type-wrap { padding-left: 12px; border-left: 3px solid transparent; border-radius: 0 var(--r) var(--r) 0; }
