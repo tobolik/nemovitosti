@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=2.1.65">
+<link rel="stylesheet" href="css/style.css?v=2.1.67">
 </head>
 <body>
 
@@ -55,13 +55,16 @@
         <button class="nav-link" data-view="bank_accounts"><span class="icon">🏦</span> Bankovní účty</button>
         <button class="nav-link" data-view="payment_imports"><span class="icon">📥</span> Kontrola importů</button>
         <button class="nav-link" data-view="users" id="nav-users" style="display:none"><span class="icon">⚙</span> Uživatelé</button>
+        <div class="global-search-wrap">
+          <input type="text" id="global-search-input" class="global-search-input" placeholder="Hledat nájemníka, nemovitost, smlouvu…" autocomplete="off">
+          <div id="global-search-dropdown" class="global-search-dropdown" aria-hidden="true"></div>
+        </div>
       </nav>
-      <div class="global-search-wrap">
-        <input type="text" id="global-search-input" class="global-search-input" placeholder="Hledat nájemníka, nemovitost, smlouvu…" autocomplete="off">
-        <div id="global-search-dropdown" class="global-search-dropdown" aria-hidden="true"></div>
-      </div>
       <div class="sidebar-footer">
-        <div class="sidebar-user" id="nav-username"></div>
+        <div class="sidebar-footer-top">
+          <span class="sidebar-user" id="nav-username"></span>
+          <span class="sidebar-version">v2.1.67</span>
+        </div>
         <button class="btn-logout" id="btn-logout">Odhlásit se</button>
       </div>
     </aside>
@@ -522,7 +525,6 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v2.1.65</span>
     <span id="footer-php-version" class="footer-php-version" title="Verze PHP na serveru"></span>
     © 2026 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
@@ -744,17 +746,17 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=2.1.65"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=2.1.65"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=2.1.65"></script>
-<script src="js/app.js?v=2.1.65"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=2.1.65"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=2.1.65"></script>
-<script src="js/views/tenants.js?v=2.1.65"></script>
-<script src="js/views/contracts.js?v=2.1.65"></script>
-<script src="js/views/payments.js?v=2.1.65"></script>
-<script src="js/views/bank_accounts.js?v=2.1.65"></script>
-<script src="js/views/payment_imports.js?v=2.1.65"></script>
-<script src="js/views/users.js?v=2.1.65"></script>
+<script src="js/api.js?v=2.1.67"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=2.1.67"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=2.1.67"></script>
+<script src="js/app.js?v=2.1.67"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=2.1.67"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=2.1.67"></script>
+<script src="js/views/tenants.js?v=2.1.67"></script>
+<script src="js/views/contracts.js?v=2.1.67"></script>
+<script src="js/views/payments.js?v=2.1.67"></script>
+<script src="js/views/bank_accounts.js?v=2.1.67"></script>
+<script src="js/views/payment_imports.js?v=2.1.67"></script>
+<script src="js/views/users.js?v=2.1.67"></script>
 </body>
 </html>

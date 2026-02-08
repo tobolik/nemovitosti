@@ -193,10 +193,15 @@ button, select, input, textarea { font-family: var(--font-ui); }
 }
 .sidebar-nav .nav-link .icon { font-size: 1.1rem; opacity: .9; }
 
-/* Globální vyhledávání v sidebaru */
+/* Globální vyhledávání v sidebaru (pod Uživatelé) */
 .global-search-wrap {
   position: relative;
   padding: 12px;
+}
+.sidebar-nav .global-search-wrap {
+  flex-shrink: 0;
+  margin-top: 8px;
+  padding: 12px 0 0;
   border-top: 1px solid rgba(255,255,255,.06);
 }
 .global-search-input {
@@ -261,9 +266,21 @@ button, select, input, textarea { font-family: var(--font-ui); }
   padding: 16px;
   border-top: 1px solid rgba(255,255,255,.08);
 }
+.sidebar-footer-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
 .sidebar-user {
   font-size: .8rem; color: var(--txt3);
-  margin-bottom: 10px; word-break: break-word;
+  word-break: break-word;
+}
+.sidebar-version {
+  font-size: .75rem; color: var(--txt3);
+  opacity: .85;
+  flex-shrink: 0;
 }
 .btn-logout {
   width: 100%;
@@ -420,7 +437,7 @@ footer .footer-php-version { margin-left: 0.5rem; opacity: .7; font-size: 0.9em;
 .form-row .fg { flex: 1; min-width: 0; }
 .fg { margin-bottom: 15px; }
 .fg label { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--txt2); margin-bottom: 5px; font-weight: 500; }
-.fg input, .fg select, .fg textarea {
+.fg input:not([type="checkbox"]):not([type="radio"]), .fg select, .fg textarea {
   width: 100%;
   padding: 9px 12px;
   background: rgba(0,0,0,.2);
