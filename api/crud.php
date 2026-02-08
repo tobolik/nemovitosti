@@ -337,11 +337,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $row['overpayment'] = ($cid > 0 && $py > 0 && $pm > 0) && isset($existingPaymentsKey[$cid . '_' . $py . '_' . $pm]);
         }
         unset($row);
-        // Auto-párování: návrh smlouva/období/typ podle částky, data a protiúčtu
+        // Auto-párování: návrh smlouva/období/typ podle částky, data a protiúčtu (včetně smluv skončených v posledních 24 měsících – platba za dobu nájmu)
         $contractsWithRent = db()->query("
-            SELECT c.contracts_id, c.id, c.tenants_id, c.monthly_rent
+            SELECT c.contracts_id, c.id, c.tenants_id, c.monthly_rent, c.contract_start, c.contract_end
             FROM contracts c
-            WHERE c.valid_to IS NULL AND (c.contract_end IS NULL OR c.contract_end >= CURDATE())
+            WHERE c.valid_to IS NULL
+            AND (c.contract_end IS NULL OR c.contract_end >= CURDATE() OR c.contract_end >= DATE_SUB(CURDATE(), INTERVAL 24 MONTH))
         ")->fetchAll(PDO::FETCH_ASSOC);
         $rentChangesRaw = db()->query("SELECT * FROM contract_rent_changes WHERE valid_to IS NULL ORDER BY contracts_id, effective_from ASC")->fetchAll();
         $rentChangesByContract = [];
