@@ -201,6 +201,71 @@ foreach ($contracts as $c) {
         );
     }
 }
+
+// Heatmapa: „uhrazeno“ za měsíc podle splatnosti požadavku (due_date), ne podle period/payment_date – jen pro buňky heatmapy (varianta B)
+$heatmapPaymentsByContract = [];
+$heatmapPaymentsListByContract = [];
+$heatmapStmt = db()->query("
+    SELECT p.payments_id, p.contracts_id, p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type, p.bank_transaction_id, pr.due_date
+    FROM payments p
+    JOIN contracts c ON c.contracts_id = p.contracts_id AND c.valid_to IS NULL
+    LEFT JOIN payment_requests pr ON pr.payments_id = p.payments_id AND pr.valid_to IS NULL
+    WHERE p.valid_to IS NULL
+      AND (p.approved_at IS NOT NULL OR p.payment_type IN ('deposit','deposit_return','other'))
+");
+foreach ($heatmapStmt->fetchAll() as $row) {
+    $eid = (int)$row['contracts_id'];
+    $dueDate = !empty($row['due_date']) ? $row['due_date'] : null;
+    $periodMonth = (int)($row['period_month'] ?? 0);
+    $periodYear = (int)($row['period_year'] ?? 0);
+    $periodKey = $periodYear . '-' . str_pad((string)$periodMonth, 2, '0', STR_PAD_LEFT);
+    $hasValidPeriod = $periodMonth >= 1 && $periodMonth <= 12 && $periodYear >= 2000 && $periodYear <= 2100;
+    $monthKey = $dueDate ? date('Y-m', strtotime($dueDate)) : ($hasValidPeriod ? $periodKey : (!empty($row['payment_date']) ? date('Y-m', strtotime($row['payment_date'])) : $periodKey));
+    if (!isset($heatmapPaymentsByContract[$eid])) {
+        $heatmapPaymentsByContract[$eid] = [];
+        $heatmapPaymentsListByContract[$eid] = [];
+    }
+    if (!isset($heatmapPaymentsByContract[$eid][$monthKey])) {
+        $heatmapPaymentsByContract[$eid][$monthKey] = ['amount' => 0, 'payment_date' => null, 'payment_count' => 0];
+    }
+    $amt = (float)($row['amount'] ?? 0);
+    $heatmapPaymentsByContract[$eid][$monthKey]['amount'] += $amt;
+    $heatmapPaymentsByContract[$eid][$monthKey]['payment_count'] += 1;
+    if (!empty($row['payment_date']) && ($heatmapPaymentsByContract[$eid][$monthKey]['payment_date'] === null || $row['payment_date'] > $heatmapPaymentsByContract[$eid][$monthKey]['payment_date'])) {
+        $heatmapPaymentsByContract[$eid][$monthKey]['payment_date'] = $row['payment_date'];
+    }
+    if (!isset($heatmapPaymentsListByContract[$eid][$monthKey])) $heatmapPaymentsListByContract[$eid][$monthKey] = [];
+    $heatmapPaymentsListByContract[$eid][$monthKey][] = [
+        'amount' => $amt,
+        'payment_date' => !empty($row['payment_date']) ? $row['payment_date'] : null,
+        'bank_transaction_id' => !empty($row['bank_transaction_id']) ? $row['bank_transaction_id'] : null,
+    ];
+}
+$heatmapPaymentsByPropertyMonth = [];
+$heatmapPaymentsListByPropertyMonth = [];
+foreach ($contracts as $c) {
+    $eid = (int)($c['contracts_id'] ?? $c['id']);
+    $pid = (int)$c['properties_id'];
+    $byMonth = $heatmapPaymentsByContract[$eid] ?? [];
+    foreach ($byMonth as $monthKey => $data) {
+        if (!isset($heatmapPaymentsByPropertyMonth[$pid])) $heatmapPaymentsByPropertyMonth[$pid] = [];
+        if (!isset($heatmapPaymentsByPropertyMonth[$pid][$monthKey])) {
+            $heatmapPaymentsByPropertyMonth[$pid][$monthKey] = ['amount' => 0, 'payment_date' => null, 'payment_count' => 0];
+        }
+        $heatmapPaymentsByPropertyMonth[$pid][$monthKey]['amount'] += (float)($data['amount'] ?? 0);
+        $heatmapPaymentsByPropertyMonth[$pid][$monthKey]['payment_count'] += (int)($data['payment_count'] ?? 0);
+        if (!empty($data['payment_date']) && ($heatmapPaymentsByPropertyMonth[$pid][$monthKey]['payment_date'] === null || $data['payment_date'] > $heatmapPaymentsByPropertyMonth[$pid][$monthKey]['payment_date'])) {
+            $heatmapPaymentsByPropertyMonth[$pid][$monthKey]['payment_date'] = $data['payment_date'];
+        }
+        if (!isset($heatmapPaymentsListByPropertyMonth[$pid])) $heatmapPaymentsListByPropertyMonth[$pid] = [];
+        if (!isset($heatmapPaymentsListByPropertyMonth[$pid][$monthKey])) $heatmapPaymentsListByPropertyMonth[$pid][$monthKey] = [];
+        $heatmapPaymentsListByPropertyMonth[$pid][$monthKey] = array_merge(
+            $heatmapPaymentsListByPropertyMonth[$pid][$monthKey],
+            $heatmapPaymentsListByContract[$eid][$monthKey] ?? []
+        );
+    }
+}
+
 $paymentRequestsListByContractMonth = [];
 // Nevyřízené požadavky (paid_at IS NULL) podle smlouvy a měsíce – pro oranžový okraj buňky a tooltip
 $hasUnfulfilledByContractMonth = [];
@@ -496,13 +561,13 @@ foreach ($properties as $p) {
         }
 
         if (count($candidates) === 0) {
-            // Může být platba (např. kauce) v měsíci, kdy smlouva ještě neběžela – uhrazeno = všechny platby nemovitosti (paymentsByPropertyMonth)
+            // Uhrazeno = platby nemovitosti v tomto měsíci podle splatnosti požadavku (due_date) – heatmap agregace
             $contractsForProperty = array_filter($contracts, function ($c) use ($propEntityId) {
                 return (int)$c['properties_id'] === $propEntityId;
             });
-            $paidForPropMonthOnly = $paymentsByPropertyMonth[$propEntityId][$monthKey] ?? null;
+            $paidForPropMonthOnly = $heatmapPaymentsByPropertyMonth[$propEntityId][$monthKey] ?? null;
             $paidTotalOnly = $paidForPropMonthOnly ? (float)($paidForPropMonthOnly['amount'] ?? 0) : 0.0;
-            $paymentDetailsOnly = $paymentsListByPropertyMonth[$propEntityId][$monthKey] ?? [];
+            $paymentDetailsOnly = $heatmapPaymentsListByPropertyMonth[$propEntityId][$monthKey] ?? [];
             $requestsForPropertyMonth = $paymentRequestsByPropertyMonth[$propEntityId][$monthKey] ?? 0.0;
             if ($paidTotalOnly != 0 || $requestsForPropertyMonth != 0) {
                 $expectedTotalOnly = round($requestsForPropertyMonth, 2);
@@ -592,13 +657,13 @@ foreach ($properties as $p) {
                     $isContractStartMonth = true;
                 }
             }
-            // Uhrazeno = všechny platby nemovitosti v tomto měsíci (včetně kauce zaplacené před začátkem smlouvy)
-            $paidForPropertyMonth = $paymentsByPropertyMonth[$propEntityId][$monthKey] ?? null;
+            // Uhrazeno = platby nemovitosti v tomto měsíci podle splatnosti požadavku (due_date) – heatmap agregace
+            $paidForPropertyMonth = $heatmapPaymentsByPropertyMonth[$propEntityId][$monthKey] ?? null;
             if ($paidForPropertyMonth) {
                 $paidTotal = (float)($paidForPropertyMonth['amount'] ?? 0);
                 $paymentCount = (int)($paidForPropertyMonth['payment_count'] ?? 0);
                 $paymentDate = !empty($paidForPropertyMonth['payment_date']) ? $paidForPropertyMonth['payment_date'] : null;
-                $paymentDetails = $paymentsListByPropertyMonth[$propEntityId][$monthKey] ?? [];
+                $paymentDetails = $heatmapPaymentsListByPropertyMonth[$propEntityId][$monthKey] ?? [];
             }
             // Při zvýšení nájmu v tomto měsíci přidat do „Co uhradit“ i variantu nového nájmu (od data)
             foreach ($candidates as $c) {

@@ -92,9 +92,7 @@ Příklad (Byt Interbrigadistů, prosinec 2022):
 
 ## 6. Oprava (implementováno)
 
-- **Uhrazeno** = všechny platby nemovitosti v daném měsíci: **paymentsByPropertyMonth** je předpočítán a použit při `candidates > 0` i při `candidates === 0`. Kauce zaplacená v měsíci, kdy smlouva ještě neběžela, se do buňky započítá (prosinec 2022).
-
-- **Přiřazení platby k měsíci** (obecně, bez výjimek podle typu): má-li platba platné období (`period_month` 1–12, `period_year` rozumný rozsah), použije se měsíc z období; jinak se použije měsíc z `payment_date`, pokud je vyplněno. Tím se záporné platby (vrácení kauce, vyúčtování) bez vyplněného období započítají do správného měsíce (leden, červen 2023).
+- **Heatmapa – varianta B:** Pro buňky heatmapy se „uhrazeno“ za měsíc bere z **heatmapPaymentsByPropertyMonth**: platby jsou přiřazeny k měsíci podle **splatnosti (due_date)** propojeného požadavku (`payment_requests.due_date`), ne podle period/payment_date. Má-li platba propojený požadavek, měsíc = `date('Y-m', due_date)`; jinak fallback: platné období → period, jinak payment_date. Kauce se splatností 31. 12. tak spadá do prosince. Ostatní logika (přehled smluv, statistiky) používá dál `paymentsByContract` / `paymentsByPropertyMonth` (period/payment_date).
 
 - Součet „uhrazeno“ zahrnuje kladné i záporné částky (žádné filtrování podle znaménka).
 
