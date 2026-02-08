@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=2.1.60">
+<link rel="stylesheet" href="css/style.css?v=2.1.61">
 </head>
 <body>
 
@@ -522,7 +522,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v2.1.60</span>
+    <span class="footer-version">v2.1.61</span>
     <span id="footer-php-version" class="footer-php-version" title="Verze PHP na serveru"></span>
     © 2026 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
@@ -568,6 +568,13 @@
           </div>
           <div class="fg"><label title="Např. 26 → 2026">Do roku *</label><input type="text" id="pay-modal-year-to" placeholder="26" inputmode="numeric" maxlength="4"></div>
         </div>
+        <div class="fg pay-modal-period-row" id="pay-modal-period-wrap" style="display:none">
+        <label>Období (měsíc platby pro heatmapu)</label>
+        <div class="form-row" style="gap:8px;align-items:center">
+          <select id="pay-modal-period-month" style="min-width:100px"><option value="1">Leden</option><option value="2">Únor</option><option value="3">Březen</option><option value="4">Duben</option><option value="5">Květen</option><option value="6">Červen</option><option value="7">Červenec</option><option value="8">Srpen</option><option value="9">Září</option><option value="10">Říjen</option><option value="11">Listopad</option><option value="12">Prosinec</option></select>
+          <input type="text" id="pay-modal-period-year" placeholder="2020" inputmode="numeric" maxlength="4" style="width:5em">
+        </div>
+      </div>
         <div class="fg">
         <label>Částka (Kč) *</label>
         <input type="number" id="pay-modal-amount" step="0.01">
@@ -737,17 +744,17 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=2.1.60"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=2.1.60"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=2.1.60"></script>
-<script src="js/app.js?v=2.1.60"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=2.1.60"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=2.1.60"></script>
-<script src="js/views/tenants.js?v=2.1.60"></script>
-<script src="js/views/contracts.js?v=2.1.60"></script>
-<script src="js/views/payments.js?v=2.1.60"></script>
-<script src="js/views/bank_accounts.js?v=2.1.60"></script>
-<script src="js/views/payment_imports.js?v=2.1.60"></script>
-<script src="js/views/users.js?v=2.1.60"></script>
+<script src="js/api.js?v=2.1.61"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=2.1.61"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=2.1.61"></script>
+<script src="js/app.js?v=2.1.61"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=2.1.61"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=2.1.61"></script>
+<script src="js/views/tenants.js?v=2.1.61"></script>
+<script src="js/views/contracts.js?v=2.1.61"></script>
+<script src="js/views/payments.js?v=2.1.61"></script>
+<script src="js/views/bank_accounts.js?v=2.1.61"></script>
+<script src="js/views/payment_imports.js?v=2.1.61"></script>
+<script src="js/views/users.js?v=2.1.61"></script>
 </body>
 </html>

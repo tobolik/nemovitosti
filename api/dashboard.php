@@ -202,54 +202,94 @@ foreach ($contracts as $c) {
     }
 }
 
-// Heatmapa: „uhrazeno“ za měsíc podle splatnosti požadavku (due_date), ne podle period/payment_date – jen pro buňky heatmapy (varianta B)
-// Jedna platba může být propojena s více požadavky → každou platbu započítat jen jednou (deduplikace podle payments_id)
+// Heatmapa: „uhrazeno“ za měsíc – alokace platby do více měsíců podle propojených požadavků (due_date) a zbytek do období platby (period)
 $heatmapPaymentsByContract = [];
 $heatmapPaymentsListByContract = [];
 $heatmapStmt = db()->query("
-    SELECT p.payments_id, p.contracts_id, p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type, p.bank_transaction_id, pr.due_date
+    SELECT p.payments_id, p.contracts_id, p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type, p.bank_transaction_id, pr.due_date, pr.amount AS pr_amount
     FROM payments p
     JOIN contracts c ON c.contracts_id = p.contracts_id AND c.valid_to IS NULL
     LEFT JOIN payment_requests pr ON pr.payments_id = p.payments_id AND pr.valid_to IS NULL
     WHERE p.valid_to IS NULL
       AND (p.approved_at IS NOT NULL OR p.payment_type IN ('deposit','deposit_return','other'))
 ");
-$heatmapSeen = [];
+$heatmapByPayment = [];
 foreach ($heatmapStmt->fetchAll() as $row) {
     $eid = (int)$row['contracts_id'];
     $payId = (int)($row['payments_id'] ?? 0);
-    $dedupeKey = $eid . '_' . $payId;
-    if (isset($heatmapSeen[$dedupeKey])) continue;
-    $heatmapSeen[$dedupeKey] = true;
-
-    $dueDate = !empty($row['due_date']) ? $row['due_date'] : null;
-    $periodMonth = (int)($row['period_month'] ?? 0);
-    $periodYear = (int)($row['period_year'] ?? 0);
-    $periodKey = $periodYear . '-' . str_pad((string)$periodMonth, 2, '0', STR_PAD_LEFT);
+    $key = $eid . '_' . $payId;
+    if (!isset($heatmapByPayment[$key])) {
+        $heatmapByPayment[$key] = [
+            'contracts_id' => $eid,
+            'amount' => (float)($row['amount'] ?? 0),
+            'period_year' => (int)($row['period_year'] ?? 0),
+            'period_month' => (int)($row['period_month'] ?? 0),
+            'payment_date' => !empty($row['payment_date']) ? $row['payment_date'] : null,
+            'payment_type' => $row['payment_type'] ?? 'rent',
+            'bank_transaction_id' => !empty($row['bank_transaction_id']) ? $row['bank_transaction_id'] : null,
+            'linked' => [],
+        ];
+    }
+    if (!empty($row['due_date']) && isset($row['pr_amount'])) {
+        $heatmapByPayment[$key]['linked'][] = ['due_date' => $row['due_date'], 'amount' => (float)$row['pr_amount']];
+    }
+}
+foreach ($heatmapByPayment as $group) {
+    $eid = (int)$group['contracts_id'];
+    $payAmt = (float)$group['amount'];
+    $periodMonth = (int)$group['period_month'];
+    $periodYear = (int)$group['period_year'];
     $hasValidPeriod = $periodMonth >= 1 && $periodMonth <= 12 && $periodYear >= 2000 && $periodYear <= 2100;
-    $monthKey = $dueDate ? date('Y-m', strtotime($dueDate)) : ($hasValidPeriod ? $periodKey : (!empty($row['payment_date']) ? date('Y-m', strtotime($row['payment_date'])) : $periodKey));
+    $periodKey = $hasValidPeriod ? ($periodYear . '-' . str_pad((string)$periodMonth, 2, '0', STR_PAD_LEFT)) : null;
+    $fallbackMonthKey = !empty($group['payment_date']) ? date('Y-m', strtotime($group['payment_date'])) : $periodKey;
+    $isRent = ($group['payment_type'] ?? '') === 'rent';
+
     if (!isset($heatmapPaymentsByContract[$eid])) {
         $heatmapPaymentsByContract[$eid] = [];
         $heatmapPaymentsListByContract[$eid] = [];
     }
-    if (!isset($heatmapPaymentsByContract[$eid][$monthKey])) {
-        $heatmapPaymentsByContract[$eid][$monthKey] = ['amount' => 0, 'amount_rent' => 0, 'payment_date' => null, 'payment_count' => 0];
+    $allocated = 0.0;
+    foreach ($group['linked'] as $pr) {
+        $monthKey = date('Y-m', strtotime($pr['due_date']));
+        $amt = (float)$pr['amount'];
+        $allocated += $amt;
+        if (!isset($heatmapPaymentsByContract[$eid][$monthKey])) {
+            $heatmapPaymentsByContract[$eid][$monthKey] = ['amount' => 0, 'amount_rent' => 0, 'payment_date' => null, 'payment_count' => 0];
+        }
+        $heatmapPaymentsByContract[$eid][$monthKey]['amount'] += $amt;
+        if ($isRent) $heatmapPaymentsByContract[$eid][$monthKey]['amount_rent'] += $amt;
+        $heatmapPaymentsByContract[$eid][$monthKey]['payment_count'] += 1;
+        if (!empty($group['payment_date']) && ($heatmapPaymentsByContract[$eid][$monthKey]['payment_date'] === null || $group['payment_date'] > $heatmapPaymentsByContract[$eid][$monthKey]['payment_date'])) {
+            $heatmapPaymentsByContract[$eid][$monthKey]['payment_date'] = $group['payment_date'];
+        }
+        if (!isset($heatmapPaymentsListByContract[$eid][$monthKey])) $heatmapPaymentsListByContract[$eid][$monthKey] = [];
+        $heatmapPaymentsListByContract[$eid][$monthKey][] = [
+            'amount' => $amt,
+            'payment_date' => $group['payment_date'],
+            'bank_transaction_id' => $group['bank_transaction_id'],
+        ];
     }
-    $amt = (float)($row['amount'] ?? 0);
-    $heatmapPaymentsByContract[$eid][$monthKey]['amount'] += $amt;
-    if (($row['payment_type'] ?? '') === 'rent') {
-        $heatmapPaymentsByContract[$eid][$monthKey]['amount_rent'] += $amt;
+    $remainder = round($payAmt - $allocated, 2);
+    if ($remainder != 0) {
+        $monthKey = $periodKey ?: $fallbackMonthKey;
+        if ($monthKey) {
+            if (!isset($heatmapPaymentsByContract[$eid][$monthKey])) {
+                $heatmapPaymentsByContract[$eid][$monthKey] = ['amount' => 0, 'amount_rent' => 0, 'payment_date' => null, 'payment_count' => 0];
+            }
+            $heatmapPaymentsByContract[$eid][$monthKey]['amount'] += $remainder;
+            if ($isRent) $heatmapPaymentsByContract[$eid][$monthKey]['amount_rent'] += $remainder;
+            $heatmapPaymentsByContract[$eid][$monthKey]['payment_count'] += 1;
+            if (!empty($group['payment_date']) && ($heatmapPaymentsByContract[$eid][$monthKey]['payment_date'] === null || $group['payment_date'] > $heatmapPaymentsByContract[$eid][$monthKey]['payment_date'])) {
+                $heatmapPaymentsByContract[$eid][$monthKey]['payment_date'] = $group['payment_date'];
+            }
+            if (!isset($heatmapPaymentsListByContract[$eid][$monthKey])) $heatmapPaymentsListByContract[$eid][$monthKey] = [];
+            $heatmapPaymentsListByContract[$eid][$monthKey][] = [
+                'amount' => $remainder,
+                'payment_date' => $group['payment_date'],
+                'bank_transaction_id' => $group['bank_transaction_id'],
+            ];
+        }
     }
-    $heatmapPaymentsByContract[$eid][$monthKey]['payment_count'] += 1;
-    if (!empty($row['payment_date']) && ($heatmapPaymentsByContract[$eid][$monthKey]['payment_date'] === null || $row['payment_date'] > $heatmapPaymentsByContract[$eid][$monthKey]['payment_date'])) {
-        $heatmapPaymentsByContract[$eid][$monthKey]['payment_date'] = $row['payment_date'];
-    }
-    if (!isset($heatmapPaymentsListByContract[$eid][$monthKey])) $heatmapPaymentsListByContract[$eid][$monthKey] = [];
-    $heatmapPaymentsListByContract[$eid][$monthKey][] = [
-        'amount' => $amt,
-        'payment_date' => !empty($row['payment_date']) ? $row['payment_date'] : null,
-        'bank_transaction_id' => !empty($row['bank_transaction_id']) ? $row['bank_transaction_id'] : null,
-    ];
 }
 $heatmapPaymentsByPropertyMonth = [];
 $heatmapPaymentsListByPropertyMonth = [];

@@ -1023,15 +1023,23 @@ async function openPaymentModal(el) {
         if (!requestLinkList) return;
         const prId = r => r.payment_requests_id ?? r.id;
         const idSet = new Set((checkedIds || []).map(String));
+        const sorted = [...requests].sort((a, b) => {
+            const da = a.due_date ? String(a.due_date) : '';
+            const db = b.due_date ? String(b.due_date) : '';
+            if (da && db) return da.localeCompare(db);
+            if (da) return -1;
+            if (db) return 1;
+            return 0;
+        });
         let html = '';
-        requests.forEach(r => {
+        sorted.forEach(r => {
             const rid = prId(r);
             const base = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč';
             const duePart = r.due_date ? (' – splatnost ' + UI.fmtDate(r.due_date)) : '';
             const statusPart = r.paid_at ? ' (uhrazeno)' : ' (nevyřízeno)';
             const label = base + duePart + statusPart;
             const checked = idSet.has(String(rid)) ? ' checked' : '';
-            html += '<label class="pay-modal-request-cb"><input type="checkbox" name="pay-modal-pr" value="' + rid + '"' + checked + '> ' + UI.esc(label) + '</label>';
+            html += '<label class="pay-modal-request-cb"><input type="checkbox" name="pay-modal-pr" value="' + rid + '"' + checked + '><span class="pay-modal-request-cb-text">' + UI.esc(label) + '</span></label>';
         });
         if (!html) html = '<p class="text-muted" style="font-size:.9rem">Žádné požadavky k propojení.</p>';
         requestLinkList.innerHTML = html;
@@ -1068,9 +1076,11 @@ async function openPaymentModal(el) {
             const contractIndex = contractIdToIndex[cid] ?? 0;
             const tenantLabel = (p.tenant_name != null && p.tenant_name !== '') ? (' <span class="pay-modal-tenant-label" title="Smlouva – nájemce">' + UI.esc(p.tenant_name) + '</span>') : '';
             const tenantAttr = (p.tenant_name != null && p.tenant_name !== '') ? (' data-tenant-name="' + String(p.tenant_name).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"') : '';
+            const periodY = (p.period_year != null && p.period_year !== '') ? String(p.period_year) : '';
+            const periodM = (p.period_month != null && p.period_month !== '') ? String(p.period_month) : '';
             html += '<li class="pay-modal-existing-item pay-modal-by-contract-' + contractIndex + '">' +
                 '<span>' + typeBadge + ' ' + amt + ' Kč (' + dt + ')' + batchTag + tenantLabel + '</span> ' +
-                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-contracts-id="' + cid + '"' + tenantAttr + ' data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '" data-linked-request-ids="' + String(linkedReqIds).replace(/"/g, '&quot;') + '"' + noteAttr + '>Upravit</button> ' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-contracts-id="' + cid + '"' + tenantAttr + ' data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '" data-linked-request-ids="' + String(linkedReqIds).replace(/"/g, '&quot;') + '" data-period-year="' + periodY + '" data-period-month="' + periodM + '"' + noteAttr + '>Upravit</button> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + payEntityId + '" data-batch-id="' + (p.payment_batch_id || '') + '">Smazat</button>' +
                 '</li>';
         });
@@ -1166,6 +1176,16 @@ async function openPaymentModal(el) {
             editIdEl.dataset.batchId = String(editBtn.dataset.batchId || '');
             editIdEl.dataset.originalAmount = String(editBtn.dataset.amount || '');
             editIdEl.dataset.linkedRequestIds = String(editBtn.dataset.linkedRequestIds || '');
+            const periodWrap = document.getElementById('pay-modal-period-wrap');
+            const periodMonthEl = document.getElementById('pay-modal-period-month');
+            const periodYearEl = document.getElementById('pay-modal-period-year');
+            if (periodWrap && periodMonthEl && periodYearEl) {
+                periodWrap.style.display = 'block';
+                const py = (editBtn.dataset.periodYear != null && editBtn.dataset.periodYear !== '') ? editBtn.dataset.periodYear : year;
+                const pm = (editBtn.dataset.periodMonth != null && editBtn.dataset.periodMonth !== '') ? editBtn.dataset.periodMonth : month;
+                periodYearEl.value = py;
+                periodMonthEl.value = pm;
+            }
             amount.value = editBtn.dataset.amount || '';
             dateInput.value = editBtn.dataset.date || new Date().toISOString().slice(0, 10);
             methodSelect.value = editBtn.dataset.method === 'cash' ? 'cash' : 'account';
@@ -1181,6 +1201,8 @@ async function openPaymentModal(el) {
             methodWrap.style.display = 'flex';
             batchHintEl.style.display = editBtn.dataset.batchId ? 'block' : 'none';
             bulkWrap.style.display = 'none';
+            const periodWrapEdit = document.getElementById('pay-modal-period-wrap');
+            if (periodWrapEdit) periodWrapEdit.style.display = 'block';
             if (requestLinkWrap && requestLinkList) {
                 requestLinkWrap.style.display = '';
                 const payContractId = String(editBtn.dataset.contractsId ?? '');
@@ -1221,6 +1243,8 @@ async function openPaymentModal(el) {
             delete editIdEl.dataset.batchId;
             delete editIdEl.dataset.originalAmount;
             delete editIdEl.dataset.linkedRequestIds;
+            const periodWrapAdd = document.getElementById('pay-modal-period-wrap');
+            if (periodWrapAdd) periodWrapAdd.style.display = 'none';
             const prefillMsg = document.getElementById('pay-modal-prefill-msg');
             if (prefillMsg) { prefillMsg.style.display = 'none'; prefillMsg.textContent = ''; }
             if (requestLinkWrap && requestLinkList) {
@@ -1362,10 +1386,22 @@ async function openPaymentModal(el) {
                     }
                     await Api.paymentsEditBatch(batchId, batchData);
                 } else if (editId) {
+                    const periodMonthEl = document.getElementById('pay-modal-period-month');
+                    const periodYearEl = document.getElementById('pay-modal-period-year');
+                    let editPeriodYear = parseInt(year, 10);
+                    let editPeriodMonth = parseInt(month, 10);
+                    if (periodYearEl && periodMonthEl && periodYearEl.value.trim() !== '' && periodMonthEl.value) {
+                        const y = parseInt(periodYearEl.value.trim(), 10);
+                        const m = parseInt(periodMonthEl.value, 10);
+                        if (!isNaN(y) && y >= 2000 && y <= 2100 && !isNaN(m) && m >= 1 && m <= 12) {
+                            editPeriodYear = y;
+                            editPeriodMonth = m;
+                        }
+                    }
                     const payData = {
                         contracts_id: parseInt(contractsId, 10),
-                        period_year: parseInt(year, 10),
-                        period_month: parseInt(month, 10),
+                        period_year: editPeriodYear,
+                        period_month: editPeriodMonth,
                         amount: amt,
                         payment_date: dateInput.value,
                         payment_method: method,
