@@ -888,6 +888,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .pay-modal-by-contract-0 { background: rgba(59, 130, 246, .08); border-left: 3px solid rgba(59, 130, 246, .5); }
 .pay-modal-by-contract-1 { background: rgba(34, 197, 94, .08); border-left: 3px solid rgba(34, 197, 94, .5); }
 .pay-modal-by-contract-2 { background: rgba(168, 85, 247, .08); border-left: 3px solid rgba(168, 85, 247, .5); }
+.pay-modal-existing-item--editing.pay-modal-by-contract-0 { background: rgba(59, 130, 246, .22); }
+.pay-modal-existing-item--editing.pay-modal-by-contract-1 { background: rgba(34, 197, 94, .22); }
+.pay-modal-existing-item--editing.pay-modal-by-contract-2 { background: rgba(168, 85, 247, .22); }
+.pay-modal-existing-item--outside-month .pay-modal-main-label,
+.pay-modal-existing-item--outside-month .pay-modal-main-date,
+.pay-modal-existing-item--outside-month .pay-modal-main-amount { color: var(--txt3); font-weight: 500; }
+.pay-modal-sum-amount { color: var(--accent); font-weight: 600; }
+.pay-modal-uncheck-hint { margin-left: 10px; font-size: .85rem; color: var(--txt2); }
 .pay-modal-tenant-label { font-size: .8rem; color: var(--txt3); margin-left: 6px; font-weight: 500; }
 .pay-modal-existing-content { display: grid; grid-template-columns: 1fr auto auto; align-items: baseline; gap: 8px 12px; min-width: 0; flex: 1; }
 .pay-modal-main-label { min-width: 0; }

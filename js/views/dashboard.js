@@ -998,6 +998,7 @@ async function openPaymentModal(el) {
         if (sum != null) amount.value = sum;
     }
 
+    const sumForMonth = forMonth.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
     let infoHtml = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
         '<div><strong>Nájemce:</strong> ' + UI.esc(tenantName) + '</div>' +
         '<div><strong>Období:</strong> ' + monthName + ' ' + year + '</div>';
@@ -1005,7 +1006,7 @@ async function openPaymentModal(el) {
         infoHtml += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(paymentAmount) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(remaining) + ' Kč</div>';
     } else if (isPaid) {
         const overpaid = paymentAmount > amountVal;
-        infoHtml += '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen' : 'plně uhrazen') + '.</strong> Zrušte zaškrtnutí pro smazání všech plateb.</div>';
+        infoHtml += '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen' : 'plně uhrazen') + ' </strong><span class="pay-modal-sum-amount">(' + UI.fmt(sumForMonth) + ' Kč)</span>.</div>';
     }
     info.innerHTML = infoHtml;
     const initialInfoHtml = infoHtml;
@@ -1146,7 +1147,10 @@ async function openPaymentModal(el) {
                     '<span class="pay-modal-main-label">' + typeBadge + batchTag + tenantLabel + '</span>' +
                     '<span class="pay-modal-main-date">' + dt + '</span>' +
                     '<span class="pay-modal-main-amount">' + amt + ' Kč</span></div>');
-            html += '<li class="pay-modal-existing-item pay-modal-by-contract-' + contractIndex + '">' +
+            const paymentDateMonthKey = (p.payment_date && String(p.payment_date).slice(0, 7)) || '';
+            const rowOutsideMonth = paymentDateMonthKey && paymentDateMonthKey !== monthKey;
+            const itemClasses = 'pay-modal-existing-item pay-modal-by-contract-' + contractIndex + (rowOutsideMonth ? ' pay-modal-existing-item--outside-month' : '');
+            html += '<li class="' + itemClasses + '">' +
                 contentHtml + ' ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-contracts-id="' + cid + '"' + tenantAttr + ' data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '" data-linked-request-ids="' + String(linkedIdsStr).replace(/"/g, '&quot;') + '" data-period-year="' + periodY + '" data-period-month="' + periodM + '"' + noteAttr + '>Upravit</button> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + payEntityId + '" data-batch-id="' + (p.payment_batch_id || '') + '">Smazat</button>' +
@@ -1202,7 +1206,7 @@ async function openPaymentModal(el) {
                 prefillMsgEl.style.display = 'block';
             }
         } else if (remaining <= 0 && paidTotal >= expectedTotal && prefillMsgEl) {
-            prefillMsgEl.innerHTML = 'Měsíc je plně uhrazen. <a href="#" class="pay-modal-add-extra-link" data-action="add">Přidejte platbu navíc (přeplatek, doplatek…).</a>';
+            prefillMsgEl.innerHTML = 'Měsíc je plně uhrazen <span class="pay-modal-sum-amount">(' + UI.fmt(paidTotal) + ' Kč)</span>. <a href="#" class="pay-modal-add-extra-link" data-action="add">Přidejte platbu navíc (přeplatek, doplatek…).</a>';
             prefillMsgEl.style.display = 'block';
         }
     } else if (paymentRequestId && prefillMsgEl) {
@@ -1225,6 +1229,9 @@ async function openPaymentModal(el) {
     }
 
     function openAddForm() {
+        existingWrap.querySelectorAll('.pay-modal-existing-item--editing').forEach(el => el.classList.remove('pay-modal-existing-item--editing'));
+        const uncheckHintAdd = document.getElementById('pay-modal-uncheck-hint');
+        if (uncheckHintAdd) uncheckHintAdd.style.display = 'none';
         if (formSection) formSection.style.display = '';
         if (formTitle) { formTitle.style.display = ''; formTitle.textContent = 'Přidat platbu'; }
         if (info && typeof initialInfoHtml !== 'undefined') info.innerHTML = initialInfoHtml;
@@ -1263,6 +1270,9 @@ async function openPaymentModal(el) {
         const delBtn = e.target.closest('[data-action="delete"]');
         const addLink = e.target.closest('[data-action="add"]');
         if (editBtn) {
+            existingWrap.querySelectorAll('.pay-modal-existing-item--editing').forEach(el => el.classList.remove('pay-modal-existing-item--editing'));
+            const editingRow = editBtn.closest('.pay-modal-existing-item');
+            if (editingRow) editingRow.classList.add('pay-modal-existing-item--editing');
             if (formSection) formSection.style.display = '';
             if (formTitle) { formTitle.style.display = ''; formTitle.textContent = 'Upravit platbu'; }
             const pt = editBtn.dataset.type || 'rent';
@@ -1303,6 +1313,8 @@ async function openPaymentModal(el) {
             methodWrap.style.display = 'flex';
             batchHintEl.style.display = editBtn.dataset.batchId ? 'block' : 'none';
             bulkWrap.style.display = 'none';
+            const uncheckHintEl = document.getElementById('pay-modal-uncheck-hint');
+            if (uncheckHintEl) uncheckHintEl.style.display = '';
             const addLinkWrapEdit = document.querySelector('.pay-modal-add-link');
             if (addLinkWrapEdit) addLinkWrapEdit.style.display = '';
             const periodWrapEdit = document.getElementById('pay-modal-period-wrap');
