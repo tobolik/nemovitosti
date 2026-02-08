@@ -894,11 +894,6 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .pay-modal-existing-item--outside-month .pay-modal-main-label,
 .pay-modal-existing-item--outside-month .pay-modal-main-date,
 .pay-modal-existing-item--outside-month .pay-modal-main-amount { color: var(--txt3); font-weight: 500; }
-.pay-modal-existing-item--same-month { background: #fff !important; }
-.pay-modal-existing-item--same-month .pay-modal-main-label,
-.pay-modal-existing-item--same-month .pay-modal-main-date,
-.pay-modal-existing-item--same-month .pay-modal-main-amount { color: #1e293b; font-weight: 600; }
-.pay-modal-existing-item--same-month .pay-modal-tenant-label { color: #64748b; }
 .pay-modal-sum-amount { color: var(--accent); font-weight: 600; }
 .pay-modal-uncheck-hint { margin-left: 10px; font-size: .85rem; color: var(--txt2); }
 .pay-modal-tenant-label { font-size: .8rem; color: var(--txt3); margin-left: 6px; font-weight: 500; }
@@ -921,7 +916,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .pay-modal-request-cb { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; font-size: .9rem; cursor: pointer; padding: 2px 0; line-height: 1.4; }
 .pay-modal-request-cb-text { min-width: 0; line-height: 1.4; }
 .pay-modal-request-cb input { margin: 0; vertical-align: middle; justify-self: end; }
-.pay-modal-add-block { margin-top: 10px; padding: 10px 12px; background: var(--bg2); border-radius: var(--r); }
+.pay-modal-add-block { margin-top: 10px; padding: 10px 12px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--r); }
 .pay-modal-add-link { margin: 0; padding: 0; border: none; }
 .pay-modal-add-link a { font-size: .9rem; color: var(--primary); }
 .pay-modal-form-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--glass-border); border-radius: var(--r); }
@@ -948,7 +943,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .payment-info div { margin: 4px 0; }
 .payment-info strong { color: var(--txt); }
 .payment-checkbox-wrap { margin: 12px 0; }
-.payment-checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(22,163,74,.15); padding: 12px; border-radius: var(--r); font-weight: 600; color: #86efac; border: 1px solid rgba(22,163,74,.3); }
+.payment-checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500; color: var(--txt2); }
 .payment-checkbox-label input { width: 20px; height: 20px; accent-color: var(--green-600); }
 
 /* ADDRESS AUTOCOMPLETE */

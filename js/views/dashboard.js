@@ -1170,8 +1170,7 @@ async function openPaymentModal(el) {
             const contributesAny = amountContributingToMonth(p) > 0;
             const allPartsInMonth = !hasBreakdown ? (effectiveMonthKey(p) === monthKey) : (partsWithMonth.length > 0 && partsWithMonth.every(part => part.partMonthKey === monthKey));
             const rowOutsideMonth = !contributesAny || (hasBreakdown && !allPartsInMonth);
-            const paymentDateInPeriodMonth = !!(p.payment_date && String(p.payment_date).slice(0, 7) === monthKey);
-            const itemClasses = 'pay-modal-existing-item pay-modal-by-contract-' + contractIndex + (rowOutsideMonth ? ' pay-modal-existing-item--outside-month' : '') + (paymentDateInPeriodMonth ? ' pay-modal-existing-item--same-month' : '');
+            const itemClasses = 'pay-modal-existing-item pay-modal-by-contract-' + contractIndex + (rowOutsideMonth ? ' pay-modal-existing-item--outside-month' : '');
             html += '<li class="' + itemClasses + '">' +
                 contentHtml + ' ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-contracts-id="' + cid + '" data-contract-index="' + contractIndex + '"' + tenantAttr + ' data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '" data-linked-request-ids="' + String(linkedIdsStr).replace(/"/g, '&quot;') + '" data-period-year="' + periodY + '" data-period-month="' + periodM + '"' + noteAttr + '>Upravit</button> ' +
