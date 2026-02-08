@@ -240,6 +240,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $row['suggested_contracts_id'] = $suggestion['suggested_contracts_id'];
                 $row['suggested_period_year'] = $suggestion['suggested_period_year'];
                 $row['suggested_period_month'] = $suggestion['suggested_period_month'];
+                $row['suggested_period_year_to'] = $suggestion['suggested_period_year'];
+                $row['suggested_period_month_to'] = $suggestion['suggested_period_month'];
                 $row['suggested_payment_type'] = $suggestion['suggested_payment_type'];
             }
         }

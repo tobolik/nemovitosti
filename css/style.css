@@ -1036,24 +1036,51 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 #import-table .searchable-select-wrap .searchable-select-input::placeholder {
   color: #64748b;
 }
-#import-table td.import-cell-paired .searchable-select-wrap .searchable-select-input,
+/* Napárované buňky mohou být td nebo span (v bloku Párování) */
+#import-table .import-cell-paired .searchable-select-wrap .searchable-select-input,
 #import-table tr.import-row-processed .searchable-select-wrap .searchable-select-input {
   background: transparent;
   color: var(--txt);
   border-color: rgba(255,255,255,.18);
 }
-#import-table td.import-cell-paired .searchable-select-wrap .searchable-select-input::placeholder,
+#import-table .import-cell-paired .searchable-select-wrap .searchable-select-input::placeholder,
 #import-table tr.import-row-processed .searchable-select-wrap .searchable-select-input::placeholder {
   color: var(--txt3);
 }
-#import-table td.import-cell-paired select,
+#import-table .import-cell-paired select,
 #import-table tr.import-row-processed select {
   background: transparent;
   color: inherit;
 }
-#import-table td.import-cell-paired .searchable-select-wrap .searchable-select-native,
+#import-table .import-cell-paired .searchable-select-wrap .searchable-select-native,
 #import-table tr.import-row-processed .searchable-select-wrap .searchable-select-native {
   background: transparent;
+}
+/* Párování: dva řádky – Smlouva + Typ, pod tím Období od + Období do */
+#import-table .import-cell-pairing {
+  vertical-align: top;
+  min-width: 280px;
+}
+#import-table .import-pairing-row1,
+#import-table .import-pairing-row2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+#import-table .import-pairing-row1 { margin-bottom: 8px; }
+#import-table .import-pairing-row1 .import-cell-contract { flex: 1; min-width: 140px; }
+#import-table .import-pairing-row1 .import-cell-type { flex: 0 0 auto; min-width: 100px; }
+#import-table .import-pairing-row2 .import-cell-period-from,
+#import-table .import-pairing-row2 .import-cell-period-to {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* Kontrola importů: tabulka bez vlastních posuvníků – roste s obsahem, roluje celá stránka */
+#import-table-wrap.tbl-wrap {
+  overflow: visible;
+  max-height: none;
 }
 .tbl td.col-status { white-space: nowrap; }
 
@@ -1260,6 +1287,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
   .tbl-wrap {
     border-radius: var(--r);
     overflow-x: hidden;
+  }
+  #import-table-wrap.tbl-wrap {
+    overflow: visible;
+    max-height: none;
   }
   table.tbl {
     width: 100%;

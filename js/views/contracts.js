@@ -320,6 +320,11 @@ const ContractsView = (() => {
                 if (typeof UI.updateSearchableSelectDisplay === 'function') {
                     UI.updateSearchableSelectDisplay('con-property');
                     UI.updateSearchableSelectDisplay('con-tenant');
+                    // Po přepnutí z Platby se musí znovu aktivovat zobrazení – odložíme o jeden frame
+                    requestAnimationFrame(() => {
+                        UI.updateSearchableSelectDisplay('con-property');
+                        UI.updateSearchableSelectDisplay('con-tenant');
+                    });
                 }
                 toggleFirstMonthRentVisibility();
                 toggleLastMonthRentVisibility();

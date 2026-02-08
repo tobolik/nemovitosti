@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=2.1.29">
+<link rel="stylesheet" href="css/style.css?v=2.1.34">
 </head>
 <body>
 
@@ -453,6 +453,7 @@
           <p class="text-muted" style="margin-bottom:12px">Vyberte účet a období. Příchozí platby se naimportují do Kontroly importů, kde je napárujete na smlouvy a měsíce a hromadně schválíte.</p>
           <div class="form-row">
             <div class="fg"><label>Účet</label><select id="fio-fetch-account"><option value="">— Vyberte účet —</option></select></div>
+            <div class="fg"><label>Smlouva (období)</label><select id="fio-fetch-contract"><option value="">— Volitelně: podle smlouvy —</option></select></div>
             <div class="fg"><label>Od data</label><input type="date" id="fio-fetch-from"></div>
             <div class="fg"><label>Do data</label><input type="date" id="fio-fetch-to"></div>
             <div class="fg" style="align-self:flex-end"><button type="button" class="btn btn-pri" id="btn-fio-fetch">Importovat z FIO</button></div>
@@ -486,7 +487,7 @@
         </div>
         <div class="list-actions" style="margin-bottom:8px"><button type="button" class="btn btn-pri" id="import-approve-btn" disabled>Hromadně schválit vybrané</button></div>
         <div id="import-alert" class="alert" style="display:none"></div>
-        <div id="import-table-wrap" class="tbl-wrap"><table class="tbl tbl-striped" id="import-table"><thead><tr><th class="th-cb"><input type="checkbox" id="import-select-all" title="Vybrat vše"></th><th>Stav</th><th>Datum</th><th>Částka</th><th class="col-hide-mobile">Měna</th><th>Protiúčet</th><th>Shoda</th><th class="col-hide-mobile">Zpráva</th><th>Smlouva</th><th>Období od</th><th>Období do</th><th>Typ</th><th class="th-act"></th></tr></thead><tbody id="import-tbody"></tbody></table></div>
+        <div id="import-table-wrap" class="tbl-wrap"><table class="tbl tbl-striped" id="import-table"><thead><tr><th class="th-cb"><input type="checkbox" id="import-select-all" title="Vybrat vše"></th><th>Stav</th><th>Datum</th><th>Částka</th><th class="col-hide-mobile">Měna</th><th>Protiúčet</th><th>Shoda</th><th class="col-hide-mobile">Zpráva</th><th colspan="4">Párování</th><th class="th-act"></th></tr></thead><tbody id="import-tbody"></tbody></table></div>
         <div id="import-empty" class="empty" style="display:none">Žádné importy. Naimportujte pohyby v sekci <a href="#bank_accounts">Bankovní účty</a> → Načíst z FIO.</div>
       </div>
 
@@ -521,7 +522,7 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v2.1.29</span>
+    <span class="footer-version">v2.1.34</span>
     <span id="footer-php-version" class="footer-php-version" title="Verze PHP na serveru"></span>
     © 2026 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
@@ -736,17 +737,17 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=2.1.29"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=2.1.29"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=2.1.29"></script>
-<script src="js/app.js?v=2.1.29"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=2.1.29"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=2.1.29"></script>
-<script src="js/views/tenants.js?v=2.1.29"></script>
-<script src="js/views/contracts.js?v=2.1.29"></script>
-<script src="js/views/payments.js?v=2.1.29"></script>
-<script src="js/views/bank_accounts.js?v=2.1.29"></script>
-<script src="js/views/payment_imports.js?v=2.1.29"></script>
-<script src="js/views/users.js?v=2.1.29"></script>
+<script src="js/api.js?v=2.1.34"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=2.1.34"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=2.1.34"></script>
+<script src="js/app.js?v=2.1.34"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=2.1.34"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=2.1.34"></script>
+<script src="js/views/tenants.js?v=2.1.34"></script>
+<script src="js/views/contracts.js?v=2.1.34"></script>
+<script src="js/views/payments.js?v=2.1.34"></script>
+<script src="js/views/bank_accounts.js?v=2.1.34"></script>
+<script src="js/views/payment_imports.js?v=2.1.34"></script>
+<script src="js/views/users.js?v=2.1.34"></script>
 </body>
 </html>
