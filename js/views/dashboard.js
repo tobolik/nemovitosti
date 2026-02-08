@@ -1107,12 +1107,12 @@ async function openPaymentModal(el) {
             const periodLabelLower = periodLabel ? (periodLabel.charAt(0).toLowerCase() + periodLabel.slice(1)) : '';
             const paymentMonthKey = (p.period_year != null && p.period_month != null) ? (String(p.period_year) + '-' + String(p.period_month).padStart(2, '0')) : '';
             const partsWithMonth = [];
-            if (remainder !== 0 && periodLabel) partsWithMonth.push({ label: 'Nájem (' + periodLabelLower + ')', amount: UI.fmt(remainder) + ' Kč', partMonthKey: paymentMonthKey });
+            if (remainder !== 0 && periodLabel) partsWithMonth.push({ label: 'Nájem', dateLabel: periodLabelLower, amount: UI.fmt(remainder) + ' Kč', partMonthKey: paymentMonthKey });
             linkedReqs.forEach(r => {
                 const reqLabel = requestTypeLabelsShort[r.type] || 'Požadavek';
                 const reqDate = r.due_date ? UI.fmtDate(r.due_date) : '';
                 const reqMonthKey = r.due_date ? String(r.due_date).slice(0, 7) : '';
-                partsWithMonth.push({ label: reqLabel + ' (' + reqDate + ')', amount: UI.fmt(parseFloat(r.amount) || 0) + ' Kč', partMonthKey: reqMonthKey });
+                partsWithMonth.push({ label: reqLabel, dateLabel: reqDate, amount: UI.fmt(parseFloat(r.amount) || 0) + ' Kč', partMonthKey: reqMonthKey });
             });
             const hasBreakdown = partsWithMonth.length > 1 || (partsWithMonth.length === 1 && linkedReqs.length > 0);
             const hasRentPart = remainder !== 0 && periodLabel;
@@ -1133,16 +1133,18 @@ async function openPaymentModal(el) {
                 ? partsWithMonth.map(function (part) {
                     const active = part.partMonthKey === monthKey;
                     const rowClass = 'pay-modal-breakdown-row pay-modal-breakdown-part--' + (active ? 'active' : 'inactive');
-                    return '<div class="' + rowClass + '"><span class="pay-modal-breakdown-label">' + part.label + '</span><span class="pay-modal-breakdown-amount">' + part.amount + '</span></div>';
+                    return '<div class="' + rowClass + '"><span class="pay-modal-breakdown-label">' + UI.esc(part.label) + '</span><span class="pay-modal-breakdown-date">' + UI.esc(part.dateLabel || '') + '</span><span class="pay-modal-breakdown-amount">' + part.amount + '</span></div>';
                 }).join('')
                 : '';
             const contentHtml = hasBreakdown && partsWithMonth.length
                 ? ('<div class="pay-modal-existing-content">' +
-                    '<span class="pay-modal-main-label">' + typeBadge + ' (' + dt + ')' + batchTag + tenantLabel + '</span>' +
+                    '<span class="pay-modal-main-label">' + typeBadge + batchTag + tenantLabel + '</span>' +
+                    '<span class="pay-modal-main-date">' + dt + '</span>' +
                     '<span class="pay-modal-main-amount">' + amt + ' Kč</span>' +
                     '<div class="pay-modal-breakdown-block">' + breakdownRows + '</div></div>')
                 : ('<div class="pay-modal-existing-content">' +
-                    '<span class="pay-modal-main-label">' + typeBadge + ' (' + dt + ')' + batchTag + tenantLabel + '</span>' +
+                    '<span class="pay-modal-main-label">' + typeBadge + batchTag + tenantLabel + '</span>' +
+                    '<span class="pay-modal-main-date">' + dt + '</span>' +
                     '<span class="pay-modal-main-amount">' + amt + ' Kč</span></div>');
             html += '<li class="pay-modal-existing-item pay-modal-by-contract-' + contractIndex + '">' +
                 contentHtml + ' ' +
