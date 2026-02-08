@@ -85,16 +85,8 @@ function getExpectedTotalForMonth(array $c, int $year, int $m, array $rentChange
     return round($rent + $requests, 2);
 }
 
-// Platby navázané na požadavek: započítat do měsíce splatnosti požadavku (due_date), ne do period – aby kauce uhrazená dle požadavku nezpůsobila „přeplaceno“ v jiném měsíci
-$paymentEntityToRequestMonth = [];
-$prLinkStmt = db()->query("
-    SELECT payments_id, due_date FROM payment_requests
-    WHERE valid_to IS NULL AND payments_id IS NOT NULL AND due_date IS NOT NULL
-");
-foreach ($prLinkStmt->fetchAll() as $pr) {
-    $paymentEntityToRequestMonth[(int)$pr['payments_id']] = date('Y-m', strtotime($pr['due_date']));
-}
-
+// Kauce a vrácení kauce: započítat do měsíce, kdy byla platba skutečně zaplacena/vyplacena (payment_date).
+// Může být před začátkem smlouvy (kauce) nebo po konci (vrácení kauce). Ostatní platby podle period.
 // Payments per contract – platby odkazují na contracts_id (entity_id smlouvy)
 // paidRent: jen platby typu rent (pro očekávaný nájem, neuhrazené měsíce)
 // paidTotal: všechny platby (pro součet v sekci Nájemník)
@@ -113,10 +105,9 @@ foreach ($contracts as $c) {
     $paymentsListByContract[$entityId] = [];
     foreach ($s->fetchAll() as $row) {
         $periodKey = $row['period_year'] . '-' . str_pad((string)$row['period_month'], 2, '0', STR_PAD_LEFT);
-        $paymentEntityId = isset($row['payments_id']) ? (int)$row['payments_id'] : null;
-        $key = ($paymentEntityId !== null && isset($paymentEntityToRequestMonth[$paymentEntityId]))
-            ? $paymentEntityToRequestMonth[$paymentEntityId]
-            : $periodKey;
+        $pt = $row['payment_type'] ?? 'rent';
+        $usePaymentDateMonth = ($pt === 'deposit' || $pt === 'deposit_return') && !empty($row['payment_date']);
+        $key = $usePaymentDateMonth ? date('Y-m', strtotime($row['payment_date'])) : $periodKey;
         if (!isset($paymentsByContract[$entityId][$key])) {
             $paymentsByContract[$entityId][$key] = ['amount' => 0, 'amount_rent' => 0, 'payment_date' => null, 'payment_count' => 0];
         }

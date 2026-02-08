@@ -266,7 +266,7 @@ async function loadDashboard(year) {
                         }
                     }
                     tipParts.push('');
-                    tipParts.push('Platby navázané na požadavek se zobrazují v měsíci splatnosti požadavku.');
+                    tipParts.push('Kauce a vrácení kauce se započítávají do měsíce, kdy byly zaplaceny/vyplaceny.');
                     titleAttr = ' title="' + UI.esc(tipParts.join('\n')) + '"';
                 }
 
@@ -836,8 +836,15 @@ async function openPaymentModal(el) {
         return n;
     }
 
+    // Kauce a vrácení kauce patří do měsíce podle payment_date; ostatní platby podle period (konzistentní s heatmapou).
+    function effectiveMonthKey(p) {
+        const pt = (p.payment_type || 'rent');
+        if ((pt === 'deposit' || pt === 'deposit_return') && p.payment_date) return String(p.payment_date).slice(0, 7);
+        if (p.period_year != null && p.period_month != null) return String(p.period_year) + '-' + String(p.period_month).padStart(2, '0');
+        return null;
+    }
     const paymentsPromise = propertyId
-        ? Api.crudList('payments', { properties_id: propertyId, period_year: year, period_month: parseInt(month, 10) })
+        ? Api.crudList('payments', { properties_id: propertyId })
         : Api.crudList('payments', { contracts_id: contractsId });
     const requestsPromise = propertyId
         ? Api.crudList('payment_requests', { properties_id: propertyId })
@@ -848,7 +855,7 @@ async function openPaymentModal(el) {
         requestsPromise
     ]);
     let payments = paymentsResult || [];
-    let forMonth = propertyId ? payments : payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
+    let forMonth = payments.filter(p => effectiveMonthKey(p) === monthKey);
     let defaultMethod = (el.dataset.defaultPaymentMethod === 'account' || el.dataset.defaultPaymentMethod === 'cash') ? el.dataset.defaultPaymentMethod : '';
     let defaultAccountId = (el.dataset.defaultBankAccountId != null && el.dataset.defaultBankAccountId !== '') ? String(el.dataset.defaultBankAccountId) : '';
     if (!defaultMethod && !defaultAccountId && contractsId) {
@@ -1181,12 +1188,11 @@ async function openPaymentModal(el) {
                 } catch (err) { alert(err.message); return; }
             }
             if (propertyId) {
-                payments = await Api.crudList('payments', { properties_id: propertyId, period_year: year, period_month: parseInt(month, 10) });
-                forMonth = payments || [];
+                payments = await Api.crudList('payments', { properties_id: propertyId });
             } else {
                 payments = await Api.crudList('payments', { contracts_id: contractsId });
-                forMonth = payments.filter(x => String(x.period_year) === year && String(x.period_month).padStart(2, '0') === month);
             }
+            forMonth = payments.filter(p => effectiveMonthKey(p) === monthKey);
             renderExisting();
             await loadDashboard(parseInt(year, 10));
         } else if (addLink) {
