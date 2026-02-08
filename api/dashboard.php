@@ -765,19 +765,19 @@ foreach ($contractsForView as $c) {
     }
 }
 
-// Statistiky „podle splatnosti“ (vybráno za požadavky se splatností v daném období)
+// Statistiky „podle splatnosti“ = stejný zdroj jako heatmapa (heatmapPaymentsByPropertyMonth), aby „Rok (splatnost)“ odpovídal součtu buňek
 $yearIncomeByDue = 0;
-foreach ($contractsForView as $c) {
-    $entityId = $c['contracts_id'] ?? $c['id'];
+foreach ($properties as $p) {
+    $propId = (int)($p['properties_id'] ?? $p['id']);
     for ($m = 1; $m <= 12; $m++) {
         $key = $year . '-' . str_pad((string)$m, 2, '0', STR_PAD_LEFT);
-        $yearIncomeByDue += (float)(($heatmapPaymentsByContract[$entityId][$key] ?? [])['amount'] ?? 0);
+        $yearIncomeByDue += (float)(($heatmapPaymentsByPropertyMonth[$propId][$key] ?? [])['amount'] ?? 0);
     }
 }
 $monthlyIncomeByDue = 0;
-foreach ($contractsForView as $c) {
-    $entityId = $c['contracts_id'] ?? $c['id'];
-    $monthlyIncomeByDue += (float)(($heatmapPaymentsByContract[$entityId][$currentMonthKey] ?? [])['amount'] ?? 0);
+foreach ($properties as $p) {
+    $propId = (int)($p['properties_id'] ?? $p['id']);
+    $monthlyIncomeByDue += (float)(($heatmapPaymentsByPropertyMonth[$propId][$currentMonthKey] ?? [])['amount'] ?? 0);
 }
 $collectionRateByDue = $expectedYearIncome > 0 ? round($yearIncomeByDue / $expectedYearIncome * 100, 1) : 100;
 
