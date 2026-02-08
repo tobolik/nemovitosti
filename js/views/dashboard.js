@@ -395,7 +395,15 @@ async function loadDashboard(year) {
                 tags += '<span class="tag">' + u.month + '/' + u.year +
                     ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-property-id="' + (d.properties_id ?? '') + '" data-year="' + u.year + '" data-month="' + u.month + '" data-rent="' + rent + '" data-tenant="' + tenant + '" data-property="' + prop + '" title="Přidat platbu">+</span></span>';
             });
-            (d.payment_requests || []).forEach(pr => {
+            const sortedRequests = (d.payment_requests || []).slice().sort((a, b) => {
+                const da = (a.due_date || '').toString().slice(0, 10);
+                const db = (b.due_date || '').toString().slice(0, 10);
+                if (!da && !db) return 0;
+                if (!da) return 1;
+                if (!db) return -1;
+                return da.localeCompare(db);
+            });
+            sortedRequests.forEach(pr => {
                 const tenant = (d.tenant_name || '').replace(/"/g, '&quot;');
                 const prop = (d.property_name || '').replace(/"/g, '&quot;');
                 const typeLabel = requestTypeLabels[pr.type] || pr.type;
@@ -923,6 +931,14 @@ async function openPaymentModal(el) {
     if (showFormInitially) {
         if (formSection) formSection.style.display = '';
         if (formTitle) { formTitle.style.display = ''; formTitle.textContent = 'Přidat platbu'; }
+        const periodWrapAdd = document.getElementById('pay-modal-period-wrap');
+        const periodMonthAdd = document.getElementById('pay-modal-period-month');
+        const periodYearAdd = document.getElementById('pay-modal-period-year');
+        if (periodWrapAdd && periodMonthAdd && periodYearAdd) {
+            periodWrapAdd.style.display = 'block';
+            periodMonthAdd.value = month;
+            periodYearAdd.value = year;
+        }
     } else {
         if (formSection) formSection.style.display = 'none';
         if (formTitle) { formTitle.style.display = 'none'; formTitle.textContent = ''; }
