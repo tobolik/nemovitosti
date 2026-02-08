@@ -874,6 +874,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .pay-modal-full.pay-modal-overpaid { color: var(--orange-600); }
 .pay-modal-batch-hint { margin: 8px 0; padding: 8px 12px; background: rgba(234,88,12,.15); border-radius: var(--r); font-size: .85rem; color: var(--orange-600); border: 1px solid rgba(234,88,12,.3); }
 .pay-modal-prefill-msg { margin: 8px 0; padding: 8px 12px; background: rgba(59,130,246,.12); border-radius: var(--r); font-size: .85rem; color: var(--txt); border: 1px solid rgba(59,130,246,.25); }
+.pay-modal-prefill-msg .pay-modal-add-extra-link { color: var(--purple-300); text-decoration: underline; cursor: pointer; }
+.pay-modal-prefill-msg .pay-modal-add-extra-link:hover { color: var(--purple-200); }
 .pay-modal-existing { margin: 12px 0; padding: 10px; background: var(--bg2); border-radius: var(--r); }
 .pay-modal-breakdown { margin: 12px 0; padding: 10px 0; border-bottom: 1px solid var(--glass-border); }
 .pay-modal-breakdown-title { font-size: .85rem; font-weight: 600; margin-bottom: 8px; color: var(--txt2); }

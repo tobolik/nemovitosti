@@ -1183,7 +1183,7 @@ async function openPaymentModal(el) {
                 prefillMsgEl.style.display = 'block';
             }
         } else if (remaining <= 0 && paidTotal >= expectedTotal && prefillMsgEl) {
-            prefillMsgEl.textContent = 'Měsíc je plně uhrazen. Přidejte platbu navíc (přeplatek, doplatek…).';
+            prefillMsgEl.innerHTML = 'Měsíc je plně uhrazen. <a href="#" class="pay-modal-add-extra-link" data-action="add">Přidejte platbu navíc (přeplatek, doplatek…).</a>';
             prefillMsgEl.style.display = 'block';
         }
     } else if (paymentRequestId && prefillMsgEl) {
@@ -1203,6 +1203,40 @@ async function openPaymentModal(el) {
                 requestLinkWrap.style.display = 'none';
             }
         }
+    }
+
+    function openAddForm() {
+        if (formSection) formSection.style.display = '';
+        if (formTitle) { formTitle.style.display = ''; formTitle.textContent = 'Přidat platbu'; }
+        if (info && typeof initialInfoHtml !== 'undefined') info.innerHTML = initialInfoHtml;
+        editIdEl.value = '';
+        delete editIdEl.dataset.batchId;
+        delete editIdEl.dataset.originalAmount;
+        delete editIdEl.dataset.linkedRequestIds;
+        const periodWrapAdd = document.getElementById('pay-modal-period-wrap');
+        if (periodWrapAdd) periodWrapAdd.style.display = 'none';
+        if (prefillMsgEl) { prefillMsgEl.style.display = 'none'; prefillMsgEl.textContent = ''; }
+        const addLinkWrap = document.querySelector('.pay-modal-add-link');
+        if (addLinkWrap) addLinkWrap.style.display = 'none';
+        if (requestLinkWrap && requestLinkList) {
+            requestLinkWrap.style.display = '';
+            const unpaid = paymentRequests.filter(r => !r.paid_at);
+            const prefillIds = (window._payModalPrefillRequestId && Array.isArray(window._payModalPrefillRequestId)) ? window._payModalPrefillRequestId : (window._payModalPrefillRequestId ? [String(window._payModalPrefillRequestId)] : []);
+            renderRequestCheckboxes(unpaid, prefillIds);
+        }
+        amount.value = remaining;
+        typeSelect.value = 'rent';
+        setTypeWrapClass('rent');
+        paid.checked = false;
+        dateWrap.style.display = 'none';
+        methodWrap.style.display = 'none';
+        batchHintEl.style.display = 'none';
+        bulkWrap.style.display = 'block';
+        bulkCheckbox.checked = false;
+        rangeRow.style.display = 'none';
+        noteEl.value = '';
+        const counterpartAdd = document.getElementById('pay-modal-counterpart-account');
+        if (counterpartAdd) counterpartAdd.value = '';
     }
 
     existingWrap.onclick = async (e) => {
@@ -1285,38 +1319,21 @@ async function openPaymentModal(el) {
             await loadDashboard(parseInt(year, 10));
         } else if (addLink) {
             e.preventDefault();
-            if (formSection) formSection.style.display = '';
-            if (formTitle) { formTitle.style.display = ''; formTitle.textContent = 'Přidat platbu'; }
-            if (info && typeof initialInfoHtml !== 'undefined') info.innerHTML = initialInfoHtml;
-            editIdEl.value = '';
-            delete editIdEl.dataset.batchId;
-            delete editIdEl.dataset.originalAmount;
-            delete editIdEl.dataset.linkedRequestIds;
-            const periodWrapAdd = document.getElementById('pay-modal-period-wrap');
-            if (periodWrapAdd) periodWrapAdd.style.display = 'none';
-            const prefillMsg = document.getElementById('pay-modal-prefill-msg');
-            if (prefillMsg) { prefillMsg.style.display = 'none'; prefillMsg.textContent = ''; }
-            if (requestLinkWrap && requestLinkList) {
-                requestLinkWrap.style.display = '';
-                const unpaid = paymentRequests.filter(r => !r.paid_at);
-                const prefillIds = (window._payModalPrefillRequestId && Array.isArray(window._payModalPrefillRequestId)) ? window._payModalPrefillRequestId : (window._payModalPrefillRequestId ? [String(window._payModalPrefillRequestId)] : []);
-                renderRequestCheckboxes(unpaid, prefillIds);
-            }
-            amount.value = remaining;
-            typeSelect.value = 'rent';
-            setTypeWrapClass('rent');
-            paid.checked = false;
-            dateWrap.style.display = 'none';
-            methodWrap.style.display = 'none';
-            batchHintEl.style.display = 'none';
-            bulkWrap.style.display = 'block';
-            bulkCheckbox.checked = false;
-            rangeRow.style.display = 'none';
-            noteEl.value = '';
-            const counterpartAdd = document.getElementById('pay-modal-counterpart-account');
-            if (counterpartAdd) counterpartAdd.value = '';
+            openAddForm();
         }
     };
+
+    window._payModalOpenAddForm = openAddForm;
+    const modalPaymentEl = document.getElementById('modal-payment');
+    if (modalPaymentEl && !modalPaymentEl.dataset.addDelegateBound) {
+        modalPaymentEl.dataset.addDelegateBound = '1';
+        modalPaymentEl.addEventListener('click', function (e) {
+            if (e.target.closest('[data-action="add"]')) {
+                e.preventDefault();
+                if (typeof window._payModalOpenAddForm === 'function') window._payModalOpenAddForm();
+            }
+        });
+    }
 
     paid.onchange = () => {
         dateWrap.style.display = paid.checked ? 'block' : 'none';
