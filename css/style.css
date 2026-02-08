@@ -945,6 +945,9 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .payment-info strong { color: var(--txt); }
 .payment-info .pay-modal-add-extra-link { color: var(--primary); text-decoration: underline; cursor: pointer; }
 .payment-info .pay-modal-add-extra-link:hover { color: var(--primary-light, #c4b5fd); }
+.pay-modal-missing { margin-top: 6px; }
+.payment-info .pay-modal-prefill-link { color: var(--primary); text-decoration: underline; cursor: pointer; }
+.payment-info .pay-modal-prefill-link:hover { color: var(--primary-light, #c4b5fd); }
 .payment-checkbox-wrap { margin: 12px 0; }
 .payment-checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500; color: var(--txt2); }
 .payment-checkbox-label input { width: 20px; height: 20px; accent-color: var(--green-600); }

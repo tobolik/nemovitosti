@@ -1020,14 +1020,36 @@ async function openPaymentModal(el) {
         return sum;
     }
     const sumForMonth = forMonth.reduce((s, p) => s + amountContributingToMonth(p), 0);
+    const reqTypeLabelsShort = { energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
+    function buildMissingPaymentsHtml(remainingRentVal, unfulfilledReqs) {
+        const parts = [];
+        if (!isNaN(remainingRentVal) && remainingRentVal > 0) {
+            parts.push('<a href="#" class="pay-modal-prefill-link" data-type="rent" data-amount="' + UI.esc(String(remainingRentVal)) + '">Nájem ' + UI.fmt(remainingRentVal) + ' Kč</a>');
+        }
+        (unfulfilledReqs || []).forEach(function(r) {
+            const rid = r.payment_requests_id ?? r.id;
+            const amt = parseFloat(r.amount) || 0;
+            const typeVal = (r.type === 'deposit_return') ? 'deposit_return' : (['rent','deposit','energy','other'].includes(r.type) ? r.type : (r.type === 'settlement' ? 'energy' : 'energy'));
+            const label = (reqTypeLabelsShort[r.type] || 'Požadavek') + ' ' + UI.fmt(amt) + ' Kč';
+            const amtVal = (r.type === 'deposit_return' && amt > 0) ? -amt : amt;
+            parts.push('<a href="#" class="pay-modal-prefill-link" data-type="' + UI.esc(typeVal) + '" data-amount="' + UI.esc(String(amtVal)) + '" data-request-id="' + UI.esc(String(rid)) + '">' + UI.esc(label) + '</a>');
+        });
+        if (parts.length === 0) return '';
+        return '<div class="pay-modal-missing"><strong>Ještě chybí tyto platby:</strong> ' + parts.join(', ') + '.</div>';
+    }
     let infoHtml = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
         '<div><strong>Nájemce:</strong> ' + UI.esc(tenantName) + '</div>' +
         '<div><strong>Období:</strong> ' + monthName + ' ' + year + '</div>';
-    if (!isPaid && paymentAmount > 0 && remaining > 0) {
-        infoHtml += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(paymentAmount) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(remaining) + ' Kč</div>';
-    } else if (isPaid) {
-        const overpaid = paymentAmount > amountVal;
+    if (sumForMonth >= amountVal) {
+        const overpaid = sumForMonth > amountVal;
         infoHtml += '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen' : 'plně uhrazen') + ' částkou ' + UI.fmt(sumForMonth) + ' Kč</strong> (můžete <a href="#" class="pay-modal-add-extra-link" data-action="add">přidat další platbu navíc</a> za přeplatek, doplatek…).</div>';
+    } else {
+        if (sumForMonth > 0) infoHtml += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(sumForMonth) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(Math.round((amountVal - sumForMonth) * 100) / 100) + ' Kč</div>';
+        const unfulfilledForMonth = paymentRequests.filter(function(r) {
+            const d = r.due_date;
+            return d && String(d).slice(0, 7) === monthKey && !r.paid_at && String(r.contracts_id ?? '') === String(contractsId);
+        });
+        infoHtml += buildMissingPaymentsHtml(remainingRent, unfulfilledForMonth);
     }
     info.innerHTML = infoHtml;
     const initialInfoHtml = infoHtml;
@@ -1041,8 +1063,13 @@ async function openPaymentModal(el) {
         if (sum >= amountVal) {
             const overpaid = sum > amountVal;
             html += '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen' : 'plně uhrazen') + ' částkou ' + UI.fmt(sum) + ' Kč</strong> (můžete <a href="#" class="pay-modal-add-extra-link" data-action="add">přidat další platbu navíc</a> za přeplatek, doplatek…).</div>';
-        } else if (sum > 0) {
-            html += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(sum) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(Math.round((amountVal - sum) * 100) / 100) + ' Kč</div>';
+        } else {
+            if (sum > 0) html += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(sum) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(Math.round((amountVal - sum) * 100) / 100) + ' Kč</div>';
+            const unfulfilledForMonth = paymentRequests.filter(function(r) {
+                const d = r.due_date;
+                return d && String(d).slice(0, 7) === monthKey && !r.paid_at && String(r.contracts_id ?? '') === String(contractsId);
+            });
+            html += buildMissingPaymentsHtml(remainingRent, unfulfilledForMonth);
         }
         info.innerHTML = html;
     }
@@ -1299,6 +1326,22 @@ async function openPaymentModal(el) {
             setTypeWrapClass('rent');
             window._payModalPrefillRequestId = [];
         }
+        if (window._payModalPrefillFromLink) {
+            const p = window._payModalPrefillFromLink;
+            amount.value = p.amount || '';
+            typeSelect.value = p.type || 'rent';
+            setTypeWrapClass(typeSelect.value);
+            window._payModalPrefillRequestId = (p.requestId != null && p.requestId !== '') ? [String(p.requestId)] : [];
+            delete window._payModalPrefillFromLink;
+            const periodWrapFromLink = document.getElementById('pay-modal-period-wrap');
+            const periodMonthFromLink = document.getElementById('pay-modal-period-month');
+            const periodYearFromLink = document.getElementById('pay-modal-period-year');
+            if (periodWrapFromLink && periodMonthFromLink && periodYearFromLink) {
+                periodWrapFromLink.style.display = 'block';
+                periodMonthFromLink.value = String(parseInt(month, 10) || 1);
+                periodYearFromLink.value = year;
+            }
+        }
         paid.checked = false;
         dateWrap.style.display = 'none';
         methodWrap.style.display = 'none';
@@ -1413,6 +1456,13 @@ async function openPaymentModal(el) {
     if (modalPaymentEl && !modalPaymentEl.dataset.addDelegateBound) {
         modalPaymentEl.dataset.addDelegateBound = '1';
         modalPaymentEl.addEventListener('click', function (e) {
+            const prefillLink = e.target.closest('.pay-modal-prefill-link');
+            if (prefillLink) {
+                e.preventDefault();
+                window._payModalPrefillFromLink = { amount: prefillLink.dataset.amount || '', type: prefillLink.dataset.type || 'rent', requestId: prefillLink.dataset.requestId || null };
+                if (typeof window._payModalOpenAddForm === 'function') window._payModalOpenAddForm();
+                return;
+            }
             if (e.target.closest('[data-action="add"]')) {
                 e.preventDefault();
                 if (typeof window._payModalOpenAddForm === 'function') window._payModalOpenAddForm();
