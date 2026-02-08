@@ -1141,7 +1141,9 @@ async function openPaymentModal(el) {
                     '<span class="pay-modal-main-label">' + typeBadge + ' (' + dt + ')' + batchTag + tenantLabel + '</span>' +
                     '<span class="pay-modal-main-amount">' + amt + ' Kč</span>' +
                     '<div class="pay-modal-breakdown-block">' + breakdownRows + '</div></div>')
-                : ('<span>' + typeBadge + ' ' + amt + ' Kč (' + dt + ')' + batchTag + tenantLabel + '</span>');
+                : ('<div class="pay-modal-existing-content">' +
+                    '<span class="pay-modal-main-label">' + typeBadge + ' (' + dt + ')' + batchTag + tenantLabel + '</span>' +
+                    '<span class="pay-modal-main-amount">' + amt + ' Kč</span></div>');
             html += '<li class="pay-modal-existing-item pay-modal-by-contract-' + contractIndex + '">' +
                 contentHtml + ' ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-contracts-id="' + cid + '"' + tenantAttr + ' data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '" data-linked-request-ids="' + String(linkedIdsStr).replace(/"/g, '&quot;') + '" data-period-year="' + periodY + '" data-period-month="' + periodM + '"' + noteAttr + '>Upravit</button> ' +
