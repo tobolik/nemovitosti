@@ -1026,7 +1026,10 @@ async function openPaymentModal(el) {
         let html = '';
         requests.forEach(r => {
             const rid = prId(r);
-            const label = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč' + (r.paid_at ? ' (uhrazeno)' : ' (nevyřízeno)');
+            const base = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč';
+            const duePart = r.due_date ? (' – splatnost ' + UI.fmtDate(r.due_date)) : '';
+            const statusPart = r.paid_at ? ' (uhrazeno)' : ' (nevyřízeno)';
+            const label = base + duePart + statusPart;
             const checked = idSet.has(String(rid)) ? ' checked' : '';
             html += '<label class="pay-modal-request-cb"><input type="checkbox" name="pay-modal-pr" value="' + rid + '"' + checked + '> ' + UI.esc(label) + '</label>';
         });
