@@ -1191,8 +1191,8 @@ async function openPaymentModal(el) {
     prefillMsgEl && (prefillMsgEl.textContent = '');
 
     // Chytré předvyplnění při přidání platby: neuhrazený požadavek nebo zbývající nájem
-    let remaining = 0;
-    let unfulfilledReqs = [];
+    let prefillRemaining = 0;
+    let prefillUnfulfilledReqs = [];
     if (!paymentRequestId && !editIdEl.value) {
         const requestsInMonth = paymentRequests.filter(r => {
             const d = r.due_date;
@@ -1201,22 +1201,22 @@ async function openPaymentModal(el) {
         const requestSum = requestsInMonth.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
         const expectedTotal = amountVal + requestSum;
         const paidTotal = sumForMonth;
-        remaining = Math.round((expectedTotal - paidTotal) * 100) / 100;
-        unfulfilledReqs = paymentRequests.filter(r => {
+        prefillRemaining = Math.round((expectedTotal - paidTotal) * 100) / 100;
+        prefillUnfulfilledReqs = paymentRequests.filter(r => {
             const d = r.due_date;
             return d && String(d).slice(0, 7) === monthKey && !r.paid_at && String(r.contracts_id ?? '') === String(contractsId);
         });
-        if (remaining > 0) {
-            amount.value = remaining;
+        if (prefillRemaining > 0) {
+            amount.value = prefillRemaining;
             typeSelect.value = 'rent';
             setTypeWrapClass('rent');
             window._payModalPrefillRequestId = [];
             if (prefillMsgEl) {
-                prefillMsgEl.textContent = 'Bylo předvyplněno zbývajícím nájmem (' + UI.fmt(remaining) + ' Kč). Můžete změnit.';
+                prefillMsgEl.textContent = 'Bylo předvyplněno zbývajícím nájmem (' + UI.fmt(prefillRemaining) + ' Kč). Můžete změnit.';
                 prefillMsgEl.style.display = 'block';
             }
-        } else if (unfulfilledReqs.length > 0) {
-            const r = unfulfilledReqs[0];
+        } else if (prefillUnfulfilledReqs.length > 0) {
+            const r = prefillUnfulfilledReqs[0];
             const reqAmt = parseFloat(r.amount) || 0;
             amount.value = (r.type === 'deposit_return' && reqAmt > 0) ? -reqAmt : reqAmt;
             const payType = (r.type === 'deposit_return') ? 'deposit_return' : (['rent','deposit','energy','other'].includes(r.type) ? r.type : (r.type === 'settlement' ? 'energy' : 'energy'));
@@ -1228,7 +1228,7 @@ async function openPaymentModal(el) {
                 prefillMsgEl.textContent = 'Bylo předvyplněno neuhrazeným požadavkem (' + label + '). Můžete změnit.';
                 prefillMsgEl.style.display = 'block';
             }
-        } else if (remaining <= 0 && paidTotal >= expectedTotal && prefillMsgEl) {
+        } else if (prefillRemaining <= 0 && paidTotal >= expectedTotal && prefillMsgEl) {
             prefillMsgEl.innerHTML = 'Měsíc je plně uhrazen <span class="pay-modal-sum-amount">(' + UI.fmt(paidTotal) + ' Kč)</span>. <a href="#" class="pay-modal-add-extra-link" data-action="add">Přidejte platbu navíc (přeplatek, doplatek…).</a>';
             prefillMsgEl.style.display = 'block';
         }
@@ -1274,13 +1274,13 @@ async function openPaymentModal(el) {
             const prefillIds = (window._payModalPrefillRequestId && Array.isArray(window._payModalPrefillRequestId)) ? window._payModalPrefillRequestId : (window._payModalPrefillRequestId ? [String(window._payModalPrefillRequestId)] : []);
             renderRequestCheckboxes(unpaid, prefillIds);
         }
-        if (remaining > 0) {
-            amount.value = remaining;
+        if (prefillRemaining > 0) {
+            amount.value = prefillRemaining;
             typeSelect.value = 'rent';
             setTypeWrapClass('rent');
             window._payModalPrefillRequestId = [];
-        } else if (unfulfilledReqs.length > 0) {
-            const r = unfulfilledReqs[0];
+        } else if (prefillUnfulfilledReqs.length > 0) {
+            const r = prefillUnfulfilledReqs[0];
             const reqAmt = parseFloat(r.amount) || 0;
             amount.value = (r.type === 'deposit_return' && reqAmt > 0) ? -reqAmt : reqAmt;
             const payType = (r.type === 'deposit_return') ? 'deposit_return' : (['rent','deposit','energy','other'].includes(r.type) ? r.type : (r.type === 'settlement' ? 'energy' : 'energy'));
