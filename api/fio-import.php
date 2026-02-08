@@ -50,27 +50,43 @@ if (strtotime($from) > strtotime($to)) {
     jsonErr('Datum od nesmí být po datu do.');
 }
 
-// FIO API: základní URL je fioapi.fio.cz/v1/rest/, formát data Y-m-d (viz např. mhujer/fio-api-php)
+// FIO API: cURL abychom při 4xx dostali tělo odpovědi (FIO tam posílá popis chyby)
 $url = 'https://fioapi.fio.cz/v1/rest/periods/' . rawurlencode($token) . '/' . $from . '/' . $to . '/transactions.json';
-$ctx = stream_context_create([
-    'http' => [
-        'timeout' => 30,
-        'header' => "Accept: application/json\r\nUser-Agent: Nemovitosti/1.0 (FIO API client)\r\n",
-    ],
+$ch = curl_init($url);
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_HTTPHEADER => ['Accept: application/json', 'User-Agent: Nemovitosti/1.0 (FIO API client)'],
 ]);
-$raw = @file_get_contents($url, false, $ctx);
-if ($raw === false) {
-    $err = error_get_last();
-    $msg = isset($err['message']) ? $err['message'] : '';
-    if (strpos($msg, '409') !== false) {
-        jsonErr('FIO API omezuje počet požadavků (max. 1× za 30 sekund). Zkuste to znovu za chvíli.');
+$raw = curl_exec($ch);
+$httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlErr = curl_error($ch);
+curl_close($ch);
+
+if ($raw === false || $raw === '') {
+    if ($curlErr !== '') {
+        jsonErr('Nepodařilo se připojit k FIO API. ' . $curlErr);
     }
-    if (strpos($msg, '422') !== false) {
-        jsonErr('FIO API odmítlo požadavek (HTTP 422). Zkontrolujte období a token.');
-    }
-    jsonErr('Nepodařilo se připojit k FIO API. ' . $msg);
+    jsonErr('FIO API nevrátilo žádná data.');
 }
+
 $data = json_decode($raw, true);
+
+// Při 4xx/5xx zobrazit zprávu z těla (FIO posílá errorDescription), jinak běžná chyba
+if ($httpCode >= 400) {
+    $msg = 'FIO API vrátilo HTTP ' . $httpCode . '.';
+    if (is_array($data)) {
+        $detail = $data['errorDescription'] ?? $data['error'] ?? $data['message'] ?? null;
+        if ($detail !== null && $detail !== '') {
+            $msg .= ' ' . (is_string($detail) ? $detail : json_encode($detail));
+        }
+    }
+    if ($httpCode === 409) {
+        $msg = 'FIO API omezuje počet požadavků (max. 1× za 30 sekund). Zkuste to znovu za chvíli.';
+    }
+    jsonErr($msg);
+}
+
 if (!is_array($data)) {
     $jsonErr = json_last_error_msg();
     $preview = mb_substr(preg_replace('/\s+/', ' ', trim($raw)), 0, 300);
