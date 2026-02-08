@@ -1032,6 +1032,21 @@ async function openPaymentModal(el) {
     info.innerHTML = infoHtml;
     const initialInfoHtml = infoHtml;
 
+    function refreshModalInfo() {
+        if (!info) return;
+        const sum = forMonth.reduce((s, p) => s + amountContributingToMonth(p), 0);
+        let html = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
+            '<div><strong>Nájemce:</strong> ' + UI.esc(tenantName) + '</div>' +
+            '<div><strong>Období:</strong> ' + monthName + ' ' + year + '</div>';
+        if (sum >= amountVal) {
+            const overpaid = sum > amountVal;
+            html += '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen' : 'plně uhrazen') + ' částkou ' + UI.fmt(sum) + ' Kč</strong> (můžete <a href="#" class="pay-modal-add-extra-link" data-action="add">přidat další platbu navíc</a> za přeplatek, doplatek…).</div>';
+        } else if (sum > 0) {
+            html += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(sum) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(Math.round((amountVal - sum) * 100) / 100) + ' Kč</div>';
+        }
+        info.innerHTML = html;
+    }
+
     const typeLabels = { rent: 'Nájem', deposit: 'Kauce', deposit_return: 'Vrácení kauce', energy: 'Energie', other: 'Jiné' };
     function setTypeWrapClass(t) {
         const v = (t && ['rent','deposit','deposit_return','energy','other'].includes(t)) ? t : 'rent';
@@ -1385,6 +1400,7 @@ async function openPaymentModal(el) {
             }
             forMonth = payments.filter(p => effectiveMonthKey(p) === monthKey);
             renderExisting();
+            refreshModalInfo();
             await loadDashboard(parseInt(year, 10));
         } else if (addLink) {
             e.preventDefault();
