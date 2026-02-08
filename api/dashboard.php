@@ -300,9 +300,10 @@ foreach ($contracts as $c) {
     foreach ($byMonth as $monthKey => $data) {
         if (!isset($heatmapPaymentsByPropertyMonth[$pid])) $heatmapPaymentsByPropertyMonth[$pid] = [];
         if (!isset($heatmapPaymentsByPropertyMonth[$pid][$monthKey])) {
-            $heatmapPaymentsByPropertyMonth[$pid][$monthKey] = ['amount' => 0, 'payment_date' => null, 'payment_count' => 0];
+            $heatmapPaymentsByPropertyMonth[$pid][$monthKey] = ['amount' => 0, 'amount_rent' => 0, 'payment_date' => null, 'payment_count' => 0];
         }
         $heatmapPaymentsByPropertyMonth[$pid][$monthKey]['amount'] += (float)($data['amount'] ?? 0);
+        $heatmapPaymentsByPropertyMonth[$pid][$monthKey]['amount_rent'] += (float)($data['amount_rent'] ?? 0);
         $heatmapPaymentsByPropertyMonth[$pid][$monthKey]['payment_count'] += (int)($data['payment_count'] ?? 0);
         if (!empty($data['payment_date']) && ($heatmapPaymentsByPropertyMonth[$pid][$monthKey]['payment_date'] === null || $data['payment_date'] > $heatmapPaymentsByPropertyMonth[$pid][$monthKey]['payment_date'])) {
             $heatmapPaymentsByPropertyMonth[$pid][$monthKey]['payment_date'] = $data['payment_date'];
@@ -759,6 +760,8 @@ foreach ($properties as $p) {
 
             $hasUnfulfilledRequests = !empty($hasUnfulfilledByPropertyMonth[$propEntityId][$monthKey]);
             $unfulfilledRequests = $unfulfilledRequestsByPropertyMonth[$propEntityId][$monthKey] ?? [];
+            $paidRent = $paidForPropertyMonth ? (float)($paidForPropertyMonth['amount_rent'] ?? 0) : 0.0;
+            $remainingRent = max(0, round($expectedRent - $paidRent, 2));
             $heatmap[$propId . '_' . $monthKey] = [
                 'type'                 => $type,
                 'isPast'               => $isPast,
@@ -781,6 +784,9 @@ foreach ($properties as $p) {
                 'monthKey'             => $monthKey,
                 'amount'               => $expectedTotal,
                 'amount_full'          => $expectedTotal,
+                'expected_rent'        => round($expectedRent, 2),
+                'paid_rent'            => round($paidRent, 2),
+                'remaining_rent'       => $remainingRent,
                 'payment'              => $hasPaymentDate ? ['amount'=>$paidTotal, 'date'=>$paymentDate, 'count'=>$paymentCount] : null,
                 'paid_amount'          => $paidTotal,
                 'payment_count'        => $paymentCount,
