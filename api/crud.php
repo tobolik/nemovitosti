@@ -57,7 +57,21 @@ function maskBankAccountFioToken(array $row): array {
     return $row;
 }
 
-/** Návrh párování importu: podle částky, data a protiúčtu najde vhodnou smlouvu a období (nájem). Podporuje 1 měsíc i N měsíců (např. 36000 = 12×3000) a přičtení neuhrazených Požadavků na platby (nájem + požadavky = částka). */
+/** Vrací true, pokud protiúčet (normalizovaný) odpovídá některému účtu nájemníka (celé číslo nebo před lomítkem). */
+function counterpartMatchesTenant(int $tenantsId, string $counterpartNorm): bool {
+    if ($counterpartNorm === '') return false;
+    $base = preg_replace('/\/.*$/', '', $counterpartNorm);
+    $st = db()->prepare("
+        SELECT 1 FROM tenant_bank_accounts tba
+        WHERE tba.tenants_id = ? AND tba.valid_to IS NULL
+        AND (LOWER(REPLACE(TRIM(tba.account_number), ' ', '')) = ?
+             OR SUBSTRING_INDEX(LOWER(REPLACE(TRIM(tba.account_number), ' ', '')), '/', 1) = ?)
+    ");
+    $st->execute([$tenantsId, $counterpartNorm, $base]);
+    return (bool)$st->fetch();
+}
+
+/** Návrh párování importu: podle částky, data a protiúčtu najde vhodnou smlouvu a období (nájem). Podporuje 1 měsíc i N měsíců (např. 36000 = 12×3000), součet nájmů se změnou, přičtení neuhrazených požadavků a čistou úhradu požadavku (např. 910 Kč energie u Zich). */
 function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string $counterpartAccount, array $contractsWithRent, array $rentChangesByContract, array $unpaidRequestsByContract = []): ?array {
     if ($amount <= 0 || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $paymentDate, $m)) return null;
     $y = (int)$m[1]; $mo = (int)$m[2];
@@ -72,18 +86,7 @@ function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string
         $expectedTotal = $expectedRent + $requestsSum;
         $diff = abs($expectedTotal - $amount);
         if ($diff > 0.02) continue; // tolerance 2 haléře
-        $score = 0;
-        if ($counterpartNorm !== '') {
-            $tenantAccounts = db()->prepare("
-                SELECT 1 FROM tenant_bank_accounts tba
-                WHERE tba.tenants_id = ? AND tba.valid_to IS NULL
-                AND LOWER(REPLACE(TRIM(tba.account_number), ' ', '')) = ?
-            ");
-            $tenantAccounts->execute([(int)$c['tenants_id'], $counterpartNorm]);
-            if ($tenantAccounts->fetch()) $score = 10; // protiúčet odpovídá nájemníkovi
-        } else {
-            $score = 1;
-        }
+        $score = ($counterpartNorm !== '' && counterpartMatchesTenant((int)$c['tenants_id'], $counterpartNorm)) ? 10 : (($counterpartNorm === '') ? 1 : 0);
         if ($score > $bestScore || ($score === $bestScore && $diff < ($best['diff'] ?? 999))) {
             $bestScore = $score;
             $best = [
@@ -97,6 +100,28 @@ function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string
             ];
         }
     }
+    // 1b) Částka = jen neuhrazené požadavky (např. 910 Kč energie u Zich) – navrhnout smlouvu, období = měsíc platby, typ energy
+    if ($best === null && $counterpartNorm !== '') {
+        foreach ($contractsWithRent as $c) {
+            $cid = (int)($c['contracts_id'] ?? $c['id']);
+            $reqSum = (float)($unpaidRequestsByContract[$cid] ?? 0);
+            if ($reqSum <= 0 || abs($reqSum - $amount) > 0.02) continue;
+            if (!counterpartMatchesTenant((int)$c['tenants_id'], $counterpartNorm)) continue;
+            $score = 10;
+            if ($score > $bestScore || ($best === null && $score >= 0)) {
+                $bestScore = $score;
+                $best = [
+                    'suggested_contracts_id' => $cid,
+                    'suggested_period_year'  => $y,
+                    'suggested_period_month' => $mo,
+                    'suggested_period_year_to'  => $y,
+                    'suggested_period_month_to' => $mo,
+                    'suggested_payment_type' => 'energy',
+                    'diff' => abs($reqSum - $amount),
+                ];
+            }
+        }
+    }
     // 2) Žádný jeden měsíc – zkusit N měsíců (např. roční platba 12× nájem), případně + neuhrazené požadavky
     if ($best === null) {
         foreach ($contractsWithRent as $c) {
@@ -107,18 +132,7 @@ function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string
             for ($n = 2; $n <= 24; $n++) {
                 $expected = $rent * $n + $requestsSum;
                 if (abs($expected - $amount) > 0.02 * $n + 0.02) continue; // tolerance
-                $score = 0;
-                if ($counterpartNorm !== '') {
-                    $tenantAccounts = db()->prepare("
-                        SELECT 1 FROM tenant_bank_accounts tba
-                        WHERE tba.tenants_id = ? AND tba.valid_to IS NULL
-                        AND LOWER(REPLACE(TRIM(tba.account_number), ' ', '')) = ?
-                    ");
-                    $tenantAccounts->execute([(int)$c['tenants_id'], $counterpartNorm]);
-                    if ($tenantAccounts->fetch()) $score = 10;
-                } else {
-                    $score = 1;
-                }
+                $score = ($counterpartNorm !== '' && counterpartMatchesTenant((int)$c['tenants_id'], $counterpartNorm)) ? 10 : (($counterpartNorm === '') ? 1 : 0);
                 $moFrom = $mo - ($n - 1);
                 $yFrom = $y;
                 while ($moFrom < 1) { $moFrom += 12; $yFrom--; }
@@ -151,18 +165,7 @@ function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string
         foreach ($contractsWithRent as $c) {
             $cid = (int)($c['contracts_id'] ?? $c['id']);
             $baseRent = (float)$c['monthly_rent'];
-            $score = 0;
-            if ($counterpartNorm !== '') {
-                $tenantAccounts = db()->prepare("
-                    SELECT 1 FROM tenant_bank_accounts tba
-                    WHERE tba.tenants_id = ? AND tba.valid_to IS NULL
-                    AND LOWER(REPLACE(TRIM(tba.account_number), ' ', '')) = ?
-                ");
-                $tenantAccounts->execute([(int)$c['tenants_id'], $counterpartNorm]);
-                if ($tenantAccounts->fetch()) $score = 10;
-            } else {
-                $score = 1;
-            }
+            $score = ($counterpartNorm !== '' && counterpartMatchesTenant((int)$c['tenants_id'], $counterpartNorm)) ? 10 : (($counterpartNorm === '') ? 1 : 0);
             $requestsSum = (float)($unpaidRequestsByContract[$cid] ?? 0);
             for ($len = 2; $len <= 24; $len++) {
                 $moTo = $mo;
