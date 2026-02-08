@@ -1194,12 +1194,7 @@ async function openPaymentModal(el) {
     let prefillRemaining = 0;
     let prefillUnfulfilledReqs = [];
     if (!paymentRequestId && !editIdEl.value) {
-        const requestsInMonth = paymentRequests.filter(r => {
-            const d = r.due_date;
-            return d && String(d).slice(0, 7) === monthKey;
-        });
-        const requestSum = requestsInMonth.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-        const expectedTotal = amountVal + requestSum;
+        const expectedTotal = amountVal;
         const paidTotal = sumForMonth;
         prefillRemaining = Math.round((expectedTotal - paidTotal) * 100) / 100;
         prefillUnfulfilledReqs = paymentRequests.filter(r => {
