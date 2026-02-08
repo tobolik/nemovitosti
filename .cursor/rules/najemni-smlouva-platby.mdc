@@ -1,0 +1,85 @@
+---
+description: Zavedení nové nájemní smlouvy včetně nájemce, nemovitosti, plateb a požadavků na platbu – checklist
+globs: migrations/*.sql
+alwaysApply: false
+---
+
+# Nájemní smlouva včetně plateb
+
+Při vytváření migrace, která **zavádí novou nájemní smlouvu** (nájemce + nemovitost + smlouva + platby), vždy postupuj podle tohoto checklistu. Vzor: `migrations/058_kinclova_dominika_interbrigadistu.sql`.
+
+## Pravidla před zápisem do SQL
+
+- **Datum smlouvy:** Vždy pohlídej a ověř `contract_start`, `contract_end`, `deposit_paid_date`, `deposit_return_date` a datumy plateb – musí odpovídat smlouvě a výpisům. Při rozporu nebo nejasnosti uživatele informuj, nehádej.
+- **Soupis před vložením:** Před zápisem do .sql vždy předlož soupis detekovaných hodnot (nájemce, nemovitost, smlouva od–do, nájemné, kauce, platby po měsících, požadavky na platbu). Teprve po **explicitním souhlasu** uživatele migraci zapiš.
+- **Kde si nejsi jistý:** Kdykoli si nejsi jistý (nejasný údaj, chybějící údaj, rozpor), informuj uživatele a nepředpokládej hodnoty bez potvrzení.
+
+## 1. Nájemce (tenants)
+
+- INSERT jen pokud neexistuje (NOT EXISTS podle jména, např. LIKE '%Příjmení%' AND LIKE '%Jméno%').
+- Sloupce: `tenants_id`, `name`, `type`, `birth_date`, `email`, `phone`, `address`, `valid_from`, `valid_to`, `valid_user_from`, `valid_user_to`.
+- Po INSERT: `UPDATE tenants SET tenants_id = id WHERE ... AND tenants_id IS NULL`.
+- `SET @tenants_id := (SELECT COALESCE(tenants_id, id) FROM tenants WHERE valid_to IS NULL AND ... LIMIT 1)`.
+
+## 2. Nemovitost (properties)
+
+- INSERT jen pokud neexistuje (NOT EXISTS podle názvu nebo adresy).
+- Sloupce: `properties_id`, `name`, `address`, `type` (apartment, garage, …), `valid_*`.
+- Po INSERT: `UPDATE properties SET properties_id = id WHERE ...`.
+- `SET @properties_id := ...`.
+
+## 3. Bankovní účet pronajímatele
+
+- `SET @ba_id := (SELECT COALESCE(bank_accounts_id, id) FROM bank_accounts WHERE valid_to IS NULL AND (account_number LIKE '...' OR is_primary = 1) ORDER BY ... LIMIT 1)`.
+
+## 4. Smlouva (contracts)
+
+- Sloupce: `contracts_id`, `properties_id`, `tenants_id`, `contract_start`, `contract_end`, `monthly_rent`, `first_month_rent`, `deposit_amount`, `deposit_paid_date`, `deposit_return_date`, `default_payment_method`, `default_bank_accounts_id`, `valid_*`.
+- **Nájemné:** pokud je nájem + zálohy (např. 7 500 + 1 400), ukládej do `monthly_rent` **součet** (8 900). `first_month_rent` = zkrácená první měsíc (nájem poměrný + zálohy).
+- INSERT jen pokud pro danou dvojici tenant+nemovitost a contract_start smlouva neexistuje.
+- Po INSERT: `UPDATE contracts SET contracts_id = id WHERE ...`.
+- `SET @contracts_id := ...`.
+
+## 5. Změny nájmu (contract_rent_changes)
+
+- Pokud během smlouvy roste nájem: INSERT řádky s `contract_rent_changes_id`, `contracts_id`, `amount` (celkové nájemné v Kč), `effective_from` (první den měsíce), `valid_*`.
+- NOT EXISTS podle `contracts_id` a `effective_from`.
+- Vzor z 058: jeden řádek od 4/2022 s amount 9 400.
+
+## 6. Účet nájemce (tenant_bank_accounts)
+
+- Pro párování z FIO: INSERT číslo protiúčtu (např. `2799423133/0800`) pro `@tenants_id`.
+- NOT EXISTS podle `tenants_id` a `account_number`.
+- Po INSERT: `UPDATE tenant_bank_accounts SET tenant_bank_accounts_id = id WHERE ...`.
+
+## 7. Platby (payments)
+
+- Sloupce: `payments_id`, `contracts_id`, `period_year`, `period_month`, `amount`, `currency`, `payment_date`, `note`, `payment_method`, `bank_accounts_id`, `payment_type`, `approved_at`.
+- **Typy plateb:** `rent` (nájemné), `deposit` (kauce), `deposit_return` (vrácení kauce – záporná částka), `energy`, `other` (vyúčtování, přeplatek atd.).
+- **První měsíc:** jedna platba s `payment_type = 'rent'` a skutečnou částkou (zkrácená platba).
+- **Kauce:** jedna platba `payment_type = 'deposit'`, kladná částka.
+- **Měsíční nájemné:** řádky po měsících, `payment_type = 'rent'`, odpovídající `amount` po změně nájmu (contract_rent_changes).
+- **Vrácení kauce:** jedna platba `payment_type = 'deposit_return'`, **záporná** částka.
+- **Vyúčtování / přeplatek:** `payment_type = 'other'` (nebo `settlement` dle konvence), záporná částka, poznámka.
+- Všechny platby mít `approved_at = payment_date` (nebo CONCAT(payment_date, ' 12:00:00')), aby se v kalendáři braly jako uhrazené.
+- Idempotence: NOT EXISTS podle contracts_id, period_year, period_month, payment_date, amount.
+- Po INSERT: `UPDATE payments SET payments_id = id WHERE payments_id IS NULL AND contracts_id = @contracts_id AND payment_date BETWEEN ...`.
+
+## 8. Požadavky na platbu (payment_requests) – NIKDY NEVYNECHAT
+
+- Pro každou platbu typu kauce / vrácení kauce / vyúčtování (doplatek nebo vrácení) vytvoř záznam v `payment_requests` a **propoj ho s platbou** (`payments_id`, `paid_at`).
+- Po vložení plateb načti `payments_id` (entity_id) příslušných plateb:
+  - `@pay_deposit_id` – platba s `payment_type = 'deposit'` a odpovídající amount,
+  - `@pay_deposit_return_id` – platba s `payment_type = 'deposit_return'` a zápornou amount,
+  - `@pay_settlement_id` – platba vyúčtování (např. `payment_type = 'other'`, amount např. -1657).
+- INSERT do `payment_requests`: `payment_requests_id`, `contracts_id`, `amount`, `type` (deposit / deposit_return / settlement / energy / other), `note`, `due_date`, `paid_at`, `payments_id`, `valid_*`.
+- Typy: `deposit` (kauce), `deposit_return` (vrácení kauce), `settlement` (vyúčtování), `energy`, `other`.
+- NOT EXISTS podle contracts_id a type (a případně amount), aby se nekladly duplicity.
+- Po každém INSERT: `UPDATE payment_requests SET payment_requests_id = id WHERE valid_to IS NULL AND payment_requests_id IS NULL AND ...`.
+
+## Obecné
+
+- Migrace musí být **idempotentní**: použití NOT EXISTS a podmínek tak, aby opakované spuštění nekladlo duplicity.
+- Všechny tabulky se soft-update: po INSERT doplnit `{tabulka}_id = id` tam, kde je NULL.
+- Číslování migrace: další volné číslo v `migrations/` (např. 059_...).
+- V hlavičce SQL uvést stručný popis (nájemce, nemovitost, zvláštnosti: nájem+zálohy, první měsíc zkrácený, kauce, vyúčtování).
