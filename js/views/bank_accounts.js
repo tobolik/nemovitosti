@@ -155,12 +155,14 @@ const BankAccountsView = (() => {
     function fillFioFetchForm() {
         const sel = document.getElementById('fio-fetch-account');
         if (!sel) return;
+        const prevValue = sel.value;
         const withToken = _cache.filter(b => b.fio_token_isset);
         sel.innerHTML = '<option value="">— Vyberte účet —</option>' +
             withToken.map(b => {
                 const id = b.bank_accounts_id ?? b.id;
                 return '<option value="' + id + '">' + UI.esc(b.name) + (b.account_number ? ' – ' + UI.esc(b.account_number) : '') + '</option>';
             }).join('');
+        if (prevValue && Array.from(sel.options).some(o => o.value === prevValue)) sel.value = prevValue;
         const contractSel = document.getElementById('fio-fetch-contract');
         if (contractSel) {
             const cid = (c) => c.contracts_id ?? c.id;
@@ -176,6 +178,9 @@ const BankAccountsView = (() => {
         }
     }
 
+    /** FIO API umí obvykle max. cca 2 roky zpět – starší období vrací 422 */
+    const FIO_MAX_MONTHS_BACK = 24;
+
     function applyFioFetchContractDates(contractId) {
         const c = (_contracts || []).find(x => String(x.contracts_id ?? x.id) === String(contractId));
         if (!c) return;
@@ -187,9 +192,13 @@ const BankAccountsView = (() => {
             d.setMonth(d.getMonth() + 1);
             end = d.toISOString().slice(0, 10);
         }
+        let from = addMonthsToDate(start, -1);
+        const today = new Date().toISOString().slice(0, 10);
+        const minFrom = addMonthsToDate(today, -FIO_MAX_MONTHS_BACK);
+        if (from < minFrom) from = minFrom;
         const fromEl = document.getElementById('fio-fetch-from');
         const toEl = document.getElementById('fio-fetch-to');
-        if (fromEl) fromEl.value = addMonthsToDate(start, -1);
+        if (fromEl) fromEl.value = from;
         if (toEl) toEl.value = addMonthsToDate(end, 1);
     }
 
@@ -223,10 +232,12 @@ const BankAccountsView = (() => {
         }
         if (!btn) return;
         btn.addEventListener('click', async () => {
-            const accountId = document.getElementById('fio-fetch-account').value;
+            const accountEl = document.getElementById('fio-fetch-account');
+            const accountId = accountEl ? accountEl.value : '';
+            const numAccountId = parseInt(accountId, 10);
             const from = document.getElementById('fio-fetch-from').value;
             const to = document.getElementById('fio-fetch-to').value;
-            if (!accountId) {
+            if (!accountId || !(numAccountId > 0)) {
                 if (alertEl) { alertEl.textContent = 'Vyberte účet s FIO tokenem.'; alertEl.className = 'alert alert-err show'; alertEl.style.display = ''; }
                 if (resultEl) resultEl.style.display = 'none';
                 return;
@@ -235,7 +246,7 @@ const BankAccountsView = (() => {
             if (alertEl) alertEl.style.display = 'none';
             if (resultEl) resultEl.style.display = 'none';
             try {
-                const data = await Api.fioImport(parseInt(accountId, 10), from || undefined, to || undefined);
+                const data = await Api.fioImport(numAccountId, from || undefined, to || undefined);
                 const n = data.imported || 0;
                 const sk = data.skipped || 0;
                 const skFilter = data.skipped_filter || 0;

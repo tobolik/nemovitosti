@@ -65,6 +65,9 @@ if ($raw === false) {
     if (strpos($msg, '409') !== false) {
         jsonErr('FIO API omezuje počet požadavků (max. 1× za 30 sekund). Zkuste to znovu za chvíli.');
     }
+    if (strpos($msg, '422') !== false) {
+        jsonErr('FIO API nepodporuje toto období (obvykle max. cca 2 roky zpět). Zvolte kratší nebo novější období.');
+    }
     jsonErr('Nepodařilo se připojit k FIO API. ' . $msg);
 }
 $data = json_decode($raw, true);
