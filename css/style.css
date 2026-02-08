@@ -728,6 +728,9 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .stat.stat-danger { border-color: rgba(220,38,38,.3); }
 .stat.stat-ok { border-color: rgba(22,163,74,.25); }
 
+.dash-stats-divider { grid-column: 1 / -1; height: 0; border-top: 1px solid var(--glass-border); margin: 4px 0 8px; }
+.stat.stat-by-due .stat-label { color: var(--txt3); font-size: .7rem; }
+
 /* DASHBOARD MODE BAR & EXTENDED */
 .dash-mode-bar { display: flex; flex-wrap: wrap; gap: 16px 24px; margin-bottom: 16px; align-items: center; }
 .dash-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--txt2); cursor: pointer; }

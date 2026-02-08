@@ -47,7 +47,8 @@ async function loadDashboard(year) {
         utilizationOverall: 'Výpočet: (celkový počet obsazených měsíců / celkový počet měsíců v období) × 100. Období u každé nemovitosti začíná dnem „Pronajímáno od“, datumem koupě nebo první smlouvou. Reaguje na pole Pronajímáno od.',
         monthlyIncome: 'Výpočet: součet skutečně vybraných plateb (nájem) za aktuální kalendářní měsíc.',
         roi: 'Výpočet: (vybraný nájem za aktuální rok / celková investice) × 100. Investice = součet kupních cen všech nemovitostí.',
-        collectionRate: 'Výpočet: (skutečně vybraný nájem za rok / očekávaný nájem za rok) × 100. Očekávaný = nájem dle smluv a změn nájmu za daný rok.'
+        collectionRate: 'Výpočet: (skutečně vybraný nájem za rok / očekávaný nájem za rok) × 100. Očekávaný = nájem dle smluv a změn nájmu za daný rok.',
+        byDue: 'Podle splatnosti: platby se započítají do měsíce, kdy měl požadavek (nájem, kauce…) splatnost. Konzistentní s heatmapou.'
     };
     document.getElementById('dash-stats').innerHTML =
         '<div class="stat" title="' + UI.esc(statTitles.occupancy) + '">' +
@@ -79,6 +80,22 @@ async function loadDashboard(year) {
             '<div class="stat-icon blue">📄</div>' +
             '<div class="stat-val">' + (stats.collectionRate ?? 100) + '%</div>' +
             '<div class="stat-label">Míra inkasa</div>' +
+        '</div>' +
+        '<div class="dash-stats-divider" aria-hidden="true"></div>' +
+        '<div class="stat stat-by-due" title="' + UI.esc(statTitles.byDue) + '">' +
+            '<div class="stat-icon green">$</div>' +
+            '<div class="stat-val">' + UI.fmt(stats.monthlyIncomeByDue ?? 0) + ' Kč</div>' +
+            '<div class="stat-label">Měsíc (splatnost)</div>' +
+        '</div>' +
+        '<div class="stat stat-by-due" title="' + UI.esc(statTitles.byDue) + '">' +
+            '<div class="stat-icon green">Σ</div>' +
+            '<div class="stat-val">' + UI.fmt(stats.yearIncomeByDue ?? 0) + ' Kč</div>' +
+            '<div class="stat-label">Rok (splatnost)</div>' +
+        '</div>' +
+        '<div class="stat stat-by-due" title="' + UI.esc(statTitles.byDue) + '">' +
+            '<div class="stat-icon blue">📄</div>' +
+            '<div class="stat-val">' + (stats.collectionRateByDue ?? 100) + '%</div>' +
+            '<div class="stat-label">Míra inkasa (splatnost)</div>' +
         '</div>';
 
     // ── Rozšířené statistiky a graf ────────────────────────────────────

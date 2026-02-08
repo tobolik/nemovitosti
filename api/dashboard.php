@@ -226,10 +226,13 @@ foreach ($heatmapStmt->fetchAll() as $row) {
         $heatmapPaymentsListByContract[$eid] = [];
     }
     if (!isset($heatmapPaymentsByContract[$eid][$monthKey])) {
-        $heatmapPaymentsByContract[$eid][$monthKey] = ['amount' => 0, 'payment_date' => null, 'payment_count' => 0];
+        $heatmapPaymentsByContract[$eid][$monthKey] = ['amount' => 0, 'amount_rent' => 0, 'payment_date' => null, 'payment_count' => 0];
     }
     $amt = (float)($row['amount'] ?? 0);
     $heatmapPaymentsByContract[$eid][$monthKey]['amount'] += $amt;
+    if (($row['payment_type'] ?? '') === 'rent') {
+        $heatmapPaymentsByContract[$eid][$monthKey]['amount_rent'] += $amt;
+    }
     $heatmapPaymentsByContract[$eid][$monthKey]['payment_count'] += 1;
     if (!empty($row['payment_date']) && ($heatmapPaymentsByContract[$eid][$monthKey]['payment_date'] === null || $row['payment_date'] > $heatmapPaymentsByContract[$eid][$monthKey]['payment_date'])) {
         $heatmapPaymentsByContract[$eid][$monthKey]['payment_date'] = $row['payment_date'];
@@ -405,7 +408,8 @@ foreach ($contractsForView as $c) {
     $endY = !empty($c['contract_end']) ? (int)date('Y', strtotime($c['contract_end'])) : null;
     $endM = !empty($c['contract_end']) ? (int)date('n', strtotime($c['contract_end'])) : null;
 
-    $paid = $paymentsByContract[$entityId] ?? [];
+    // Přehled smluv: platby podle splatnosti (due_date), konzistentní s heatmapou
+    $paid = $heatmapPaymentsByContract[$entityId] ?? [];
     $totPaid = 0;
     foreach ($paid as $prow) $totPaid += (float)($prow['amount'] ?? 0);
     $totPaidRent = 0;
@@ -430,7 +434,8 @@ foreach ($contractsForView as $c) {
         if (++$m > 12) { $m=1; $y++; }
     }
 
-    // Roční příjmy pro stats (včetně poměrného prvního měsíce)
+    // Roční příjmy pro stats: cash flow (kdy peníze přišly) – paymentsByContract
+    $paidCash = $paymentsByContract[$entityId] ?? [];
     for ($m = 1; $m <= 12; $m++) {
         $key = $year . '-' . str_pad((string)$m, 2, '0', STR_PAD_LEFT);
         $firstOfMonth = $key . '-01';
@@ -439,8 +444,8 @@ foreach ($contractsForView as $c) {
         if ($hasDayInMonth) {
             $rent = getExpectedRentForMonth($c, $year, $m, $rentChangesByContract);
             $expectedYearIncome += $rent;
-            if (isset($paid[$key]) && !empty($paid[$key]['payment_date'])) {
-                $yearIncome += (float)($paid[$key]['amount_rent'] ?? $paid[$key]['amount'] ?? $rent);
+            if (isset($paidCash[$key]) && !empty($paidCash[$key]['payment_date'])) {
+                $yearIncome += (float)($paidCash[$key]['amount_rent'] ?? $paidCash[$key]['amount'] ?? $rent);
             }
         }
     }
@@ -760,6 +765,22 @@ foreach ($contractsForView as $c) {
     }
 }
 
+// Statistiky „podle splatnosti“ (vybráno za požadavky se splatností v daném období)
+$yearIncomeByDue = 0;
+foreach ($contractsForView as $c) {
+    $entityId = $c['contracts_id'] ?? $c['id'];
+    for ($m = 1; $m <= 12; $m++) {
+        $key = $year . '-' . str_pad((string)$m, 2, '0', STR_PAD_LEFT);
+        $yearIncomeByDue += (float)(($heatmapPaymentsByContract[$entityId][$key] ?? [])['amount'] ?? 0);
+    }
+}
+$monthlyIncomeByDue = 0;
+foreach ($contractsForView as $c) {
+    $entityId = $c['contracts_id'] ?? $c['id'];
+    $monthlyIncomeByDue += (float)(($heatmapPaymentsByContract[$entityId][$currentMonthKey] ?? [])['amount'] ?? 0);
+}
+$collectionRateByDue = $expectedYearIncome > 0 ? round($yearIncomeByDue / $expectedYearIncome * 100, 1) : 100;
+
 $roi = $totalInvestment > 0 ? round($yearIncome / $totalInvestment * 100, 1) : 0;
 $collectionRate = $expectedYearIncome > 0 ? round($yearIncome / $expectedYearIncome * 100, 1) : 100;
 
@@ -984,6 +1005,9 @@ $payload = [
         'totalInvestment'=> $totalInvestment,
         'yearIncome'     => $yearIncome,
         'expectedYearIncome' => $expectedYearIncome,
+        'monthlyIncomeByDue'  => $monthlyIncomeByDue,
+        'yearIncomeByDue'     => $yearIncomeByDue,
+        'collectionRateByDue' => $collectionRateByDue,
     ],
 ];
 if ($extendedStats !== null) {
