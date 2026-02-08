@@ -5,7 +5,9 @@
 // POST { action, table, ...fields }  → add / edit / delete
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
-requireLogin();
+if (!defined('CRUD_CLI')) {
+    requireLogin();
+}
 
 // Whitelist: tabulka → povolená pole
 $FIELDS = [
@@ -219,6 +221,11 @@ function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string
         'suggested_period_month_to' => $best['suggested_period_month_to'],
         'suggested_payment_type' => $best['suggested_payment_type'],
     ];
+}
+
+// Při použití z cronu (CRUD_CLI) končíme zde – request handling níže se nespouští
+if (defined('CRUD_CLI')) {
+    return;
 }
 
 /** Ověří, zda řetězec YYYY-MM-DD představuje platné datum. Vrací chybovou zprávu nebo null. */

@@ -1,128 +1,197 @@
 <?php
-// api/fio-fetch.php – načtení pohybů z FIO banky (podle tokenu u bankovního účtu)
-// GET ?bank_accounts_id=1&from=2025-01-01&to=2025-01-31
+// api/fio-fetch.php – načtení z FIO a uložení do payment_imports (sdílená logika pro web i cron)
+// Použití: require_once + runFioImportForAccount($bankAccountsId, $from, $to)
+// Vyžaduje _bootstrap.php (db, softInsert). Při chybě háže RuntimeException.
 declare(strict_types=1);
-require __DIR__ . '/_bootstrap.php';
-requireLogin();
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    jsonErr('Pouze GET.', 405);
-}
 
-$bankAccountsId = isset($_GET['bank_accounts_id']) ? (int)$_GET['bank_accounts_id'] : 0;
-$from = isset($_GET['from']) ? trim($_GET['from']) : '';
-$to = isset($_GET['to']) ? trim($_GET['to']) : '';
+function runFioImportForAccount(int $bankAccountsId, string $from, string $to): array {
+    $today = date('Y-m-d');
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+        throw new RuntimeException('Parametry from a to musí být RRRR-MM-DD.');
+    }
+    if (strtotime($from) > strtotime($to)) {
+        throw new RuntimeException('Datum od nesmí být po datu do.');
+    }
+    if ($from > $today || $to > $today) {
+        throw new RuntimeException('Období nesmí být v budoucnosti. FIO API vrací pouze minulá data.');
+    }
 
-if ($bankAccountsId <= 0) {
-    jsonErr('Zadejte bank_accounts_id (entity_id bankovního účtu).');
-}
+    $stmt = db()->prepare("
+        SELECT id, bank_accounts_id, name, fio_token, currency
+        FROM bank_accounts
+        WHERE (bank_accounts_id = ? OR id = ?) AND valid_to IS NULL
+        LIMIT 1
+    ");
+    $stmt->execute([$bankAccountsId, $bankAccountsId]);
+    $account = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$account) {
+        throw new RuntimeException('Bankovní účet nenalezen.');
+    }
+    $token = isset($account['fio_token']) ? trim((string)$account['fio_token']) : '';
+    if ($token === '') {
+        throw new RuntimeException('U tohoto účtu není nastaven FIO API token.');
+    }
 
-// Načíst účet a token (token je pouze v DB, neposíláme ho do klienta)
-$stmt = db()->prepare("
-    SELECT id, bank_accounts_id, name, account_number, fio_token
-    FROM bank_accounts
-    WHERE (bank_accounts_id = ? OR id = ?) AND valid_to IS NULL
-    LIMIT 1
-");
-$stmt->execute([$bankAccountsId, $bankAccountsId]);
-$account = $stmt->fetch(PDO::FETCH_ASSOC);
-if (!$account) {
-    jsonErr('Bankovní účet nenalezen.');
-}
-$token = isset($account['fio_token']) ? trim((string)$account['fio_token']) : '';
-if ($token === '') {
-    jsonErr('U tohoto účtu není nastaven FIO API token. Nastavte ho v úpravě účtu.');
-}
+    $url = 'https://fioapi.fio.cz/v1/rest/periods/' . rawurlencode($token) . '/' . $from . '/' . $to . '/transactions.json';
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTPHEADER => ['Accept: application/json', 'User-Agent: Nemovitosti/1.0 (FIO API client)'],
+    ]);
+    $raw = curl_exec($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
+    curl_close($ch);
 
-// Výchozí období: aktuální měsíc
-$today = date('Y-m-d');
-if ($from === '' || $to === '') {
-    $from = date('Y-m-01');
-    $to = $today;
-}
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
-    jsonErr('Parametry from a to musí být ve formátu RRRR-MM-DD.');
-}
-if (strtotime($from) > strtotime($to)) {
-    jsonErr('Datum od nesmí být po datu do.');
-}
+    if ($raw === false || $raw === '') {
+        throw new RuntimeException($curlErr !== '' ? 'Nepodařilo se připojit k FIO API. ' . $curlErr : 'FIO API nevrátilo žádná data.');
+    }
 
-// FIO API: fioapi.fio.cz/v1/rest/, formát data Y-m-d
-$url = 'https://fioapi.fio.cz/v1/rest/periods/' . rawurlencode($token) . '/' . $from . '/' . $to . '/transactions.json';
-$ctx = stream_context_create([
-    'http' => [
-        'timeout' => 30,
-        'header' => "Accept: application/json\r\nUser-Agent: Nemovitosti/1.0 (FIO API client)\r\n",
-    ],
-]);
-$raw = @file_get_contents($url, false, $ctx);
-if ($raw === false) {
-    $err = error_get_last();
-    jsonErr('Nepodařilo se připojit k FIO API. ' . (isset($err['message']) ? $err['message'] : 'Zkontrolujte token a připojení.'));
-}
+    $data = json_decode($raw, true);
 
-$data = json_decode($raw, true);
-if (!is_array($data)) {
-    $jsonErr = json_last_error_msg();
-    $preview = mb_substr(preg_replace('/\s+/', ' ', trim($raw)), 0, 300);
-    $debug = ' [Debug: délka=' . strlen($raw) . ', json_err=' . $jsonErr . ', začátek=' . $preview . (strlen($raw) > 300 ? '…' : '') . ']';
-    jsonErr('FIO API vrátilo neplatnou odpověď.' . $debug);
-}
-if (isset($data['errorDescription']) || isset($data['error'])) {
-    $msg = $data['errorDescription'] ?? $data['error'] ?? 'Neznámá chyba FIO';
-    jsonErr('FIO API: ' . (is_string($msg) ? $msg : json_encode($msg)));
-}
-if (!isset($data['accountStatement']['transactionList'])) {
-    $keys = is_array($data) ? implode(', ', array_keys($data)) : '–';
-    jsonErr('FIO API nevrátilo očekávanou strukturu. Klíče: ' . $keys);
-}
-
-// Struktura: accountStatement.transactionList.transaction[]; každý pohyb má column0 (datum), column1 (objem), column2 (protiúčet), atd.
-$transactions = [];
-// FIO JSON: transactionList.transaction[]; při jednom pohybu může být objekt místo pole
-$stmt = $data['accountStatement']['transactionList']['transaction'] ?? null;
-if ($stmt !== null && !is_array($stmt)) {
-    $stmt = [$stmt];
-}
-if (is_array($stmt)) {
-    foreach ($stmt as $t) {
-        $col = static function ($key) use ($t) {
-            $v = $t[$key] ?? null;
-            return is_array($v) && isset($v['value']) ? $v['value'] : (is_string($v) ? $v : '');
-        };
-        $date = $col('column0');
-        $amount = $col('column1');
-        $counterpart = $col('column2');
-        $bankCode = $col('column3');
-        $message = $col('column16') !== '' ? $col('column16') : $col('column7');
-        $id = $col('column22') !== '' ? $col('column22') : $col('column14');
-        // Datum může být d.m.yyyy → převést na Y-m-d
-        $dateNorm = $date;
-        if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $date, $m)) {
-            $dateNorm = $m[3] . '-' . str_pad($m[2], 2, '0', STR_PAD_LEFT) . '-' . str_pad($m[1], 2, '0', STR_PAD_LEFT);
+    if ($httpCode >= 400) {
+        $msg = 'FIO API vrátilo HTTP ' . $httpCode . '.';
+        if (is_array($data)) {
+            $detail = $data['errorDescription'] ?? $data['error'] ?? $data['message'] ?? null;
+            if ($detail !== null && $detail !== '') {
+                $msg .= ' ' . (is_string($detail) ? $detail : json_encode($detail));
+            }
         }
-        // Objem: řetězec s + nebo - (příjem/výdej); převést na číslo
-        $amountNum = 0.0;
-        if (is_numeric(str_replace(['+', ',', ' '], ['', '.', ''], $amount))) {
-            $amountNum = (float)str_replace(',', '.', $amount);
+        if ($httpCode === 409) {
+            $msg = 'FIO API omezuje počet požadavků (max. 1× za 30 sekund). Zkuste to znovu za chvíli.';
+        } elseif ($httpCode === 422) {
+            $preview = mb_substr(preg_replace('/\s+/', ' ', trim($raw)), 0, 200);
+            if ($preview !== '') $msg .= ' Odpověď: ' . $preview . (strlen(trim($raw)) > 200 ? '…' : '');
         }
-        // Do výpisu dávat jen příchozí platby (kladná částka)
-        if ($amountNum > 0) {
-            $transactions[] = [
-                'id' => $id,
-                'date' => $dateNorm,
+        throw new RuntimeException($msg);
+    }
+
+    if (!is_array($data)) {
+        throw new RuntimeException('FIO API nevrátilo platný JSON. ' . json_last_error_msg());
+    }
+    if (isset($data['errorDescription']) || isset($data['error'])) {
+        $msg = $data['errorDescription'] ?? $data['error'] ?? 'Neznámá chyba FIO';
+        throw new RuntimeException('FIO API: ' . (is_string($msg) ? $msg : json_encode($msg)));
+    }
+    if (!isset($data['accountStatement']['transactionList'])) {
+        throw new RuntimeException('FIO API nevrátilo očekávanou strukturu (accountStatement.transactionList).');
+    }
+
+    $baId = (int)($account['bank_accounts_id'] ?? $account['id']);
+    $accountCurrency = isset($account['currency']) && trim((string)$account['currency']) !== ''
+        ? strtoupper(substr(trim($account['currency']), 0, 3)) : 'CZK';
+
+    $allowedCounterparts = [];
+    $accounts = db()->query("
+        SELECT DISTINCT tba.account_number
+        FROM tenant_bank_accounts tba
+        INNER JOIN tenants t ON t.tenants_id = tba.tenants_id
+        WHERE tba.valid_to IS NULL AND TRIM(tba.account_number) != ''
+    ")->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($accounts as $acc) {
+        $norm = strtolower(preg_replace('/\s+/', '', trim($acc)));
+        if ($norm !== '') {
+            $allowedCounterparts[$norm] = true;
+            $base = preg_replace('/\/.*$/', '', $norm);
+            if ($base !== '') $allowedCounterparts[$base] = true;
+        }
+    }
+    $filterByCounterpart = count($allowedCounterparts) > 0;
+
+    $checkStmt = db()->prepare('SELECT id FROM payment_imports WHERE fio_transaction_id = ? AND valid_to IS NULL LIMIT 1');
+
+    $txList = $data['accountStatement']['transactionList']['transaction'] ?? null;
+    if ($txList !== null && !is_array($txList)) {
+        $txList = [$txList];
+    }
+    $imported = 0;
+    $skipped = 0;
+    $skipped_filter = 0;
+    $items = [];
+
+    if (is_array($txList)) {
+        foreach ($txList as $t) {
+            $col = static function ($key) use ($t) {
+                $v = $t[$key] ?? null;
+                if (is_array($v) && isset($v['value'])) return (string)$v['value'];
+                if (is_string($v)) return $v;
+                foreach (($t['column'] ?? $t['columns'] ?? []) as $c) {
+                    if (!is_array($c)) continue;
+                    $id = $c['id'] ?? $c['name'] ?? null;
+                    if ((string)$id === (string)$key && isset($c['value'])) return (string)$c['value'];
+                }
+                return '';
+            };
+            $amount = $col('column1');
+            $amountNum = 0.0;
+            if (is_numeric(str_replace(['+', ',', ' '], ['', '.', ''], $amount))) {
+                $amountNum = (float)str_replace(',', '.', $amount);
+            }
+            if ($amountNum <= 0) continue;
+
+            $date = trim($col('column0'));
+            if ($date === '') $date = trim($col('date'));
+            $dateNorm = null;
+            if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', trim($date), $m)) {
+                $dateNorm = $m[1] . '-' . $m[2] . '-' . $m[3];
+            } elseif (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', trim($date), $m)) {
+                $dateNorm = $m[3] . '-' . str_pad($m[2], 2, '0', STR_PAD_LEFT) . '-' . str_pad($m[1], 2, '0', STR_PAD_LEFT);
+            } elseif ($date !== '' && strtotime($date) !== false) {
+                $dateNorm = date('Y-m-d', strtotime($date));
+            }
+            if ($dateNorm === null || $dateNorm === '') $dateNorm = date('Y-m-d');
+
+            $counterpart = $col('column2');
+            $bankCode = $col('column3');
+            $message = $col('column16') !== '' ? $col('column16') : $col('column7');
+            $fioId = $col('column22') !== '' ? $col('column22') : $col('column14');
+            $counterpartFull = trim($counterpart . ($bankCode !== '' ? '/' . $bankCode : ''), '/');
+            $counterpartNorm = $counterpartFull !== '' ? strtolower(preg_replace('/\s+/', '', $counterpartFull)) : '';
+            $counterpartBase = $counterpartNorm !== '' ? preg_replace('/\/.*$/', '', $counterpartNorm) : '';
+            $matchesCounterpart = $counterpartNorm !== '' && (
+                isset($allowedCounterparts[$counterpartNorm]) || ($counterpartBase !== '' && isset($allowedCounterparts[$counterpartBase]))
+            );
+            if ($filterByCounterpart && !$matchesCounterpart) {
+                $skipped_filter++;
+                continue;
+            }
+
+            if ($fioId !== '') {
+                $checkStmt->execute([$fioId]);
+                if ($checkStmt->fetch()) {
+                    $skipped++;
+                    continue;
+                }
+            }
+            $newId = softInsert('payment_imports', [
+                'bank_accounts_id'    => $baId,
+                'payment_date'        => $dateNorm,
+                'amount'              => $amountNum,
+                'currency'            => $accountCurrency,
+                'counterpart_account' => $counterpartFull !== '' ? $counterpartFull : null,
+                'note'                => $message !== '' ? $message : null,
+                'fio_transaction_id'  => $fioId !== '' ? $fioId : null,
+                'payment_type'        => null,
+            ]);
+            $imported++;
+            $items[] = [
+                'id' => $newId,
+                'payment_date' => $dateNorm,
                 'amount' => $amountNum,
-                'counterpart_account' => trim($counterpart . ($bankCode !== '' ? '/' . $bankCode : ''), '/'),
-                'message' => $message,
-                'bank_accounts_id' => (int)($account['bank_accounts_id'] ?? $account['id']),
+                'counterpart_account' => $counterpartFull,
+                'note' => $message,
             ];
         }
     }
-}
 
-jsonOk([
-    'account_name' => $account['name'] ?? '',
-    'account_number' => $account['account_number'] ?? '',
-    'from' => $from,
-    'to' => $to,
-    'transactions' => $transactions,
-]);
+    return [
+        'imported' => $imported,
+        'skipped' => $skipped,
+        'skipped_filter' => $skipped_filter,
+        'account_name' => $account['name'] ?? '',
+        'from' => $from,
+        'to' => $to,
+        'items' => $items,
+    ];
+}
