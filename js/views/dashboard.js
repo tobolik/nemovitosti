@@ -1131,7 +1131,7 @@ async function openPaymentModal(el) {
             const periodM = (p.period_month != null && p.period_month !== '') ? String(p.period_month) : '';
             const breakdownRows = hasBreakdown && partsWithMonth.length
                 ? partsWithMonth.map(function (part) {
-                    const active = part.partMonthKey === monthKey;
+                    const active = (part.partMonthKey && part.partMonthKey === monthKey);
                     const rowClass = 'pay-modal-breakdown-row pay-modal-breakdown-part--' + (active ? 'active' : 'inactive');
                     return '<div class="' + rowClass + '"><span class="pay-modal-breakdown-label">' + UI.esc(part.label) + '</span><span class="pay-modal-breakdown-date">' + UI.esc(part.dateLabel || '') + '</span><span class="pay-modal-breakdown-amount">' + part.amount + '</span></div>';
                 }).join('')
