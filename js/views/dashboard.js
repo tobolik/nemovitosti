@@ -899,7 +899,7 @@ async function openPaymentModal(el) {
 
     document.getElementById('pay-modal-contract-id').value = contractId;
     document.getElementById('pay-modal-month-key').value = monthKey;
-    document.getElementById('pay-modal-payment-request-id').value = '';
+    window._payModalPrefillRequestId = [];
     editIdEl.value = '';
     noteEl.value = '';
     const counterpartInit = document.getElementById('pay-modal-counterpart-account');
@@ -996,7 +996,7 @@ async function openPaymentModal(el) {
 
     const paymentRequestId = el.dataset.paymentRequestId || '';
     if (paymentRequestId) {
-        document.getElementById('pay-modal-payment-request-id').value = paymentRequestId;
+        window._payModalPrefillRequestId = [String(paymentRequestId)];
         const reqType = (el.dataset.requestType || 'energy');
         const payType = (reqType === 'deposit_return') ? 'deposit_return' : (['rent','deposit','energy','other'].includes(reqType) ? reqType : (reqType === 'settlement' ? 'other' : 'rent'));
         typeSelect.value = payType;
@@ -1018,7 +1018,25 @@ async function openPaymentModal(el) {
     accountWrap.style.display = methodSelect.value === 'account' ? 'block' : 'none';
 
     const requestLinkWrap = document.getElementById('pay-modal-request-link-wrap');
-    const linkedRequestSel = document.getElementById('pay-modal-linked-request');
+    const requestLinkList = document.getElementById('pay-modal-linked-request-list');
+    function renderRequestCheckboxes(requests, checkedIds) {
+        if (!requestLinkList) return;
+        const prId = r => r.payment_requests_id ?? r.id;
+        const idSet = new Set((checkedIds || []).map(String));
+        let html = '';
+        requests.forEach(r => {
+            const rid = prId(r);
+            const label = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč' + (r.paid_at ? ' (uhrazeno)' : ' (nevyřízeno)');
+            const checked = idSet.has(String(rid)) ? ' checked' : '';
+            html += '<label class="pay-modal-request-cb"><input type="checkbox" name="pay-modal-pr" value="' + rid + '"' + checked + '> ' + UI.esc(label) + '</label>';
+        });
+        if (!html) html = '<p class="text-muted" style="font-size:.9rem">Žádné požadavky k propojení.</p>';
+        requestLinkList.innerHTML = html;
+    }
+    function getCheckedRequestIds() {
+        if (!requestLinkList) return [];
+        return Array.from(requestLinkList.querySelectorAll('input[name="pay-modal-pr"]:checked')).map(cb => parseInt(cb.value, 10)).filter(n => !isNaN(n));
+    }
 
     const contractIdsInMonth = [...new Set(forMonth.map(p => String(p.contracts_id ?? '')).filter(Boolean))];
     const contractIdToIndex = {};
@@ -1042,14 +1060,14 @@ async function openPaymentModal(el) {
             const payEntityId = p.payments_id ?? p.id;
             const noteAttr = (p.note != null && p.note !== '') ? (' data-note="' + String(p.note).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"') : '';
             const counterpartAttr = (p.counterpart_account != null && String(p.counterpart_account).trim() !== '') ? (' data-counterpart-account="' + String(p.counterpart_account).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"') : '';
-            const linkedReqId = (p.linked_payment_request_id != null && p.linked_payment_request_id !== '') ? p.linked_payment_request_id : '';
+            const linkedReqIds = (p.linked_payment_request_ids != null && String(p.linked_payment_request_ids).trim() !== '') ? String(p.linked_payment_request_ids).trim() : ((p.linked_payment_request_id != null && p.linked_payment_request_id !== '') ? String(p.linked_payment_request_id) : '');
             const cid = String(p.contracts_id ?? '');
             const contractIndex = contractIdToIndex[cid] ?? 0;
             const tenantLabel = (p.tenant_name != null && p.tenant_name !== '') ? (' <span class="pay-modal-tenant-label" title="Smlouva – nájemce">' + UI.esc(p.tenant_name) + '</span>') : '';
             const tenantAttr = (p.tenant_name != null && p.tenant_name !== '') ? (' data-tenant-name="' + String(p.tenant_name).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"') : '';
             html += '<li class="pay-modal-existing-item pay-modal-by-contract-' + contractIndex + '">' +
                 '<span>' + typeBadge + ' ' + amt + ' Kč (' + dt + ')' + batchTag + tenantLabel + '</span> ' +
-                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-contracts-id="' + cid + '"' + tenantAttr + ' data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '" data-linked-request-id="' + linkedReqId + '"' + noteAttr + '>Upravit</button> ' +
+                '<button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="' + payEntityId + '" data-contracts-id="' + cid + '"' + tenantAttr + ' data-amount="' + (p.amount ?? 0) + '" data-date="' + (p.payment_date || '') + '" data-method="' + method + '" data-account="' + accId + '" data-type="' + pt + '" data-batch-id="' + (p.payment_batch_id || '') + '" data-linked-request-ids="' + String(linkedReqIds).replace(/"/g, '&quot;') + '"' + noteAttr + '>Upravit</button> ' +
                 '<button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="' + payEntityId + '" data-batch-id="' + (p.payment_batch_id || '') + '">Smazat</button>' +
                 '</li>';
         });
@@ -1087,7 +1105,7 @@ async function openPaymentModal(el) {
             const payType = (r.type === 'deposit_return') ? 'deposit_return' : (['rent','deposit','energy','other'].includes(r.type) ? r.type : (r.type === 'settlement' ? 'energy' : 'energy'));
             typeSelect.value = payType;
             setTypeWrapClass(payType);
-            document.getElementById('pay-modal-payment-request-id').value = String(r.payment_requests_id ?? r.id);
+            window._payModalPrefillRequestId = [String(r.payment_requests_id ?? r.id)];
             const label = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(reqAmt) + ' Kč';
             if (prefillMsgEl) {
                 prefillMsgEl.textContent = 'Bylo předvyplněno neuhrazeným požadavkem (' + label + '). Můžete změnit.';
@@ -1097,7 +1115,7 @@ async function openPaymentModal(el) {
             amount.value = remaining;
             typeSelect.value = 'rent';
             setTypeWrapClass('rent');
-            document.getElementById('pay-modal-payment-request-id').value = '';
+            window._payModalPrefillRequestId = [];
             if (prefillMsgEl) {
                 prefillMsgEl.textContent = 'Bylo předvyplněno zbývajícím nájmem (' + UI.fmt(remaining) + ' Kč). Můžete změnit.';
                 prefillMsgEl.style.display = 'block';
@@ -1113,23 +1131,12 @@ async function openPaymentModal(el) {
 
     if (showFormInitially) {
         bulkWrap.style.display = editIdEl.value ? 'none' : 'block';
-        if (requestLinkWrap && linkedRequestSel) {
+        if (requestLinkWrap && requestLinkList) {
             if (!editIdEl.value) {
                 requestLinkWrap.style.display = '';
-                const prId = r => r.payment_requests_id ?? r.id;
-                const options = ['<option value="">— Žádný —</option>'];
-                paymentRequests.forEach(r => {
-                    if (!r.paid_at) {
-                        const rid = prId(r);
-                        const label = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč (nevyřízeno)';
-                        options.push('<option value="' + rid + '">' + UI.esc(label) + '</option>');
-                    }
-                });
-                linkedRequestSel.innerHTML = options.join('');
-                linkedRequestSel.value = document.getElementById('pay-modal-payment-request-id').value || '';
-                linkedRequestSel.onchange = function () {
-                    document.getElementById('pay-modal-payment-request-id').value = linkedRequestSel.value || '';
-                };
+                const unpaid = paymentRequests.filter(r => !r.paid_at);
+                const prefillIds = (window._payModalPrefillRequestId && Array.isArray(window._payModalPrefillRequestId)) ? window._payModalPrefillRequestId : (window._payModalPrefillRequestId ? [String(window._payModalPrefillRequestId)] : []);
+                renderRequestCheckboxes(unpaid, prefillIds);
             } else {
                 requestLinkWrap.style.display = 'none';
             }
@@ -1155,7 +1162,7 @@ async function openPaymentModal(el) {
             editIdEl.value = payId;
             editIdEl.dataset.batchId = String(editBtn.dataset.batchId || '');
             editIdEl.dataset.originalAmount = String(editBtn.dataset.amount || '');
-            editIdEl.dataset.linkedRequestId = String(editBtn.dataset.linkedRequestId || '');
+            editIdEl.dataset.linkedRequestIds = String(editBtn.dataset.linkedRequestIds || '');
             amount.value = editBtn.dataset.amount || '';
             dateInput.value = editBtn.dataset.date || new Date().toISOString().slice(0, 10);
             methodSelect.value = editBtn.dataset.method === 'cash' ? 'cash' : 'account';
@@ -1171,23 +1178,13 @@ async function openPaymentModal(el) {
             methodWrap.style.display = 'flex';
             batchHintEl.style.display = editBtn.dataset.batchId ? 'block' : 'none';
             bulkWrap.style.display = 'none';
-            if (requestLinkWrap && linkedRequestSel) {
+            if (requestLinkWrap && requestLinkList) {
                 requestLinkWrap.style.display = '';
                 const payContractId = String(editBtn.dataset.contractsId ?? '');
                 const requestsForThisContract = payContractId ? paymentRequests.filter(r => String(r.contracts_id ?? '') === payContractId) : paymentRequests;
-                const prId = r => r.payment_requests_id ?? r.id;
-                const options = ['<option value="">— Žádný —</option>'];
-                requestsForThisContract.forEach(r => {
-                    const rid = prId(r);
-                    const isUnoccupied = !r.paid_at;
-                    const isThisPayment = (r.payments_id != null && String(r.payments_id) === payId);
-                    if (isUnoccupied || isThisPayment) {
-                        const label = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč' + (isThisPayment ? ' (tato platba)' : ' (nevyřízeno)');
-                        options.push('<option value="' + rid + '">' + UI.esc(label) + '</option>');
-                    }
-                });
-                linkedRequestSel.innerHTML = options.join('');
-                linkedRequestSel.value = editBtn.dataset.linkedRequestId || '';
+                const showReqs = requestsForThisContract.filter(r => !r.paid_at || (r.payments_id != null && String(r.payments_id) === payId));
+                const checkedIds = (editBtn.dataset.linkedRequestIds || '').split(',').map(s => s.trim()).filter(Boolean);
+                renderRequestCheckboxes(showReqs, checkedIds);
             }
         } else if (delBtn) {
             const batchId = (delBtn.dataset.batchId || '').trim();
@@ -1220,26 +1217,14 @@ async function openPaymentModal(el) {
             editIdEl.value = '';
             delete editIdEl.dataset.batchId;
             delete editIdEl.dataset.originalAmount;
-            delete editIdEl.dataset.linkedRequestId;
+            delete editIdEl.dataset.linkedRequestIds;
             const prefillMsg = document.getElementById('pay-modal-prefill-msg');
             if (prefillMsg) { prefillMsg.style.display = 'none'; prefillMsg.textContent = ''; }
-            document.getElementById('pay-modal-payment-request-id').value = '';
-            if (requestLinkWrap && linkedRequestSel) {
+            if (requestLinkWrap && requestLinkList) {
                 requestLinkWrap.style.display = '';
-                const prId = r => r.payment_requests_id ?? r.id;
-                const options = ['<option value="">— Žádný —</option>'];
-                paymentRequests.forEach(r => {
-                    if (!r.paid_at) {
-                        const rid = prId(r);
-                        const label = (r.note || (r.type === 'energy' ? 'Energie' : r.type === 'deposit_return' ? 'Vrácení kauce' : 'Požadavek')) + ' ' + UI.fmt(parseFloat(r.amount) || 0) + ' Kč (nevyřízeno)';
-                        options.push('<option value="' + rid + '">' + UI.esc(label) + '</option>');
-                    }
-                });
-                linkedRequestSel.innerHTML = options.join('');
-                linkedRequestSel.value = '';
-                linkedRequestSel.onchange = function () {
-                    document.getElementById('pay-modal-payment-request-id').value = linkedRequestSel.value || '';
-                };
+                const unpaid = paymentRequests.filter(r => !r.paid_at);
+                const prefillIds = (window._payModalPrefillRequestId && Array.isArray(window._payModalPrefillRequestId)) ? window._payModalPrefillRequestId : (window._payModalPrefillRequestId ? [String(window._payModalPrefillRequestId)] : []);
+                renderRequestCheckboxes(unpaid, prefillIds);
             }
             amount.value = remaining;
             typeSelect.value = 'rent';
@@ -1386,12 +1371,14 @@ async function openPaymentModal(el) {
                         note: (noteEl.value || '').trim() || null,
                     };
                     await Api.crudEdit('payments', parseInt(editId, 10), payData);
-                    const newReqId = (linkedRequestSel && linkedRequestSel.value) ? parseInt(linkedRequestSel.value, 10) : 0;
-                    const oldReqId = (editIdEl.dataset.linkedRequestId && editIdEl.dataset.linkedRequestId !== '') ? parseInt(editIdEl.dataset.linkedRequestId, 10) : 0;
-                    if (newReqId !== oldReqId) {
-                        if (oldReqId) await Api.paymentRequestUnlink(oldReqId);
-                        if (newReqId) await Api.paymentRequestLink(newReqId, parseInt(editId, 10));
-                    }
+                    const oldIdsStr = editIdEl.dataset.linkedRequestIds || '';
+                    const oldIds = new Set(oldIdsStr.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)));
+                    const newIds = getCheckedRequestIds();
+                    const toUnlink = [...oldIds].filter(id => !newIds.includes(id));
+                    const toLink = newIds.filter(id => !oldIds.has(id));
+                    for (const id of toUnlink) await Api.paymentRequestUnlink(id);
+                    const payEntityId = parseInt(editId, 10);
+                    for (const id of toLink) await Api.paymentRequestLink(id, payEntityId);
                 } else {
                     const bulk = bulkCheckbox.checked;
                     const counterpartEl = document.getElementById('pay-modal-counterpart-account');
@@ -1428,8 +1415,8 @@ async function openPaymentModal(el) {
                         payData.period_year = parseInt(year, 10);
                         payData.period_month = parseInt(month, 10);
                     }
-                    const prIdEl = document.getElementById('pay-modal-payment-request-id');
-                    if (prIdEl && prIdEl.value) payData.payment_request_id = parseInt(prIdEl.value, 10);
+                    const checkedIds = getCheckedRequestIds();
+                    if (checkedIds.length) payData.payment_request_ids = checkedIds;
                     await Api.crudAdd('payments', payData);
                 }
             } else {

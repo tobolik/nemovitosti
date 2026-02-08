@@ -499,6 +499,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             SELECT pay.*, c.monthly_rent, p.name AS property_name, t.name AS tenant_name,
                    ba.account_number AS account_number,
                    (SELECT COALESCE(pr.payment_requests_id, pr.id) FROM payment_requests pr WHERE pr.payments_id = pay.payments_id AND pr.valid_to IS NULL ORDER BY pr.id DESC LIMIT 1) AS linked_payment_request_id,
+                   (SELECT GROUP_CONCAT(COALESCE(pr.payment_requests_id, pr.id) ORDER BY pr.id) FROM payment_requests pr WHERE pr.payments_id = pay.payments_id AND pr.valid_to IS NULL) AS linked_payment_request_ids,
                    (SELECT pr.note FROM payment_requests pr WHERE pr.payments_id = pay.payments_id AND pr.valid_to IS NULL ORDER BY pr.id DESC LIMIT 1) AS linked_request_note,
                    (SELECT pr.amount FROM payment_requests pr WHERE pr.payments_id = pay.payments_id AND pr.valid_to IS NULL ORDER BY pr.id DESC LIMIT 1) AS linked_request_amount
             FROM payments pay
@@ -788,21 +789,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!array_key_exists('approved_at', $data)) $data['approved_at'] = date('Y-m-d H:i:s');
             $amt = (float)($data['amount'] ?? 0);
             if ($amt === 0.0) jsonErr('Zadejte částku platby.');
-            $paymentRequestEntityId = isset($b['payment_request_id']) ? (int)$b['payment_request_id'] : 0;
+            $paymentRequestIds = isset($b['payment_request_ids']) && is_array($b['payment_request_ids'])
+                ? array_values(array_unique(array_filter(array_map('intval', $b['payment_request_ids']))))
+                : [];
+            if (empty($paymentRequestIds) && isset($b['payment_request_id']) && (int)$b['payment_request_id'] > 0) {
+                $paymentRequestIds[] = (int)$b['payment_request_id'];
+            }
             $newId = softInsert($table, $data);
-            if ($paymentRequestEntityId > 0) {
-                $prRow = findActiveByEntityId('payment_requests', $paymentRequestEntityId);
+            $paidAt = !empty($data['payment_date']) ? substr($data['payment_date'], 0, 10) : date('Y-m-d');
+            $paymentRow = findActive('payments', $newId);
+            $paymentEntityId = $paymentRow ? (int)($paymentRow['payments_id'] ?? $paymentRow['id']) : $newId;
+            foreach ($paymentRequestIds as $prEntityId) {
+                if ($prEntityId <= 0) continue;
+                $prRow = findActiveByEntityId('payment_requests', $prEntityId);
                 if (!$prRow) {
                     $st = db()->prepare("SELECT * FROM payment_requests WHERE id = ? AND valid_to IS NULL");
-                    $st->execute([$paymentRequestEntityId]);
+                    $st->execute([$prEntityId]);
                     $prRow = $st->fetch(PDO::FETCH_ASSOC) ?: null;
                 }
-                if ($prRow) {
-                    $paidAt = !empty($data['payment_date']) ? substr($data['payment_date'], 0, 10) : date('Y-m-d');
-                    $paymentRow = findActive('payments', $newId);
-                    $paymentEntityId = $paymentRow ? (int)($paymentRow['payments_id'] ?? $paymentRow['id']) : $newId;
+                if ($prRow && (int)($prRow['contracts_id'] ?? 0) === (int)($data['contracts_id'] ?? 0)) {
                     softUpdate('payment_requests', (int)$prRow['id'], ['paid_at' => $paidAt, 'payments_id' => $paymentEntityId]);
-                    // Křížová aktualizace: u vrácení kauce nastavíme ve smlouvě datum vrácení kauce
                     if (($prRow['type'] ?? '') === 'deposit_return') {
                         $contractRow = findActiveByEntityId('contracts', (int)$prRow['contracts_id']);
                         if ($contractRow && (empty($contractRow['deposit_return_date']) || $contractRow['deposit_return_date'] === null)) {

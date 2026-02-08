@@ -203,6 +203,7 @@ foreach ($contracts as $c) {
 }
 
 // Heatmapa: „uhrazeno“ za měsíc podle splatnosti požadavku (due_date), ne podle period/payment_date – jen pro buňky heatmapy (varianta B)
+// Jedna platba může být propojena s více požadavky → každou platbu započítat jen jednou (deduplikace podle payments_id)
 $heatmapPaymentsByContract = [];
 $heatmapPaymentsListByContract = [];
 $heatmapStmt = db()->query("
@@ -213,8 +214,14 @@ $heatmapStmt = db()->query("
     WHERE p.valid_to IS NULL
       AND (p.approved_at IS NOT NULL OR p.payment_type IN ('deposit','deposit_return','other'))
 ");
+$heatmapSeen = [];
 foreach ($heatmapStmt->fetchAll() as $row) {
     $eid = (int)$row['contracts_id'];
+    $payId = (int)($row['payments_id'] ?? 0);
+    $dedupeKey = $eid . '_' . $payId;
+    if (isset($heatmapSeen[$dedupeKey])) continue;
+    $heatmapSeen[$dedupeKey] = true;
+
     $dueDate = !empty($row['due_date']) ? $row['due_date'] : null;
     $periodMonth = (int)($row['period_month'] ?? 0);
     $periodYear = (int)($row['period_year'] ?? 0);
