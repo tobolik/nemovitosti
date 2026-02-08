@@ -85,7 +85,7 @@ const PaymentImportsView = (() => {
         const prId = (pr) => pr.payment_requests_id ?? pr.id;
         return '<option value="">— Požadavek —</option>' +
             requests.map(pr => {
-                const label = UI.fmt(Number(pr.amount)) + ' Kč' + (pr.note ? ' – ' + UI.esc(pr.note.substring(0, 40)) + (pr.note.length > 40 ? '…' : '')) : '') + (pr.due_date ? ' (spl. ' + UI.fmtDate(pr.due_date) + ')' : '');
+                const label = UI.fmt(Number(pr.amount)) + ' Kč' + (pr.note ? ' – ' + UI.esc(pr.note.substring(0, 40)) + (pr.note.length > 40 ? '…' : '') : '') + (pr.due_date ? ' (spl. ' + UI.fmtDate(pr.due_date) + ')' : '');
                 return '<option value="' + prId(pr) + '"' + (String(selected) === String(prId(pr)) ? ' selected' : '') + '>' + label + '</option>';
             }).join('');
     }
