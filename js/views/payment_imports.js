@@ -4,6 +4,7 @@ const PaymentImportsView = (() => {
     let _cache = [];
     let _contracts = [];
     let _bankAccounts = [];
+    let _requestsByContract = {};
 
     async function loadContractsAndBanks() {
         [_contracts, _bankAccounts] = await Promise.all([
@@ -77,6 +78,18 @@ const PaymentImportsView = (() => {
             (_contracts || []).map(c => '<option value="' + cid(c) + '"' + (String(selected) === String(cid(c)) ? ' selected' : '') + '>' + UI.esc(c.tenant_name) + ' – ' + UI.esc(c.property_name) + '</option>').join('');
     }
 
+    function requestOptions(requests, selected) {
+        if (!requests || requests.length === 0) {
+            return '<option value="">— Požadavek —</option>';
+        }
+        const prId = (pr) => pr.payment_requests_id ?? pr.id;
+        return '<option value="">— Požadavek —</option>' +
+            requests.map(pr => {
+                const label = UI.fmt(Number(pr.amount)) + ' Kč' + (pr.note ? ' – ' + UI.esc(pr.note.substring(0, 40)) + (pr.note.length > 40 ? '…' : '')) : '') + (pr.due_date ? ' (spl. ' + UI.fmtDate(pr.due_date) + ')' : '');
+                return '<option value="' + prId(pr) + '"' + (String(selected) === String(prId(pr)) ? ' selected' : '') + '>' + label + '</option>';
+            }).join('');
+    }
+
     function effectivePairing(row) {
         const cid = row.contracts_id ?? row.suggested_contracts_id;
         const py = row.period_year ?? row.suggested_period_year;
@@ -119,6 +132,8 @@ const PaymentImportsView = (() => {
         const yearTo = '<select id="' + sid('year-to') + '" class="import-year-to" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + yearOptions(pyTo) + '</select>';
         const monthTo = '<select id="' + sid('month-to') + '" class="import-month-to" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + monthOptions(pmTo) + '</select>';
         const typeSel = '<select id="' + sid('type') + '" class="import-type" data-id="' + id + '"' + (isProcessed ? ' disabled' : '') + '>' + typeOptions(ptype) + '</select>';
+        const requests = _requestsByContract[cid] || [];
+        const requestSel = '<select id="' + sid('request') + '" class="import-request" data-id="' + id + '" title="Napárovat na konkrétní požadavek (energie, doplatek…)"' + (isProcessed ? ' disabled' : '') + '>' + requestOptions(requests, imp.payment_request_id) + '</select>';
         let statusCell = '—';
         if (isProcessed && imp.payments_id) {
             statusCell = '<span class="badge badge-ok" title="Zpracováno">✓</span> <span class="pay-from-bank" title="Platba vytvořena z tohoto importu (rozlišení od ručně zadaných)">🏦</span> <a href="#payments" class="import-link-payment" title="Platba z tohoto importu (ID ' + (imp.payments_id || '') + ')">→ Platba</a>';
@@ -135,11 +150,12 @@ const PaymentImportsView = (() => {
             : imp.counterpart_matches === false
                 ? '<span class="badge badge-warn" title="Protiúčet neodpovídá žádnému číslu účtu nájemce">Nesedí</span>'
                 : '—';
-        // Párování: jeden sloupec ve dvou řádcích – řádek 1: Smlouva + Typ, řádek 2: Období od + Období do
+        // Párování: řádek 1: Smlouva + Typ + Požadavek, řádek 2: Období od + Období do
         const pairingCell = '<td colspan="4" class="import-cell-pairing">' +
             '<div class="import-pairing-row1">' +
             '<span class="import-cell-contract' + (cid ? ' import-cell-paired' : '') + '">' + contractSel + '</span>' +
             '<span class="import-cell-type' + (ptype ? ' import-cell-paired' : '') + '">' + typeSel + '</span>' +
+            '<span class="import-cell-request">' + requestSel + '</span>' +
             '</div>' +
             '<div class="import-pairing-row2">' +
             '<span class="import-cell-period-from' + (py && pm ? ' import-cell-paired' : '') + '"><span class="import-period-from">' + yearFrom + ' ' + monthFrom + '</span></span>' +
@@ -166,6 +182,21 @@ const PaymentImportsView = (() => {
             _cache = await Api.paymentImportsList(params);
         } catch (e) {
             _cache = [];
+        }
+        const cids = new Set();
+        _cache.forEach(r => {
+            const c = r.contracts_id ?? r.suggested_contracts_id;
+            if (c) cids.add(c);
+        });
+        _requestsByContract = {};
+        if (cids.size > 0) {
+            try {
+                const cidArr = [...cids];
+                const results = await Promise.all(cidArr.map(cid => Api.crudList('payment_requests', { contracts_id: cid })));
+                cidArr.forEach((cid, i) => { _requestsByContract[cid] = results[i] || []; });
+            } catch (e) {
+                // bez požadavků jen nezobrazíme roletku
+            }
         }
         const tbody = document.getElementById('import-tbody');
         const emptyEl = document.getElementById('import-empty');
@@ -263,6 +294,36 @@ const PaymentImportsView = (() => {
         tbody.querySelectorAll('.import-type').forEach(el => {
             el.addEventListener('change', () => savePairing(parseInt(el.getAttribute('data-id'), 10), 'payment_type', el.value));
         });
+        tbody.querySelectorAll('.import-request').forEach(el => {
+            el.addEventListener('change', () => savePairing(parseInt(el.getAttribute('data-id'), 10), 'payment_request_id', el.value ? parseInt(el.value, 10) : null));
+        });
+        tbody.querySelectorAll('.import-contract').forEach(el => {
+            el.addEventListener('change', async function () {
+                const id = parseInt(this.getAttribute('data-id'), 10);
+                const cid = this.value ? parseInt(this.value, 10) : 0;
+                const reqSel = document.getElementById('import-request-' + id);
+                const row = _cache.find(r => r.id === id);
+                if (row) {
+                    row.payment_request_id = null;
+                    if (reqSel) {
+                        try {
+                            await savePairing(id, 'payment_request_id', null);
+                        } catch (e) {}
+                        if (cid) {
+                            try {
+                                const list = await Api.crudList('payment_requests', { contracts_id: cid });
+                                _requestsByContract[cid] = list || [];
+                                reqSel.innerHTML = requestOptions(list || [], null);
+                            } catch (e) {
+                                reqSel.innerHTML = requestOptions([], null);
+                            }
+                        } else {
+                            reqSel.innerHTML = requestOptions([], null);
+                        }
+                    }
+                }
+            });
+        });
         tbody.querySelectorAll('.import-cb').forEach(el => {
             el.addEventListener('change', updateApproveButton);
         });
@@ -289,6 +350,7 @@ const PaymentImportsView = (() => {
         else if (field === 'period') data = { period_year: value.period_year ? parseInt(value.period_year, 10) : null, period_month: value.period_month ? parseInt(value.period_month, 10) : null };
         else if (field === 'period_to') data = { period_year_to: value.period_year_to ? parseInt(value.period_year_to, 10) : null, period_month_to: value.period_month_to ? parseInt(value.period_month_to, 10) : null };
         else if (field === 'payment_type') data = { payment_type: value };
+        else if (field === 'payment_request_id') data = { payment_request_id: value };
         try {
             await Api.paymentImportEdit(id, data);
             Object.assign(row, data);
@@ -346,7 +408,7 @@ const PaymentImportsView = (() => {
                 const pyTo = row.suggested_period_year_to ?? row.suggested_period_year;
                 const pmTo = row.suggested_period_month_to ?? row.suggested_period_month;
                 const ptype = row.suggested_payment_type || 'rent';
-                await Api.paymentImportEdit(id, { contracts_id: cid, period_year: py, period_month: pm, period_year_to: pyTo, period_month_to: pmTo, payment_type: ptype });
+                await Api.paymentImportEdit(id, { contracts_id: cid, period_year: py, period_month: pm, period_year_to: pyTo, period_month_to: pmTo, payment_type: ptype, payment_request_id: row.payment_request_id || undefined });
                 Object.assign(row, { contracts_id: cid, period_year: py, period_month: pm, period_year_to: pyTo, period_month_to: pmTo, payment_type: ptype });
             }
             const res = await Api.paymentImportsApprove(ready);

@@ -1071,6 +1071,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 #import-table .import-pairing-row1 { margin-bottom: 8px; }
 #import-table .import-pairing-row1 .import-cell-contract { flex: 1; min-width: 140px; }
 #import-table .import-pairing-row1 .import-cell-type { flex: 0 0 auto; min-width: 100px; }
+#import-table .import-pairing-row1 .import-cell-request { flex: 0 1 auto; min-width: 160px; max-width: 280px; }
 #import-table .import-pairing-row2 .import-cell-period-from,
 #import-table .import-pairing-row2 .import-cell-period-to {
   display: inline-flex;

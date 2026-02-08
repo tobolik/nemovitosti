@@ -96,6 +96,9 @@ if ($httpCode >= 400) {
                 $msg .= ' Odpověď: ' . $preview . (strlen(trim($raw)) > 200 ? '…' : '');
             }
         }
+        if (stripos($msg, 'authoriz') !== false || stripos($msg, 'strong') !== false || stripos($msg, 'ověřen') !== false) {
+            $msg .= ' Postup: (1) Přihlaste se na ib.fio.cz → Nastavení → API. (2) U daného účtu zkontrolujte, zda není potřeba znovu autorizovat přístup k datům (někdy se zobrazí pokyn k potvrzení přes SMS nebo mobilní aplikaci; platnost 10 min). (3) Případně token zrušte a vytvořte nový („+ Přidat nový token“, práva „Pouze sledovat účet“, potvrzení SMS). (4) Do 10 minut zkuste import znovu.';
+        }
     }
     jsonErr($msg);
 }
