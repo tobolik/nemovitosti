@@ -134,13 +134,16 @@ const App = (() => {
         showLogin();
     });
 
-    // ── nav link clicks ─────────────────────────────────────────────────
-    document.querySelectorAll('.nav-link').forEach(btn => {
-        btn.addEventListener('click', () => {
+    // ── nav link clicks (delegace – funguje i při kliku na ikonu/text uvnitř tlačítka) ─────────────────────────────────────────────────
+    const sidebarNav = document.querySelector('.sidebar-nav');
+    if (sidebarNav) {
+        sidebarNav.addEventListener('click', (e) => {
+            const btn = e.target && e.target.closest && e.target.closest('.nav-link');
+            if (!btn || !btn.dataset.view) return;
             navigateWithHistory(btn.dataset.view);
             sidebarClose();
         });
-    });
+    }
 
     // ── hashchange (zpět/dopředu v prohlížeči) ───────────────────────────
     window.addEventListener('hashchange', onHashChange);
