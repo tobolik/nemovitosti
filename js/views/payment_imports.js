@@ -125,7 +125,7 @@ const PaymentImportsView = (() => {
         } else if (isProcessed) {
             statusCell = '<span class="badge badge-ok" title="Zpracováno">✓</span>';
         } else if (imp.overpayment) {
-            statusCell = '<span class="badge badge-warn" title="Pro toto období a smlouvu již platba existuje (převyplnění)">Převyplnění</span>';
+            statusCell = '<span class="badge badge-warn" title="Pro toto období a smlouvu již platba existuje.">Spárováno</span>';
         }
         const curr = currencyLabel(imp.currency);
         const counterpartFull = imp.counterpart_account || '';
@@ -148,7 +148,7 @@ const PaymentImportsView = (() => {
             '</td>';
         const trClass = [isProcessed && 'import-row-processed', paired && 'import-row-has-paired'].filter(Boolean).join(' ');
         return '<tr data-id="' + id + '"' + (trClass ? ' class="' + trClass + '"' : '') + '>' +
-            '<td><input type="checkbox" class="import-cb" data-id="' + id + '"' + (isProcessed ? ' disabled' : imp.overpayment ? ' disabled title="Převyplnění – platba pro toto období již existuje"' : (paired ? '' : ' disabled title="Vyplňte smlouvu, období a typ platby"')) + '></td>' +
+            '<td><input type="checkbox" class="import-cb" data-id="' + id + '"' + (isProcessed ? ' disabled' : imp.overpayment ? ' disabled title="Spárováno – platba pro toto období již existuje"' : (paired ? '' : ' disabled title="Vyplňte smlouvu, období a typ platby"')) + '></td>' +
             '<td class="col-status">' + statusCell + '</td>' +
             '<td>' + (imp.payment_date ? UI.fmtDate(imp.payment_date) : '—') + '</td>' +
             '<td class="col-amount">' + UI.fmt(imp.amount) + ' ' + UI.esc(curr) + '</td>' +

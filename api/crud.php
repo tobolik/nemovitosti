@@ -57,16 +57,20 @@ function maskBankAccountFioToken(array $row): array {
     return $row;
 }
 
-/** Návrh párování importu: podle částky, data a protiúčtu najde vhodnou smlouvu a období (nájem). */
-function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string $counterpartAccount, array $contractsWithRent, array $rentChangesByContract): ?array {
+/** Návrh párování importu: podle částky, data a protiúčtu najde vhodnou smlouvu a období (nájem). Podporuje 1 měsíc i N měsíců (např. 36000 = 12×3000) a přičtení neuhrazených Požadavků na platby (nájem + požadavky = částka). */
+function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string $counterpartAccount, array $contractsWithRent, array $rentChangesByContract, array $unpaidRequestsByContract = []): ?array {
     if ($amount <= 0 || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $paymentDate, $m)) return null;
     $y = (int)$m[1]; $mo = (int)$m[2];
     $counterpartNorm = $counterpartAccount !== null && $counterpartAccount !== '' ? strtolower(preg_replace('/\s+/', '', trim($counterpartAccount))) : '';
     $best = null;
     $bestScore = -1;
+    // 1) Shoda na jeden měsíc (částka ≈ nájem za daný měsíc, případně + neuhrazené požadavky)
     foreach ($contractsWithRent as $c) {
-        $expectedRent = getRentForMonth((float)$c['monthly_rent'], (int)$c['contracts_id'], $y, $mo, $rentChangesByContract);
-        $diff = abs($expectedRent - $amount);
+        $cid = (int)($c['contracts_id'] ?? $c['id']);
+        $expectedRent = getRentForMonth((float)$c['monthly_rent'], $cid, $y, $mo, $rentChangesByContract);
+        $requestsSum = (float)($unpaidRequestsByContract[$cid] ?? 0);
+        $expectedTotal = $expectedRent + $requestsSum;
+        $diff = abs($expectedTotal - $amount);
         if ($diff > 0.02) continue; // tolerance 2 haléře
         $score = 0;
         if ($counterpartNorm !== '') {
@@ -83,20 +87,66 @@ function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string
         if ($score > $bestScore || ($score === $bestScore && $diff < ($best['diff'] ?? 999))) {
             $bestScore = $score;
             $best = [
-                'suggested_contracts_id' => (int)($c['contracts_id'] ?? $c['id']),
+                'suggested_contracts_id' => $cid,
                 'suggested_period_year'  => $y,
                 'suggested_period_month' => $mo,
+                'suggested_period_year_to'  => $y,
+                'suggested_period_month_to' => $mo,
                 'suggested_payment_type' => 'rent',
                 'diff' => $diff,
             ];
         }
     }
-    return $best ? [
+    // 2) Žádný jeden měsíc – zkusit N měsíců (např. roční platba 12× nájem), případně + neuhrazené požadavky
+    if ($best === null) {
+        foreach ($contractsWithRent as $c) {
+            $cid = (int)($c['contracts_id'] ?? $c['id']);
+            $rent = getRentForMonth((float)$c['monthly_rent'], $cid, $y, $mo, $rentChangesByContract);
+            if ($rent <= 0) continue;
+            $requestsSum = (float)($unpaidRequestsByContract[$cid] ?? 0);
+            for ($n = 2; $n <= 24; $n++) {
+                $expected = $rent * $n + $requestsSum;
+                if (abs($expected - $amount) > 0.02 * $n + 0.02) continue; // tolerance
+                $score = 0;
+                if ($counterpartNorm !== '') {
+                    $tenantAccounts = db()->prepare("
+                        SELECT 1 FROM tenant_bank_accounts tba
+                        WHERE tba.tenants_id = ? AND tba.valid_to IS NULL
+                        AND LOWER(REPLACE(TRIM(tba.account_number), ' ', '')) = ?
+                    ");
+                    $tenantAccounts->execute([(int)$c['tenants_id'], $counterpartNorm]);
+                    if ($tenantAccounts->fetch()) $score = 10;
+                } else {
+                    $score = 1;
+                }
+                $moFrom = $mo - ($n - 1);
+                $yFrom = $y;
+                while ($moFrom < 1) { $moFrom += 12; $yFrom--; }
+                $diff = abs($expected - $amount);
+                if ($score > $bestScore || ($score === $bestScore && $diff < ($best['diff'] ?? 999))) {
+                    $bestScore = $score;
+                    $best = [
+                        'suggested_contracts_id' => $cid,
+                        'suggested_period_year'  => $yFrom,
+                        'suggested_period_month' => $moFrom,
+                        'suggested_period_year_to'  => $y,
+                        'suggested_period_month_to' => $mo,
+                        'suggested_payment_type' => 'rent',
+                        'diff' => $diff,
+                    ];
+                }
+            }
+        }
+    }
+    if ($best === null) return null;
+    return [
         'suggested_contracts_id' => $best['suggested_contracts_id'],
         'suggested_period_year'  => $best['suggested_period_year'],
         'suggested_period_month' => $best['suggested_period_month'],
+        'suggested_period_year_to'  => $best['suggested_period_year_to'],
+        'suggested_period_month_to' => $best['suggested_period_month_to'],
         'suggested_payment_type' => $best['suggested_payment_type'],
-    ] : null;
+    ];
 }
 
 /** Ověří, zda řetězec YYYY-MM-DD představuje platné datum. Vrací chybovou zprávu nebo null. */
@@ -197,7 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 return $r['counterpart_matches'] === true;
             }));
         }
-        // Převyplnění: pro smlouvu+období už existuje platba
+        // Spárováno: pro smlouvu+období už existuje platba
         $existingPaymentsKey = [];
         $existingSt = db()->query("
             SELECT contracts_id, period_year, period_month
@@ -228,20 +278,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             if (!isset($rentChangesByContract[$cid2])) $rentChangesByContract[$cid2] = [];
             $rentChangesByContract[$cid2][] = $rc;
         }
+        $unpaidRequestsByContract = [];
+        $unpaidReq = db()->query("
+            SELECT contracts_id, SUM(amount) AS total
+            FROM payment_requests
+            WHERE valid_to IS NULL AND paid_at IS NULL
+            GROUP BY contracts_id
+        ")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($unpaidReq as $r) {
+            $unpaidRequestsByContract[(int)$r['contracts_id']] = (float)$r['total'];
+        }
         foreach ($rows as &$row) {
             $suggestion = suggestPaymentImportPairing(
                 (float)$row['amount'],
                 (string)$row['payment_date'],
                 isset($row['counterpart_account']) ? trim((string)$row['counterpart_account']) : null,
                 $contractsWithRent,
-                $rentChangesByContract
+                $rentChangesByContract,
+                $unpaidRequestsByContract
             );
             if ($suggestion) {
                 $row['suggested_contracts_id'] = $suggestion['suggested_contracts_id'];
                 $row['suggested_period_year'] = $suggestion['suggested_period_year'];
                 $row['suggested_period_month'] = $suggestion['suggested_period_month'];
-                $row['suggested_period_year_to'] = $suggestion['suggested_period_year'];
-                $row['suggested_period_month_to'] = $suggestion['suggested_period_month'];
+                $row['suggested_period_year_to'] = $suggestion['suggested_period_year_to'] ?? $suggestion['suggested_period_year'];
+                $row['suggested_period_month_to'] = $suggestion['suggested_period_month_to'] ?? $suggestion['suggested_period_month'];
                 $row['suggested_payment_type'] = $suggestion['suggested_payment_type'];
             }
         }

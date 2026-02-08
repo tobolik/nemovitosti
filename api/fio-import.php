@@ -49,6 +49,9 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) || !preg_match('/^\d{4}-\d{2}-\d
 if (strtotime($from) > strtotime($to)) {
     jsonErr('Datum od nesmí být po datu do.');
 }
+if ($from > $today || $to > $today) {
+    jsonErr('Období nesmí být v budoucnosti. FIO API vrací pouze minulá data.');
+}
 
 // FIO API: cURL abychom při 4xx dostali tělo odpovědi (FIO tam posílá popis chyby)
 $url = 'https://fioapi.fio.cz/v1/rest/periods/' . rawurlencode($token) . '/' . $from . '/' . $to . '/transactions.json';
@@ -83,6 +86,8 @@ if ($httpCode >= 400) {
     }
     if ($httpCode === 409) {
         $msg = 'FIO API omezuje počet požadavků (max. 1× za 30 sekund). Zkuste to znovu za chvíli.';
+    } elseif ($httpCode === 422 && $msg === 'FIO API vrátilo HTTP 422.') {
+        $msg .= ' Časté příčiny: období v budoucnosti, neplatný nebo vypršený token.';
     }
     jsonErr($msg);
 }
