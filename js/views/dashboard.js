@@ -400,6 +400,7 @@ async function loadDashboard(year) {
                 const prop = (d.property_name || '').replace(/"/g, '&quot;');
                 const typeLabel = requestTypeLabels[pr.type] || pr.type;
                 const dueDate = (pr.due_date || '').slice(0, 10);
+                const dueDateFormatted = dueDate.length === 10 ? (dueDate.slice(8, 10) + '.' + dueDate.slice(5, 7) + '.' + dueDate.slice(0, 4)) : '';
                 const dueAttr = dueDate ? ' data-due-date="' + dueDate.replace(/"/g, '&quot;') + '"' : '';
                 const prId = pr.payment_requests_id ?? pr.id;
                 const isPaid = !!(pr.paid_at && String(pr.paid_at).trim());
@@ -410,7 +411,8 @@ async function loadDashboard(year) {
                 })() : '';
                 const paidClass = isPaid ? ' tag-request-paid' : '';
                 const paidBadge = isPaid ? '<span class="tag-paid-badge" title="' + (paidDate ? 'Uhrazeno ' + paidDate : 'Uhrazeno') + '">uhrazeno' + (paidDate ? ' ' + paidDate : '') + '</span>' : '';
-                tags += '<span class="tag tag-request' + paidClass + '">' + typeLabel + ' ' + UI.fmt(pr.amount) + ' Kč' + paidBadge +
+                const unpaidDatePart = !isPaid && dueDateFormatted ? ' (' + dueDateFormatted + ')' : '';
+                tags += '<span class="tag tag-request' + paidClass + '">' + typeLabel + ' ' + UI.fmt(pr.amount) + ' Kč' + unpaidDatePart + paidBadge +
                     ' <span class="tag-edit-req" data-payment-request-id="' + prId + '" title="Upravit požadavek">✎</span>' +
                     ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-property-id="' + (d.properties_id ?? '') + '" data-amount="' + (pr.amount || 0) + '" data-request-type="' + (pr.type || 'energy') + '" data-payment-request-id="' + prId + '" data-tenant="' + tenant + '" data-property="' + prop + '"' + dueAttr + ' title="Zapsat platbu">+</span></span>';
             });
