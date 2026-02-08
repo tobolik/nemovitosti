@@ -1035,13 +1035,14 @@ async function openPaymentModal(el) {
         const reqTypeLabels = { energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
         sorted.forEach(r => {
             const rid = prId(r);
-            const typeLabel = reqTypeLabels[r.type] || (r.note || 'Požadavek');
+            const typeLabel = reqTypeLabels[r.type] || 'Požadavek';
             const amtStr = UI.fmt(parseFloat(r.amount) || 0);
             const dateStr = r.due_date ? UI.fmtDate(r.due_date) : '';
             const statusStr = r.paid_at ? 'vyřízeno' : 'nevyřízeno';
-            const label = (r.note ? UI.esc(r.note) : typeLabel) + ' ' + amtStr + ' Kč' + (dateStr ? ' (' + dateStr + ' – ' + statusStr + ')' : ' (' + statusStr + ')');
+            const label = typeLabel + ' ' + amtStr + ' Kč' + (dateStr ? ' (' + dateStr + ' – ' + statusStr + ')' : ' (' + statusStr + ')');
+            const titleAttr = (r.note != null && String(r.note).trim() !== '') ? (' title="' + String(r.note).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"') : '';
             const checked = idSet.has(String(rid)) ? ' checked' : '';
-            html += '<label class="pay-modal-request-cb"><input type="checkbox" name="pay-modal-pr" value="' + rid + '"' + checked + '><span class="pay-modal-request-cb-text">' + label + '</span></label>';
+            html += '<label class="pay-modal-request-cb"' + titleAttr + '><input type="checkbox" name="pay-modal-pr" value="' + rid + '"' + checked + '><span class="pay-modal-request-cb-text">' + UI.esc(label) + '</span></label>';
         });
         if (!html) html = '<p class="text-muted" style="font-size:.9rem">Žádné požadavky k propojení.</p>';
         requestLinkList.innerHTML = html;
