@@ -39,6 +39,14 @@ Nasazení aplikace a databáze celé na [Railway](https://railway.app): PHP app 
    `https://TVAJE-DOMENA.up.railway.app/api/migrate.php?key=TVOJ_MIGRATE_KEY`  
 3. Měla by přijít JSON odpověď a v DB se vytvoří tabulky podle `migrations/*.sql`.
 
+### Krok 5b: Session v DB (aby vás po deployi neodhlašovalo)
+
+Na Railway je disk **ephemeral** – po každém deployi se soubory (včetně PHP session) ztratí. Přihlášení proto nepřežije redeploy.
+
+1. Po spuštění migrací (Krok 5) je v DB tabulka **`_sessions`** (migrace `061_sessions_table.sql`).
+2. U **PHP služby** → **Variables** přidej proměnnou **`SESSION_USE_DB`** = **`1`**.
+3. Aplikace pak ukládá session do MySQL; přihlášení přežije deploy i více instancí.
+
 ### Krok 6 (volitelně): Import SQL dumpu do Railway MySQL
 
 Dump z projektu (např. `sql-dump-2026-02-09.sql`) vytváří databázi `tobolikcz01` a naplní ji. Postup:

@@ -52,7 +52,41 @@
 
   /* Fonts */
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+
+  /* Semantic (odvozené z palety) */
+  --primary: var(--purple-300);
+  --accent: var(--purple-600);
+  --primary-light: #c4b5fd;
+  --bg2: rgba(0,0,0,.15);
+  --focus-ring: rgba(147,51,234,.2);
 }
+
+/* Dev/staging – celé tealové téma (Railway, localhost) */
+html.env-dev {
+  --purple-900: #134e4a;
+  --purple-800: #115e59;
+  --purple-700: #0f766e;
+  --purple-600: #0d9488;
+  --purple-500: #14b8a6;
+  --purple-400: #2dd4bf;
+  --purple-300: #5eead4;
+  --purple-200: #99f6e4;
+  --indigo-900: #134e4a;
+  --txt2: #99f6e4;
+  --txt3: #5eead4;
+  --slate-900: #0f766e;
+  --slate-800: #115e59;
+  --slate-700: #0d9488;
+  --primary: #5eead4;
+  --accent: #0d9488;
+  --primary-light: #99f6e4;
+  --bg2: rgba(0,0,0,.22);
+  --focus-ring: rgba(13,148,136,.3);
+}
+html.env-dev .fg select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235eead4'/%3E%3C/svg%3E");
+}
+html.env-dev .badge-info { background: rgba(13,148,136,.25); }
 
 /* ── Reset ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -105,7 +139,7 @@ button, select, input, textarea { font-family: var(--font-ui); }
   border-radius: var(--r); color: var(--txt); font-size: .92rem;
   transition: border-color .2s, box-shadow .2s;
 }
-.login-box input:focus { outline: none; border-color: var(--purple-600); box-shadow: 0 0 0 3px rgba(147,51,234,.2); }
+.login-box input:focus { outline: none; border-color: var(--purple-600); box-shadow: 0 0 0 3px var(--focus-ring); }
 
 #login-error { color: #fca5a5; font-size: .8rem; margin-top: 10px; min-height: 1.1em; }
 
@@ -456,7 +490,7 @@ footer .footer-php-version { margin-left: 0.5rem; opacity: .7; font-size: 0.9em;
 .fg input:focus, .fg select:focus, .fg textarea:focus {
   outline: none;
   border-color: var(--purple-600);
-  box-shadow: 0 0 0 3px rgba(147,51,234,.2);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .fg textarea { resize: vertical; min-height: 56px; line-height: 1.45; }
 .fg .checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500; text-transform: none; letter-spacing: normal; }
@@ -1280,7 +1314,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 }
 .modal-box .fg input:focus, .modal-box .fg select:focus, .modal-box .fg textarea:focus {
   border-color: var(--purple-600);
-  box-shadow: 0 0 0 3px rgba(147,51,234,.2);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 /* Modal Platba – na notebooku širší, více místa pro číslo účtu a protiúčet */

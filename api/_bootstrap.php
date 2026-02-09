@@ -7,6 +7,16 @@ set_exception_handler(function(Throwable $e) {
     if (ob_get_level()) ob_end_clean();
     http_response_code(500);
     header('Content-Type: application/json');
+    // CORS: povolený origin dostane hlavičky, aby prohlížeč nezablokoval odpověď
+    $origin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
+    if ($origin !== '') {
+        $list = array_map('trim', array_filter(explode(',', (string)(getenv('CORS_ALLOWED_ORIGINS') ?: (defined('CORS_ALLOWED_ORIGINS') ? CORS_ALLOWED_ORIGINS : '')))));
+        $allowed = in_array($origin, $list, true) || (!$list && preg_match('#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#i', $origin));
+        if ($allowed) {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Access-Control-Allow-Credentials: true');
+        }
+    }
     $showDetails = (defined('DEBUG') && DEBUG);
     $msg = $showDetails ? $e->getMessage() : 'Chyba serveru.';
     $out = ['ok' => false, 'error' => $msg];
@@ -42,7 +52,7 @@ function db(): PDO {
 }
 
 // ── Session ─────────────────────────────────────────────────────────────────
-// Pole u session_set_cookie_params až od PHP 7.3; na starších verzích použij starou signaturu
+// Na Railway (ephemeral filesystem) použij SESSION_USE_DB=1 – session v MySQL přežijí deploy.
 (function(){
     if (session_status() !== PHP_SESSION_NONE) return;
     ini_set('session.gc_maxlifetime', (string)SESSION_LIFE);
@@ -53,12 +63,58 @@ function db(): PDO {
             'path'     => '/',
             'secure'   => $secure,
             'httponly' => true,
-            'samesite' => 'Strict',
+            'samesite' => 'Lax',
         ]);
     } else {
         session_set_cookie_params(SESSION_LIFE, '/', '', $secure, true);
     }
     session_name(SESSION_NAME);
+    if (defined('SESSION_USE_DB') && SESSION_USE_DB) {
+        $handler = new class implements \SessionHandlerInterface {
+            public function open(string $path, string $name): bool { return true; }
+            public function close(): bool { return true; }
+            public function read(string $id): string|false {
+                if ($id === '') return '';
+                try {
+                    $s = db()->prepare('SELECT data FROM _sessions WHERE id = ? AND last_activity > ?');
+                    $s->execute([$id, time() - SESSION_LIFE]);
+                    $row = $s->fetch();
+                    return $row ? (string) $row['data'] : '';
+                } catch (Throwable $e) {
+                    return '';
+                }
+            }
+            public function write(string $id, string $data): bool {
+                if ($id === '') return true;
+                try {
+                    db()->prepare('REPLACE INTO _sessions (id, data, last_activity) VALUES (?, ?, ?)')
+                        ->execute([$id, $data, time()]);
+                    return true;
+                } catch (Throwable $e) {
+                    return false;
+                }
+            }
+            public function destroy(string $id): bool {
+                if ($id === '') return true;
+                try {
+                    db()->prepare('DELETE FROM _sessions WHERE id = ?')->execute([$id]);
+                    return true;
+                } catch (Throwable $e) {
+                    return false;
+                }
+            }
+            public function gc(int $max_lifetime): int|false {
+                try {
+                    $stmt = db()->prepare('DELETE FROM _sessions WHERE last_activity < ?');
+                    $stmt->execute([time() - $max_lifetime]);
+                    return $stmt->rowCount();
+                } catch (Throwable $e) {
+                    return false;
+                }
+            }
+        };
+        session_set_save_handler($handler, true);
+    }
     session_start();
 })();
 

@@ -15,16 +15,16 @@ $corsOriginAllowed = function (string $origin): bool {
     return false;
 };
 
-// ── OPTIONS – CORS preflight (pouze whitelistované origin + credentials) ───
+// ── OPTIONS – CORS preflight (pouze whitelistované origin dostanou CORS hlavičky) ─
 if ($method === 'OPTIONS') {
     $origin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
     if ($corsOriginAllowed($origin)) {
         header('Access-Control-Allow-Origin: ' . $origin);
         header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, X-Csrf-Token');
+        header('Access-Control-Max-Age: 86400');
     }
-    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, X-Csrf-Token');
-    header('Access-Control-Max-Age: 86400');
     header('Allow: GET, POST, OPTIONS');
     http_response_code(204);
     exit;
