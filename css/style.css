@@ -82,9 +82,9 @@ html.env-dev {
   --primary-light: #99f6e4;
   --bg2: rgba(0,0,0,.22);
   --focus-ring: rgba(13,148,136,.3);
-  /* Uhrazený měsíc v heatmapě – tmavší teal, ladí s pozadím */
-  --green-600: #0f766e;
-  --green-700: #0e6b63;
+  /* Uhrazený měsíc v heatmapě – emerald (chladná zelená), ladí s tealovým pozadím */
+  --green-600: #059669;
+  --green-700: #047857;
 }
 html.env-dev .fg select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235eead4'/%3E%3C/svg%3E");
