@@ -65,6 +65,11 @@ body {
   background-attachment: fixed;
   overflow-x: hidden;
 }
+
+/* Dev/staging (Railway, localhost) – tealové pozadí, ať je hned poznat */
+html.env-dev body {
+  background: linear-gradient(180deg, #0f766e 0%, #115e59 40%, #134e4a 100%);
+}
 a { color: var(--purple-300); text-decoration: none; }
 a:hover { text-decoration: underline; }
 button, select, input, textarea { font-family: var(--font-ui); }
