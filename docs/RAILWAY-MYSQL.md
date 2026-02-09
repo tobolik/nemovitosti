@@ -44,8 +44,16 @@ Nasazení aplikace a databáze celé na [Railway](https://railway.app): PHP app 
 Na Railway je disk **ephemeral** – po každém deployi se soubory (včetně PHP session) ztratí. Přihlášení proto nepřežije redeploy.
 
 1. Po spuštění migrací (Krok 5) je v DB tabulka **`_sessions`** (migrace `061_sessions_table.sql`).
-2. U **PHP služby** → **Variables** přidej proměnnou **`SESSION_USE_DB`** = **`1`**.
+2. U **PHP služby** → **Variables** přidej proměnnou **`SESSION_USE_DB`** = **`1`** (přesně řetězec `1`, bez mezer).
 3. Aplikace pak ukládá session do MySQL; přihlášení přežije deploy i více instancí.
+
+**Když je tabulka `_sessions` po přihlášení prázdná:**
+
+- Ověř **Variables** u PHP služby: musí být **`SESSION_USE_DB`** = **`1`**. Bez toho se session ukládají do souborů (na Railway se ztratí při deployi).
+- Ověř, že migrace **061** opravdu proběhla – v tabulce `_migrations` musí být záznam `061_sessions_table.sql`. Pokud ne, znovu zavolej `/api/migrate.php?key=...`.
+- Kontroluj **stejnou databázi**, kterou používá aplikace (proměnná `DB_NAME` resp. `MYSQLDATABASE` u PHP služby). Do jiné DB se session neukládají.
+- Při **DEBUG=1**: po přihlášení zavolej `GET /api/auth.php` – v JSON odpovědi bude `"session_storage": "db"` nebo `"file"`. U `"file"` se DB session nepoužívají.
+- V **logách** služby na Railway hledej řádek `[session] write failed: ...` – pokud se objeví, jde o chybu DB (tabulka neexistuje, špatná práva, jiná DB).
 
 ### Krok 6 (volitelně): Import SQL dumpu do Railway MySQL
 

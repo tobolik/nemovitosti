@@ -40,14 +40,18 @@ if ($origin !== '' && $corsOriginAllowed($origin)) {
 // ── GET – session check ─────────────────────────────────────────────────────
 if ($method === 'GET') {
     if (!isset($_SESSION['uid'])) jsonErr('Nejste přihlášen.', 401);
-    jsonOk([
+    $out = [
         'id'    => $_SESSION['uid'],
         'name'  => $_SESSION['name'],
         'email' => $_SESSION['email'],
         'role'  => $_SESSION['role'],
         'csrf'  => csrfToken(),
         'php_version' => PHP_VERSION,
-    ]);
+    ];
+    if (defined('DEBUG') && DEBUG) {
+        $out['session_storage'] = (defined('SESSION_USE_DB') && SESSION_USE_DB) ? 'db' : 'file';
+    }
+    jsonOk($out);
 }
 
 // ── POST – login / logout ───────────────────────────────────────────────────

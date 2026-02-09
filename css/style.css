@@ -85,6 +85,8 @@ html.env-dev {
 }
 html.env-dev .fg select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235eead4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
 }
 html.env-dev .badge-info { background: rgba(13,148,136,.25); }
 

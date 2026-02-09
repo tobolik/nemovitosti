@@ -82,6 +82,7 @@ function db(): PDO {
                     $row = $s->fetch();
                     return $row ? (string) $row['data'] : '';
                 } catch (Throwable $e) {
+                    error_log('[session] read failed: ' . $e->getMessage());
                     return '';
                 }
             }
@@ -92,6 +93,7 @@ function db(): PDO {
                         ->execute([$id, $data, time()]);
                     return true;
                 } catch (Throwable $e) {
+                    error_log('[session] write failed: ' . $e->getMessage());
                     return false;
                 }
             }
