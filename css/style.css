@@ -114,6 +114,7 @@ button, select, input, textarea { font-family: var(--font-ui); }
 .btn-login:hover { background: var(--purple-700); }
 .btn-login:active { transform: scale(.98); }
 .btn-login:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.login-version { margin-top: 1.25rem; font-size: .85rem; color: rgba(255,255,255,.85); text-align: center; }
 
 /* ============================================================
    APP SHELL – Sidebar + Main
