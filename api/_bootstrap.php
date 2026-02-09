@@ -7,12 +7,24 @@ set_exception_handler(function(Throwable $e) {
     if (ob_get_level()) ob_end_clean();
     http_response_code(500);
     header('Content-Type: application/json');
-    $msg = (defined('DEBUG') && DEBUG) ? $e->getMessage() : 'Chyba serveru.';
-    echo json_encode(['ok'=>false,'error'=>$msg], JSON_UNESCAPED_UNICODE);
+    $showDetails = (defined('DEBUG') && DEBUG);
+    $msg = $showDetails ? $e->getMessage() : 'Chyba serveru.';
+    $out = ['ok' => false, 'error' => $msg];
+    if ($showDetails) {
+        $out['error_detail'] = [
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => array_slice(explode("\n", $e->getTraceAsString()), 0, 10),
+        ];
+    }
+    echo json_encode($out, JSON_UNESCAPED_UNICODE);
     exit;
 });
 
-require __DIR__ . '/../config.php';
+$config = __DIR__ . '/../config.php';
+$configDefault = __DIR__ . '/../config.default.php';
+if (file_exists($config)) require $config;
+require $configDefault;
 
 // ── PDO singleton ───────────────────────────────────────────────────────────
 function db(): PDO {

@@ -7,7 +7,10 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 
 try {
-    require __DIR__ . '/../config.php';
+    $config = __DIR__ . '/../config.php';
+    $configDefault = __DIR__ . '/../config.default.php';
+    if (file_exists($config)) require $config;
+    require $configDefault;
 
     $key = $_GET['key'] ?? '';
     if (!defined('MIGRATE_KEY') || MIGRATE_KEY === '' || !hash_equals((string)MIGRATE_KEY, $key)) {
