@@ -1,5 +1,8 @@
 {
     "name": "tobolik/nemovitosti",
     "description": "Správa nemovitostí a platební morálka",
-    "require": {}
+    "require": {
+        "php": ">=8.2",
+        "ext-pdo_mysql": "*"
+    }
 }
