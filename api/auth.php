@@ -5,6 +5,14 @@ require __DIR__ . '/_bootstrap.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+// ── OPTIONS – CORS preflight (prohlížeč ho posílá před POST s JSON) ─────────
+if ($method === 'OPTIONS') {
+    header('Allow: GET, POST, OPTIONS');
+    header('Access-Control-Max-Age: 86400');
+    http_response_code(204);
+    exit;
+}
+
 // ── GET – session check ─────────────────────────────────────────────────────
 if ($method === 'GET') {
     if (!isset($_SESSION['uid'])) jsonErr('Nejste přihlášen.', 401);
@@ -72,4 +80,5 @@ if ($method === 'POST') {
     jsonErr('Neznámá akce.');
 }
 
+header('Allow: GET, POST, OPTIONS');
 jsonErr('Metoda nepodporovaná.', 405);
