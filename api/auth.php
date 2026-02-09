@@ -7,8 +7,17 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // ── OPTIONS – CORS preflight (prohlížeč ho posílá před POST s JSON) ─────────
 if ($method === 'OPTIONS') {
-    header('Allow: GET, POST, OPTIONS');
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    if ($origin !== '') {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Access-Control-Allow-Credentials: true');
+    } else {
+        header('Access-Control-Allow-Origin: *');
+    }
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, X-Csrf-Token');
     header('Access-Control-Max-Age: 86400');
+    header('Allow: GET, POST, OPTIONS');
     http_response_code(204);
     exit;
 }
