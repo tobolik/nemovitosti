@@ -7,10 +7,11 @@ set_exception_handler(function(Throwable $e) {
     if (ob_get_level()) ob_end_clean();
     http_response_code(500);
     header('Content-Type: application/json');
-    // CORS: povolený origin dostane hlavičky, aby prohlížeč nezablokoval odpověď
+    // CORS: stejná hierarchie jako v auth.php (konstanta z config.php / config.default.php, jinak getenv)
     $origin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
     if ($origin !== '') {
-        $list = array_map('trim', array_filter(explode(',', (string)(getenv('CORS_ALLOWED_ORIGINS') ?: (defined('CORS_ALLOWED_ORIGINS') ? CORS_ALLOWED_ORIGINS : '')))));
+        $raw = defined('CORS_ALLOWED_ORIGINS') ? (string)CORS_ALLOWED_ORIGINS : (getenv('CORS_ALLOWED_ORIGINS') ?: '');
+        $list = array_map('trim', array_filter(explode(',', $raw)));
         $allowed = in_array($origin, $list, true) || (!$list && preg_match('#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#i', $origin));
         if ($allowed) {
             header('Access-Control-Allow-Origin: ' . $origin);
