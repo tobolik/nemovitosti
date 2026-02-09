@@ -13,8 +13,8 @@ if (!defined('DB_PASS'))   define('DB_PASS',   getenv('DB_PASS')   ?: getenv('MY
 
 if (!defined('SESSION_NAME')) define('SESSION_NAME', getenv('SESSION_NAME') ?: 'nemov');
 if (!defined('SESSION_LIFE')) define('SESSION_LIFE', (int)(getenv('SESSION_LIFE') ?: '2592000'));
-// Na Railway (ephemeral disk) nastav SESSION_USE_DB=1 – session se ukládají do MySQL, přežijí deploy.
-if (!defined('SESSION_USE_DB')) define('SESSION_USE_DB', (getenv('SESSION_USE_DB') ?: '0') === '1');
+// Session v DB je výchozí (Railway, více instancí). Pro souborové session nastav SESSION_USE_DB=0.
+if (!defined('SESSION_USE_DB')) define('SESSION_USE_DB', (getenv('SESSION_USE_DB') ?: '1') === '1');
 if (!defined('DEBUG'))       define('DEBUG',       (getenv('DEBUG') ?: '1') === '1');
 if (!defined('MIGRATE_KEY')) define('MIGRATE_KEY', getenv('MIGRATE_KEY') ?: '');
 // CORS: comma-separated list of allowed origins (e.g. https://app.example.com). Empty = only localhost/127.0.0.1 for dev.

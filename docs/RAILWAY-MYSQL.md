@@ -44,8 +44,8 @@ Nasazení aplikace a databáze celé na [Railway](https://railway.app): PHP app 
 Na Railway je disk **ephemeral** – po každém deployi se soubory (včetně PHP session) ztratí. Přihlášení proto nepřežije redeploy.
 
 1. Po spuštění migrací (Krok 5) je v DB tabulka **`_sessions`** (migrace `061_sessions_table.sql`).
-2. U **PHP služby** → **Variables** přidej proměnnou **`SESSION_USE_DB`** = **`1`** (přesně řetězec `1`, bez mezer).
-3. Aplikace pak ukládá session do MySQL; přihlášení přežije deploy i více instancí.
+2. **Session v DB je výchozí** – pokud proměnnou nenastavíš, aplikace ukládá session do MySQL. Pro souborové session (lokálně bez DB) nastav **`SESSION_USE_DB`** = **`0`**.
+3. Přihlášení pak přežije deploy i více instancí.
 
 **Když je tabulka `_sessions` po přihlášení prázdná:**
 
