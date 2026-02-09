@@ -15,3 +15,5 @@ if (!defined('SESSION_NAME')) define('SESSION_NAME', getenv('SESSION_NAME') ?: '
 if (!defined('SESSION_LIFE')) define('SESSION_LIFE', (int)(getenv('SESSION_LIFE') ?: '2592000'));
 if (!defined('DEBUG'))       define('DEBUG',       (getenv('DEBUG') ?: '1') === '1');
 if (!defined('MIGRATE_KEY')) define('MIGRATE_KEY', getenv('MIGRATE_KEY') ?: '');
+// CORS: comma-separated list of allowed origins (e.g. https://app.example.com). Empty = only localhost/127.0.0.1 for dev.
+if (!defined('CORS_ALLOWED_ORIGINS')) define('CORS_ALLOWED_ORIGINS', getenv('CORS_ALLOWED_ORIGINS') ?: '');

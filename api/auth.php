@@ -5,14 +5,22 @@ require __DIR__ . '/_bootstrap.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-// ── OPTIONS – CORS preflight (prohlížeč ho posílá před POST s JSON) ─────────
+/** Vrátí true, pokud je daný origin povolen pro CORS (whitelist nebo localhost). */
+$corsOriginAllowed = function (string $origin): bool {
+    $origin = trim($origin);
+    if ($origin === '') return false;
+    $list = array_map('trim', array_filter(explode(',', (string)(defined('CORS_ALLOWED_ORIGINS') ? CORS_ALLOWED_ORIGINS : ''))));
+    if (in_array($origin, $list, true)) return true;
+    if (!$list && preg_match('#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#i', $origin)) return true;
+    return false;
+};
+
+// ── OPTIONS – CORS preflight (pouze whitelistované origin + credentials) ───
 if ($method === 'OPTIONS') {
-    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-    if ($origin !== '') {
+    $origin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
+    if ($corsOriginAllowed($origin)) {
         header('Access-Control-Allow-Origin: ' . $origin);
         header('Access-Control-Allow-Credentials: true');
-    } else {
-        header('Access-Control-Allow-Origin: *');
     }
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, X-Csrf-Token');
@@ -20,6 +28,13 @@ if ($method === 'OPTIONS') {
     header('Allow: GET, POST, OPTIONS');
     http_response_code(204);
     exit;
+}
+
+// CORS pro GET/POST: pouze whitelistovaný origin smí dostat credentials v odpovědi
+$origin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
+if ($origin !== '' && $corsOriginAllowed($origin)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Access-Control-Allow-Credentials: true');
 }
 
 // ── GET – session check ─────────────────────────────────────────────────────
