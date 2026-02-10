@@ -289,7 +289,7 @@ const ContractsView = (() => {
                             html += UI.esc((it.note || 'Energie') + ': ' + UI.fmt(it.amount) + ' Kč' + paid + due) + '<br>';
                         });
                         html += '<br>Uhrazené zálohy: <strong>' + UI.fmt(d.paid_sum) + ' Kč</strong>';
-                        html += '<br>Neuhrazené zálohy: ' + UI.fmt(d.unpaid_sum) + ' Kč (budou uzavřeny)';
+                        html += '<br>Neuhrazené zálohy: ' + UI.fmt(d.unpaid_sum) + ' Kč';
                     }
                     if (infoEl) infoEl.innerHTML = html;
                 } catch (e) {
@@ -320,7 +320,7 @@ const ContractsView = (() => {
                     const data = await resp.json();
                     if (!data.ok) throw new Error(data.error || 'Chyba');
                     const d = data.data || data;
-                    let msg = 'Vyúčtování provedeno. Zálohy uhrazené: ' + UI.fmt(d.paid_advances) + ' Kč, uzavřeno neuhrazených: ' + d.unpaid_closed + '.';
+                    let msg = 'Vyúčtování provedeno. Uhrazené zálohy: ' + UI.fmt(d.paid_advances) + ' Kč.';
                     if (d.settlement_amount > 0) msg += ' Nedoplatek: ' + UI.fmt(d.settlement_amount) + ' Kč (nový požadavek vytvořen).';
                     else if (d.settlement_amount < 0) msg += ' Přeplatek: ' + UI.fmt(Math.abs(d.settlement_amount)) + ' Kč (nový požadavek vytvořen).';
                     else msg += ' Vyrovnáno přesně.';

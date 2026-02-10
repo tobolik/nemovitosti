@@ -22,20 +22,13 @@ if ($action === 'energy_settlement') {
     $energyRequests = $st->fetchAll(PDO::FETCH_ASSOC);
 
     $paidSum = 0.0;
-    $unpaidIds = [];
     foreach ($energyRequests as $er) {
-        $amt = (float)$er['amount'];
         if (!empty($er['paid_at'])) {
-            $paidSum += $amt;
-        } else {
-            $unpaidIds[] = (int)$er['id'];
+            $paidSum += (float)$er['amount'];
         }
     }
 
-    // Uzavřít nezaplacené zálohy (soft-delete s poznámkou)
-    foreach ($unpaidIds as $id) {
-        softDelete('payment_requests', $id);
-    }
+    // Nezaplacené zálohy (energy) nemažeme – zůstávají v historii; vyúčtování jen přidá požadavek nedoplatek/přeplatek.
 
     // Nedoplatek / přeplatek
     $settlementAmount = round($actualAmount - $paidSum, 2);
@@ -68,7 +61,7 @@ if ($action === 'energy_settlement') {
 
     jsonOk([
         'paid_advances'     => round($paidSum, 2),
-        'unpaid_closed'     => count($unpaidIds),
+        'unpaid_closed'     => 0,
         'settlement_amount' => $settlementAmount,
         'settlement_id'     => $settlementId,
     ]);
