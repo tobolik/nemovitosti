@@ -281,13 +281,23 @@ function syncRentPaymentRequests(int $contractsId): void {
         $yEnd = (int)date('Y'); $monthEnd = (int)date('n');
     }
     $baseRent = (float)($c['monthly_rent'] ?? 0);
+    $firstMonthRent = isset($c['first_month_rent']) && $c['first_month_rent'] !== null && $c['first_month_rent'] !== '' ? (float)$c['first_month_rent'] : null;
+    $lastMonthRent = isset($c['last_month_rent']) && $c['last_month_rent'] !== null && $c['last_month_rent'] !== '' ? (float)$c['last_month_rent'] : null;
     $rentChangesRaw = db()->prepare("SELECT * FROM contract_rent_changes WHERE contracts_id = ? AND valid_to IS NULL ORDER BY effective_from ASC");
     $rentChangesRaw->execute([$contractsId]);
     $rentChangesByContract = [$contractsId => $rentChangesRaw->fetchAll(PDO::FETCH_ASSOC)];
     $findRent = db()->prepare("SELECT id, amount, due_date FROM payment_requests WHERE contracts_id = ? AND period_year = ? AND period_month = ? AND type = 'rent' AND valid_to IS NULL");
     $syncedMonths = [];
     for ($y = $yStart, $m = $monthStart; $y < $yEnd || ($y === $yEnd && $m <= $monthEnd); ) {
-        $amount = getRentForMonth($baseRent, $contractsId, $y, $m, $rentChangesByContract);
+        $firstOfMonth = sprintf('%04d-%02d-01', $y, $m);
+        $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
+        if ($start > $firstOfMonth && (int)date('Y', strtotime($start)) === $y && (int)date('n', strtotime($start)) === $m && $firstMonthRent !== null) {
+            $amount = $firstMonthRent;
+        } elseif ($end !== '' && $end !== null && (int)date('Y', strtotime($end)) === $y && (int)date('n', strtotime($end)) === $m && $end < $lastDayOfMonth && $lastMonthRent !== null) {
+            $amount = $lastMonthRent;
+        } else {
+            $amount = getRentForMonth($baseRent, $contractsId, $y, $m, $rentChangesByContract);
+        }
         $dueDate = date('Y-m-t', strtotime("$y-$m-01"));
         $findRent->execute([$contractsId, $y, $m]);
         $existing = $findRent->fetch(PDO::FETCH_ASSOC);
