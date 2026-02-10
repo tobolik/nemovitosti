@@ -1002,19 +1002,29 @@ async function openPaymentModal(el) {
         const linkedIds = linkedIdsStr ? linkedIdsStr.split(',').map(s => s.trim()).filter(Boolean) : [];
         const getReqId = r => String(r.payment_requests_id ?? r.id);
         const linkedReqs = linkedIds.length ? paymentRequests.filter(r => linkedIds.includes(getReqId(r))) : [];
-        const allocatedSum = linkedReqs.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-        const remainder = Math.round((parseFloat(p.amount) || 0) - allocatedSum, 2);
+        const payAmt = parseFloat(p.amount) || 0;
         const paymentMonthKey = (p.period_year != null && p.period_month != null) ? (String(p.period_year) + '-' + String(p.period_month).padStart(2, '0')) : '';
-        const hasBreakdown = linkedIds.length > 0 && (remainder !== 0 || linkedReqs.length > 0);
+        const hasBreakdown = linkedIds.length > 0 && linkedReqs.length > 0;
         if (!hasBreakdown) {
-            return (effectiveMonthKey(p) === monthKey) ? (parseFloat(p.amount) || 0) : 0;
+            return (effectiveMonthKey(p) === monthKey) ? payAmt : 0;
         }
+        // Budget-based allocation: cap linked request amounts so total doesn't exceed payment
         let sum = 0;
-        if (remainder > 0 && paymentMonthKey === monthKey) sum += remainder;
+        let budget = payAmt;
         linkedReqs.forEach(r => {
+            let rAmt = parseFloat(r.amount) || 0;
+            // Cap: don't allocate more than remaining budget
+            if (payAmt >= 0 && rAmt > 0) {
+                rAmt = Math.min(rAmt, Math.max(0, Math.round(budget * 100) / 100));
+            } else if (payAmt < 0 && rAmt < 0) {
+                rAmt = Math.max(rAmt, Math.min(0, Math.round(budget * 100) / 100));
+            }
+            budget = Math.round((budget - rAmt) * 100) / 100;
             const reqMonthKey = r.due_date ? String(r.due_date).slice(0, 7) : '';
-            if (reqMonthKey === monthKey) sum += parseFloat(r.amount) || 0;
+            if (reqMonthKey === monthKey) sum += rAmt;
         });
+        // Positive remainder goes to payment's period month
+        if (budget > 0 && paymentMonthKey === monthKey) sum += budget;
         return sum;
     }
     const sumForMonth = forMonth.reduce((s, p) => s + amountContributingToMonth(p), 0);
@@ -1170,18 +1180,30 @@ async function openPaymentModal(el) {
             const prId = r => String(r.payment_requests_id ?? r.id);
             const getReqId = r => String(r.payment_requests_id ?? r.id);
             const linkedReqs = linkedIds.length ? paymentRequests.filter(r => linkedIds.includes(getReqId(r))) : [];
-            const allocatedSum = linkedReqs.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-            const remainder = Math.round((parseFloat(p.amount) || 0) - allocatedSum, 2);
+            const payAmtRaw = parseFloat(p.amount) || 0;
             const periodLabel = (p.period_year && p.period_month && parseInt(p.period_month, 10) >= 1 && parseInt(p.period_month, 10) <= 12) ? ((typeof UI !== 'undefined' && UI.MONTHS ? UI.MONTHS[parseInt(p.period_month, 10)] : ['leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'][parseInt(p.period_month, 10) - 1]) + ' ' + p.period_year) : '';
             const periodLabelLower = periodLabel ? (periodLabel.charAt(0).toLowerCase() + periodLabel.slice(1)) : '';
             const paymentMonthKey = (p.period_year != null && p.period_month != null) ? (String(p.period_year) + '-' + String(p.period_month).padStart(2, '0')) : '';
+            // Budget-based capping for breakdown rows (same logic as amountContributingToMonth)
+            let breakdownBudget = payAmtRaw;
+            const cappedLinked = linkedReqs.map(r => {
+                let rAmt = parseFloat(r.amount) || 0;
+                if (payAmtRaw >= 0 && rAmt > 0) {
+                    rAmt = Math.min(rAmt, Math.max(0, Math.round(breakdownBudget * 100) / 100));
+                } else if (payAmtRaw < 0 && rAmt < 0) {
+                    rAmt = Math.max(rAmt, Math.min(0, Math.round(breakdownBudget * 100) / 100));
+                }
+                breakdownBudget = Math.round((breakdownBudget - rAmt) * 100) / 100;
+                return { req: r, cappedAmt: rAmt };
+            });
+            const remainder = Math.max(0, Math.round(breakdownBudget * 100) / 100);
             const partsWithMonth = [];
             if (remainder > 0 && periodLabel) partsWithMonth.push({ label: 'Nájem', dateLabel: periodLabelLower, amount: UI.fmt(remainder) + ' Kč', partMonthKey: paymentMonthKey });
-            linkedReqs.forEach(r => {
+            cappedLinked.forEach(({ req: r, cappedAmt }) => {
                 const reqLabel = requestTypeLabelsShort[r.type] || 'Požadavek';
                 const reqDate = r.due_date ? UI.fmtDate(r.due_date) : '';
                 const reqMonthKey = r.due_date ? String(r.due_date).slice(0, 7) : '';
-                partsWithMonth.push({ label: reqLabel, dateLabel: reqDate, amount: UI.fmt(parseFloat(r.amount) || 0) + ' Kč', partMonthKey: reqMonthKey });
+                partsWithMonth.push({ label: reqLabel, dateLabel: reqDate, amount: UI.fmt(cappedAmt) + ' Kč', partMonthKey: reqMonthKey });
             });
             const hasBreakdown = partsWithMonth.length > 1;
             const hasRentPart = remainder !== 0 && periodLabel;

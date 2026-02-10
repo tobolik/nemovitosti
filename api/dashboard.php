@@ -252,6 +252,12 @@ foreach ($heatmapByPayment as $group) {
     foreach ($group['linked'] as $pr) {
         $monthKey = date('Y-m', strtotime($pr['due_date']));
         $amt = (float)$pr['amount'];
+        // Cap: don't allocate more than the actual payment amount
+        if ($payAmt >= 0 && $amt > 0) {
+            $amt = min($amt, max(0, round($payAmt - $allocated, 2)));
+        } elseif ($payAmt < 0 && $amt < 0) {
+            $amt = max($amt, min(0, round($payAmt - $allocated, 2)));
+        }
         $allocated += $amt;
         if (!isset($heatmapPaymentsByContract[$eid][$monthKey])) {
             $heatmapPaymentsByContract[$eid][$monthKey] = ['amount' => 0, 'amount_rent' => 0, 'payment_date' => null, 'payment_count' => 0];
