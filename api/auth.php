@@ -60,10 +60,14 @@ if ($method === 'POST') {
         $_SESSION = [];
         if (ini_get('session.use_cookies')) {
             $p = session_get_cookie_params();
-            setcookie(session_name(), '', [
-                'expires'=>time()-1, 'path'=>$p['path'],
-                'secure'=>$p['secure'], 'httponly'=>$p['httponly'], 'samesite'=>$p['samesite']
-            ]);
+            if (PHP_VERSION_ID >= 70300) {
+                setcookie(session_name(), '', [
+                    'expires'=>time()-1, 'path'=>$p['path'],
+                    'secure'=>$p['secure'], 'httponly'=>$p['httponly'], 'samesite'=>$p['samesite'] ?? 'Strict',
+                ]);
+            } else {
+                setcookie(session_name(), '', time()-1, $p['path'], $p['domain'] ?? '', $p['secure'], $p['httponly']);
+            }
         }
         session_destroy();
         jsonOk();

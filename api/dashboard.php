@@ -514,7 +514,7 @@ foreach ($contractsForView as $c) {
     foreach ($changes as $ch) {
         $rentHistory[] = ['amount' => (float)($ch['amount'] ?? 0), 'effective_from' => $ch['effective_from'] ?? ''];
     }
-    usort($rentHistory, fn($a, $b) => strcmp($a['effective_from'], $b['effective_from']));
+    usort($rentHistory, function($a, $b) { return strcmp($a['effective_from'], $b['effective_from']); });
     $out[] = [
         'id'             => $c['id'],
         'contracts_id'   => $entityId,
