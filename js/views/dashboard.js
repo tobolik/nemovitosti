@@ -537,7 +537,7 @@ function initPaymentRequestModal() {
             const editIdEl = document.getElementById('pay-req-edit-id');
             const editId = (editIdEl && editIdEl.value) ? editIdEl.value.trim() : '';
             const cid = parseInt(contractSel.value, 10);
-            const amount = parseFloat(amountEl.value);
+            let amount = parseFloat(amountEl.value);
             if (isNaN(amount) || amount === 0) {
                 if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Zadejte částku (kladnou = příjem, zápornou = výdej).'; }
                 return;
@@ -547,6 +547,11 @@ function initPaymentRequestModal() {
                 return;
             }
             const type = ['rent', 'energy', 'settlement', 'other', 'deposit', 'deposit_return'].includes(typeEl.value) ? typeEl.value : 'energy';
+            // Požadavek na vrácení kauce musí být záporný
+            if (type === 'deposit_return' && amount > 0) {
+                amount = -amount;
+                amountEl.value = amount;
+            }
             const dueDate = dueDateEl && dueDateEl.value ? dueDateEl.value.trim() : null;
             const payload = {
                 contracts_id: cid,
@@ -1009,14 +1014,17 @@ async function openPaymentModal(el) {
             return (effectiveMonthKey(p) === monthKey) ? payAmt : 0;
         }
         // Budget-based allocation: cap linked request amounts so total doesn't exceed payment
+        // Skip cap for deposit/deposit_return – settlement can legitimately exceed payment
+        const ptCap = p.payment_type || 'rent';
+        const shouldCap = (ptCap !== 'deposit' && ptCap !== 'deposit_return');
         let sum = 0;
         let budget = payAmt;
         linkedReqs.forEach(r => {
             let rAmt = parseFloat(r.amount) || 0;
-            // Cap: don't allocate more than remaining budget
-            if (payAmt >= 0 && rAmt > 0) {
+            // Cap: don't allocate more than remaining budget (only for non-deposit)
+            if (shouldCap && payAmt >= 0 && rAmt > 0) {
                 rAmt = Math.min(rAmt, Math.max(0, Math.round(budget * 100) / 100));
-            } else if (payAmt < 0 && rAmt < 0) {
+            } else if (shouldCap && payAmt < 0 && rAmt < 0) {
                 rAmt = Math.max(rAmt, Math.min(0, Math.round(budget * 100) / 100));
             }
             budget = Math.round((budget - rAmt) * 100) / 100;
@@ -1185,12 +1193,14 @@ async function openPaymentModal(el) {
             const periodLabelLower = periodLabel ? (periodLabel.charAt(0).toLowerCase() + periodLabel.slice(1)) : '';
             const paymentMonthKey = (p.period_year != null && p.period_month != null) ? (String(p.period_year) + '-' + String(p.period_month).padStart(2, '0')) : '';
             // Budget-based capping for breakdown rows (same logic as amountContributingToMonth)
+            // Skip cap for deposit/deposit_return – settlement can legitimately exceed payment
+            const shouldCapBreakdown = (pt !== 'deposit' && pt !== 'deposit_return');
             let breakdownBudget = payAmtRaw;
             const cappedLinked = linkedReqs.map(r => {
                 let rAmt = parseFloat(r.amount) || 0;
-                if (payAmtRaw >= 0 && rAmt > 0) {
+                if (shouldCapBreakdown && payAmtRaw >= 0 && rAmt > 0) {
                     rAmt = Math.min(rAmt, Math.max(0, Math.round(breakdownBudget * 100) / 100));
-                } else if (payAmtRaw < 0 && rAmt < 0) {
+                } else if (shouldCapBreakdown && payAmtRaw < 0 && rAmt < 0) {
                     rAmt = Math.max(rAmt, Math.min(0, Math.round(breakdownBudget * 100) / 100));
                 }
                 breakdownBudget = Math.round((breakdownBudget - rAmt) * 100) / 100;
@@ -1590,12 +1600,17 @@ async function openPaymentModal(el) {
                     alert('Zadejte platné datum platby (např. únor má max. 29 dní).');
                     return;
                 }
-                const amt = parseFloat(amount.value) || 0;
+                let amt = parseFloat(amount.value) || 0;
                 if (amt === 0) {
                     alert('Zadejte částku platby.');
                     return;
                 }
                 const paymentType = ['rent','deposit','deposit_return','energy','other'].includes(typeSelect.value) ? typeSelect.value : 'rent';
+                // Vrácení kauce musí být záporná částka – automaticky opravit
+                if (paymentType === 'deposit_return' && amt > 0) {
+                    amt = -amt;
+                    amount.value = amt;
+                }
                 const method = methodSelect.value === 'account' || methodSelect.value === 'cash' ? methodSelect.value : 'account';
                 const accountId = method === 'account' ? Number(accountSelect.value || 0) : null;
                 if (method === 'account' && (!accountId || accountId <= 0)) {

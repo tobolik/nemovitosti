@@ -694,6 +694,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($data['type'], ['energy', 'settlement', 'other', 'deposit', 'deposit_return', 'rent'], true)) {
             $data['type'] = 'energy';
         }
+        // Požadavek na vrácení kauce musí mít zápornou částku
+        if ($data['type'] === 'deposit_return' && isset($data['amount']) && (float)$data['amount'] > 0) {
+            $data['amount'] = -(float)$data['amount'];
+        }
     }
     if ($table === 'payment_requests') {
         if (isset($data['due_date']) && $data['due_date'] === '') $data['due_date'] = null;
@@ -791,6 +795,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!array_key_exists('approved_at', $data)) $data['approved_at'] = date('Y-m-d H:i:s');
             $amt = (float)($data['amount'] ?? 0);
             if ($amt === 0.0) jsonErr('Zadejte částku platby.');
+            // Vrácení kauce musí být záporná částka
+            if (($data['payment_type'] ?? '') === 'deposit_return' && $amt > 0) {
+                $data['amount'] = -$amt;
+            }
             $paymentRequestIds = isset($b['payment_request_ids']) && is_array($b['payment_request_ids'])
                 ? array_values(array_unique(array_filter(array_map('intval', $b['payment_request_ids']))))
                 : [];
@@ -838,6 +846,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data['type'] = in_array($data['type'] ?? 'energy', ['energy', 'settlement', 'other', 'deposit', 'deposit_return', 'rent']) ? $data['type'] : 'energy';
             $data['amount'] = (float)($data['amount'] ?? 0);
             if ($data['amount'] === 0.0) jsonErr('Zadejte částku (kladnou = příjem, zápornou = výdej).');
+            // Požadavek na vrácení kauce musí být záporný
+            if (($data['type'] ?? '') === 'deposit_return' && $data['amount'] > 0) {
+                $data['amount'] = -$data['amount'];
+            }
             $newId = softInsert($table, $data);
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'contracts') {
@@ -1038,6 +1050,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data['payment_type'] = in_array($data['payment_type'] ?? 'rent', ['rent','deposit','deposit_return','energy','other']) ? $data['payment_type'] : 'rent';
             $amt = isset($data['amount']) ? (float)$data['amount'] : null;
             if ($amt !== null && $amt === 0.0) jsonErr('Zadejte částku platby.');
+            // Vrácení kauce musí být záporná částka
+            if ($amt !== null && ($data['payment_type'] ?? '') === 'deposit_return' && $amt > 0) {
+                $data['amount'] = -$amt;
+            }
             $newId = softUpdate($table, $rowId, $data);
             jsonOk(findActive($table, $newId));
         } else {

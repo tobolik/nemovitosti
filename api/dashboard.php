@@ -252,10 +252,11 @@ foreach ($heatmapByPayment as $group) {
     foreach ($group['linked'] as $pr) {
         $monthKey = date('Y-m', strtotime($pr['due_date']));
         $amt = (float)$pr['amount'];
-        // Cap: don't allocate more than the actual payment amount
-        if ($payAmt >= 0 && $amt > 0) {
+        // Cap: don't allocate more than the actual payment amount (skip for deposit/deposit_return – settlement can exceed)
+        $shouldCap = !in_array($group['payment_type'] ?? '', ['deposit', 'deposit_return']);
+        if ($shouldCap && $payAmt >= 0 && $amt > 0) {
             $amt = min($amt, max(0, round($payAmt - $allocated, 2)));
-        } elseif ($payAmt < 0 && $amt < 0) {
+        } elseif ($shouldCap && $payAmt < 0 && $amt < 0) {
             $amt = max($amt, min(0, round($payAmt - $allocated, 2)));
         }
         $allocated += $amt;
