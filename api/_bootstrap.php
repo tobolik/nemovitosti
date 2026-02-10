@@ -321,6 +321,57 @@ function syncRentPaymentRequests(int $contractsId): void {
     }
 }
 
+/**
+ * Migrace 062: vygenerovat rent požadavky pro všechny smlouvy a propojit rent platby.
+ * Vrací pole s počty (pro API nebo CLI výpis).
+ */
+function runMigration062(): array {
+    $contracts = db()->query("SELECT * FROM contracts WHERE valid_to IS NULL ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $generated = 0;
+    foreach ($contracts as $c) {
+        $contractsId = (int)($c['contracts_id'] ?? $c['id']);
+        $before = db()->prepare("SELECT COUNT(*) FROM payment_requests WHERE contracts_id = ? AND type = 'rent' AND valid_to IS NULL");
+        $before->execute([$contractsId]);
+        $countBefore = (int)$before->fetchColumn();
+        syncRentPaymentRequests($contractsId);
+        $after = db()->prepare("SELECT COUNT(*) FROM payment_requests WHERE contracts_id = ? AND type = 'rent' AND valid_to IS NULL");
+        $after->execute([$contractsId]);
+        $countAfter = (int)$after->fetchColumn();
+        $generated += max(0, (int)$countAfter - $countBefore);
+    }
+    $payments = db()->query("
+        SELECT p.id, COALESCE(p.payments_id, p.id) AS entity_id, p.contracts_id, p.period_year, p.period_month, p.amount, p.payment_date
+        FROM payments p
+        WHERE p.valid_to IS NULL AND p.payment_type = 'rent'
+          AND p.period_year IS NOT NULL AND p.period_month IS NOT NULL
+          AND p.period_year > 0 AND p.period_month BETWEEN 1 AND 12
+        ORDER BY p.contracts_id, p.period_year, p.period_month
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    $linked = 0;
+    $alreadyLinked = 0;
+    $noMatch = 0;
+    $findPr = db()->prepare("
+        SELECT id, payment_requests_id, payments_id
+        FROM payment_requests
+        WHERE contracts_id = ? AND period_year = ? AND period_month = ? AND type = 'rent' AND valid_to IS NULL
+        LIMIT 1
+    ");
+    foreach ($payments as $pay) {
+        $contractsId = (int)$pay['contracts_id'];
+        $py = (int)$pay['period_year'];
+        $pm = (int)$pay['period_month'];
+        $payEntityId = (int)$pay['entity_id'];
+        $paidAt = !empty($pay['payment_date']) ? substr($pay['payment_date'], 0, 10) : date('Y-m-d');
+        $findPr->execute([$contractsId, $py, $pm]);
+        $pr = $findPr->fetch(PDO::FETCH_ASSOC);
+        if (!$pr) { $noMatch++; continue; }
+        if (!empty($pr['payments_id'])) { $alreadyLinked++; continue; }
+        softUpdate('payment_requests', (int)$pr['id'], ['payments_id' => $payEntityId, 'paid_at' => $paidAt]);
+        $linked++;
+    }
+    return ['contracts' => count($contracts), 'generated' => $generated, 'linked' => $linked, 'already_linked' => $alreadyLinked, 'no_match' => $noMatch];
+}
+
 /** Vyhledá aktivní řádek podle entity_id (users_id, properties_id, …). */
 function findActiveByEntityId(string $tbl, int $entityId): ?array {
     $eidCol = _entityIdCol($tbl);
