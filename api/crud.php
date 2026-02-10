@@ -977,18 +977,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $depositReturnDate = isset($data['deposit_return_date']) && $data['deposit_return_date'] !== '' ? trim($data['deposit_return_date']) : null;
             $hadDepositReturnDate = isset($row['deposit_return_date']) && $row['deposit_return_date'] !== '' && $row['deposit_return_date'] !== null;
 
+            // Požadavek na vrácení kauce vytvořit jen když na smlouvě nejsou neuhrazené dluhy (nájem, energie…).
+            // Jinak uživatel provede zúčtování kauce a tam se vytvoří správná částka.
             if ($contractEnd !== null && $contractEnd !== '' && $depositAmount > 0) {
-                $st = db()->prepare("SELECT id FROM payment_requests WHERE contracts_id = ? AND type = 'deposit_return' AND valid_to IS NULL");
-                $st->execute([$entityId]);
-                if ($st->fetch() === false) {
-                    $dueDate = date('Y-m-d', strtotime($contractEnd . ' +14 days'));
-                    softInsert('payment_requests', [
-                        'contracts_id' => $entityId,
-                        'amount'      => -$depositAmount,
-                        'type'        => 'deposit_return',
-                        'note'        => 'Vrácení kauce',
-                        'due_date'    => $dueDate,
-                    ]);
+                $stUnpaid = db()->prepare("SELECT 1 FROM payment_requests WHERE contracts_id = ? AND type != 'deposit' AND valid_to IS NULL AND paid_at IS NULL LIMIT 1");
+                $stUnpaid->execute([$entityId]);
+                $hasUnpaid = $stUnpaid->fetch() !== false;
+                if (!$hasUnpaid) {
+                    $st = db()->prepare("SELECT id FROM payment_requests WHERE contracts_id = ? AND type = 'deposit_return' AND valid_to IS NULL");
+                    $st->execute([$entityId]);
+                    if ($st->fetch() === false) {
+                        $dueDate = date('Y-m-d', strtotime($contractEnd . ' +14 days'));
+                        softInsert('payment_requests', [
+                            'contracts_id' => $entityId,
+                            'amount'      => -$depositAmount,
+                            'type'        => 'deposit_return',
+                            'note'        => 'Vrácení kauce',
+                            'due_date'    => $dueDate,
+                        ]);
+                    }
                 }
             }
 

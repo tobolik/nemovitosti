@@ -518,7 +518,40 @@ const ContractsView = (() => {
                 const settleBtns = document.getElementById('con-settlement-btns');
                 if (settleBtns) settleBtns.style.display = 'none';
             },
-            onSaved: loadList,
+            onSaved(result, editMode) {
+                loadList();
+                if (!editMode || !result) return;
+                const end = result.contract_end;
+                if (!end || end === '') return;
+                const today = new Date().toISOString().slice(0, 10);
+                if (end > today) return;
+                const cid = result.contracts_id ?? result.id;
+                let unpaidCount = 0;
+                let energyItemsCount = 0;
+                try {
+                    const depResp = await fetch('/api/settlement.php', {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': Api.getCsrf() },
+                        body: JSON.stringify({ action: 'deposit_info', contracts_id: cid })
+                    });
+                    const depData = await depResp.json();
+                    if (depData.ok && depData.data) unpaidCount = (depData.data.unpaid_requests || []).length;
+                    const enResp = await fetch('/api/settlement.php', {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': Api.getCsrf() },
+                        body: JSON.stringify({ action: 'energy_info', contracts_id: cid })
+                    });
+                    const enData = await enResp.json();
+                    if (enData.ok && enData.data) energyItemsCount = (enData.data.items || []).length;
+                } catch (_) { return; }
+                if (unpaidCount > 0 || energyItemsCount > 0) {
+                    form.startEdit(result);
+                    const parts = [];
+                    if (unpaidCount > 0) parts.push('Na smlouvě jsou nedoplatky.');
+                    if (energyItemsCount > 0) parts.push('Jsou zde zálohy na energie.');
+                    alertShow('con-alert', parts.join(' ') + ' Zobrazte zúčtování kauce nebo vyúčtování energií pomocí tlačítek níže.', 'ok');
+                }
+            },
         });
     }
 
