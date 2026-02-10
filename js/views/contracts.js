@@ -249,7 +249,7 @@ const ContractsView = (() => {
         };
     }
 
-    // ── Vyúčtování energií + Zúčtování kauce ──────────────────────────
+    // ── Vyúčtování energií + Vyúčtování kauce ──────────────────────────
     let _settlementInited = false;
     function initSettlementHandlers() {
         if (_settlementInited) return;
@@ -279,17 +279,39 @@ const ContractsView = (() => {
                     if (!data.ok) throw new Error(data.error || 'Chyba');
                     const d = data.data || data;
                     const items = d.items || [];
-                    let html = '<strong>Zálohy na energie:</strong><br>';
-                    if (!items.length) {
-                        html += 'Žádné zálohové požadavky.';
-                    } else {
-                        items.forEach(it => {
-                            const paid = it.paid_at ? ' (uhrazeno)' : ' (neuhrazeno)';
-                            const due = it.due_date ? ' – splatnost ' + it.due_date.slice(0,10) : '';
-                            html += UI.esc((it.note || 'Energie') + ': ' + UI.fmt(it.amount) + ' Kč' + paid + due) + '<br>';
+                    const settlementRequest = d.settlement_request || null;
+                    const paidItems = items.filter(it => it.paid_at);
+                    const unpaidCoveredBySettlement = settlementRequest ? items.filter(it => !it.paid_at) : [];
+
+                    let html = '';
+                    if (paidItems.length) {
+                        html += '<strong>Uhrazené zálohy (platbami):</strong><br>';
+                        paidItems.forEach(it => {
+                            const due = it.due_date ? ' – splatnost ' + it.due_date.slice(0, 10) : '';
+                            html += UI.esc((it.note || 'Energie') + ': ' + UI.fmt(it.amount) + ' Kč' + due) + '<br>';
                         });
-                        html += '<br>Uhrazené zálohy: <strong>' + UI.fmt(d.paid_sum) + ' Kč</strong>';
-                        html += '<br>Neuhrazené zálohy: ' + UI.fmt(d.unpaid_sum) + ' Kč';
+                        html += '<br>';
+                    }
+                    if (unpaidCoveredBySettlement.length) {
+                        html += '<strong>Zálohy uhrazené vyúčtováním:</strong><br>';
+                        unpaidCoveredBySettlement.forEach(it => {
+                            const period = (it.period_year && it.period_month) ? ' ' + it.period_month + '/' + it.period_year : (it.due_date ? ' – ' + it.due_date.slice(0, 10) : '');
+                            html += UI.esc('Energie ' + UI.fmt(it.amount) + ' Kč' + period + ' – uhrazeno vyúčtováním') + '<br>';
+                        });
+                        html += '<br>';
+                    }
+                    if (settlementRequest) {
+                        html += '<strong>Nedoplatek / přeplatek po vyúčtování:</strong><br>';
+                        const amt = parseFloat(settlementRequest.amount) || 0;
+                        const label = amt > 0 ? 'Nedoplatek ' + UI.fmt(amt) + ' Kč' : 'Přeplatek ' + UI.fmt(Math.abs(amt)) + ' Kč';
+                        html += UI.esc(label) + (settlementRequest.note ? ' – ' + UI.esc(settlementRequest.note) : '') + '<br><br>';
+                    }
+                    if (!html) {
+                        html = '<strong>Zálohy na energie:</strong><br>Žádné zálohové požadavky.<br>';
+                    }
+                    if (items.length && !settlementRequest) {
+                        html += 'Uhrazené zálohy: <strong>' + UI.fmt(d.paid_sum) + ' Kč</strong><br>';
+                        html += 'Neuhrazené zálohy: ' + UI.fmt(d.unpaid_sum) + ' Kč';
                     }
                     if (infoEl) infoEl.innerHTML = html;
                 } catch (e) {
@@ -333,7 +355,7 @@ const ContractsView = (() => {
             };
         }
 
-        // --- Zúčtování kauce ---
+        // --- Vyúčtování kauce ---
         const btnDeposit = document.getElementById('btn-deposit-settlement');
         if (btnDeposit) {
             btnDeposit.onclick = async () => {
@@ -354,7 +376,18 @@ const ContractsView = (() => {
                     const data = await resp.json();
                     if (!data.ok) throw new Error(data.error || 'Chyba');
                     const d = data.data || data;
-                    if (infoEl) infoEl.innerHTML = '<strong>Kauce:</strong> ' + UI.fmt(d.deposit_amount) + ' Kč';
+                    let infoHtml = '<strong>Kauce:</strong> ' + UI.fmt(d.deposit_amount) + ' Kč';
+                    const covered = d.covered_requests || [];
+                    if (covered.length) {
+                        infoHtml += '<br><br><strong>Z kauce již uhrazeno:</strong><br>';
+                        covered.forEach(it => {
+                            const typeLabel = TYPE_LABELS[it.type] || it.type;
+                            const period = (it.period_year && it.period_month) ? ' (' + it.period_month + '/' + it.period_year + ')' : '';
+                            const notePart = it.note ? ' – ' + it.note : '';
+                            infoHtml += UI.esc(typeLabel + period + notePart + ': ' + UI.fmt(Math.abs(parseFloat(it.amount))) + ' Kč') + '<br>';
+                        });
+                    }
+                    if (infoEl) infoEl.innerHTML = infoHtml;
                     const items = d.unpaid_requests || [];
                     if (!items.length) {
                         if (listEl) listEl.innerHTML = '<div class="text-muted">Žádné neuhrazené požadavky.</div>';
@@ -407,7 +440,7 @@ const ContractsView = (() => {
                     const data = await resp.json();
                     if (!data.ok) throw new Error(data.error || 'Chyba');
                     const d = data.data || data;
-                    let msg = 'Zúčtování provedeno. Pokryto: ' + UI.fmt(d.covered) + ' Kč.';
+                    let msg = 'Vyúčtování kauce provedeno. Pokryto: ' + UI.fmt(d.covered) + ' Kč.';
                     if (d.to_return > 0) msg += ' K vrácení: ' + UI.fmt(d.to_return) + ' Kč (požadavek deposit_return vytvořen/aktualizován).';
                     else msg += ' Celá kauce spotřebována.';
                     if (resultEl) { resultEl.textContent = msg; resultEl.style.color = '#16a34a'; }

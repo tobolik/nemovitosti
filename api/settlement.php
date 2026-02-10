@@ -81,16 +81,17 @@ if ($action === 'deposit_settlement') {
     if ($depositAmount <= 0) jsonErr('Smlouva nemá kauci.');
 
     // Najít platbu kauce (deposit payment, kladná)
-    $st = db()->prepare("SELECT id, payments_id FROM payments WHERE contracts_id = ? AND payment_type = 'deposit' AND amount > 0 AND valid_to IS NULL ORDER BY id ASC LIMIT 1");
+    $st = db()->prepare("SELECT id, payments_id, payment_date FROM payments WHERE contracts_id = ? AND payment_type = 'deposit' AND amount > 0 AND valid_to IS NULL ORDER BY id ASC LIMIT 1");
     $st->execute([$contractsId]);
     $depositPayment = $st->fetch(PDO::FETCH_ASSOC);
     if (!$depositPayment) jsonErr('Platba kauce nenalezena.');
     $depositPaymentEntityId = (int)($depositPayment['payments_id'] ?? $depositPayment['id']);
 
-    $paidAt = date('Y-m-d');
+    // paid_at = datum úhrady kauce (payment_date platby), ne dnešek. REVERT: při problémech vrátit na $paidAt = date('Y-m-d');
+    $paidAt = (!empty($depositPayment['payment_date'])) ? date('Y-m-d', strtotime($depositPayment['payment_date'])) : date('Y-m-d');
     $coveredSum = 0.0;
 
-    // Propojit vybrané požadavky s platbou kauce
+    // Propojit vybrané požadavky s platbou kauce (záznamy se nemažou, jen přiřadí k platbě kauce)
     foreach ($requestIds as $reqId) {
         $reqId = (int)$reqId;
         if ($reqId <= 0) continue;
@@ -192,10 +193,26 @@ if ($action === 'energy_info') {
         $it['entity_id'] = (int)($it['payment_requests_id'] ?? $it['id']);
     }
     unset($it);
-    jsonOk(['items' => $items, 'paid_sum' => round($paidSum, 2), 'unpaid_sum' => round($unpaidSum, 2), 'total' => round($paidSum + $unpaidSum, 2)]);
+
+    $settlementRequest = null;
+    $stSettlement = db()->prepare("SELECT id, payment_requests_id, amount, note, due_date, period_year, period_month FROM payment_requests WHERE contracts_id = ? AND type = 'settlement' AND valid_to IS NULL LIMIT 1");
+    $stSettlement->execute([$contractsId]);
+    $row = $stSettlement->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
+        $row['entity_id'] = (int)($row['payment_requests_id'] ?? $row['id']);
+        $settlementRequest = $row;
+    }
+
+    jsonOk([
+        'items' => $items,
+        'paid_sum' => round($paidSum, 2),
+        'unpaid_sum' => round($unpaidSum, 2),
+        'total' => round($paidSum + $unpaidSum, 2),
+        'settlement_request' => $settlementRequest,
+    ]);
 }
 
-// ─── Info: neuhrazené požadavky pro zúčtování kauce ────────────────────
+// ─── Info: neuhrazené požadavky pro vyúčtování kauce ────────────────────
 if ($action === 'deposit_info') {
     $contractsId = (int)($b['contracts_id'] ?? 0);
     if ($contractsId <= 0) jsonErr('Chybí contracts_id.');
@@ -210,7 +227,23 @@ if ($action === 'deposit_info') {
         $it['entity_id'] = (int)($it['payment_requests_id'] ?? $it['id']);
     }
     unset($it);
-    jsonOk(['deposit_amount' => $depositAmount, 'unpaid_requests' => $items]);
+
+    $coveredRequests = [];
+    $stPay = db()->prepare("SELECT id, payments_id FROM payments WHERE contracts_id = ? AND payment_type = 'deposit' AND amount > 0 AND valid_to IS NULL ORDER BY id ASC LIMIT 1");
+    $stPay->execute([$contractsId]);
+    $depositPayment = $stPay->fetch(PDO::FETCH_ASSOC);
+    if ($depositPayment) {
+        $depositPaymentEntityId = (int)($depositPayment['payments_id'] ?? $depositPayment['id']);
+        $stCovered = db()->prepare("SELECT id, payment_requests_id, amount, type, note, due_date, period_year, period_month FROM payment_requests WHERE contracts_id = ? AND payments_id = ? AND valid_to IS NULL ORDER BY due_date ASC, id ASC");
+        $stCovered->execute([$contractsId, $depositPaymentEntityId]);
+        $coveredRequests = $stCovered->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($coveredRequests as &$cr) {
+            $cr['entity_id'] = (int)($cr['payment_requests_id'] ?? $cr['id']);
+        }
+        unset($cr);
+    }
+
+    jsonOk(['deposit_amount' => $depositAmount, 'unpaid_requests' => $items, 'covered_requests' => $coveredRequests]);
 }
 
 jsonErr('Neznámá akce: ' . $action);
