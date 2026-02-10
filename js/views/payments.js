@@ -511,7 +511,7 @@ const PaymentsView = (() => {
             (p) => {
                 const rent = Number(p.monthly_rent);
                 const amt  = Number(p.amount);
-                const typeLabels = { rent: 'Nájem', deposit: 'Kauce', deposit_return: 'Vrácení kauce', energy: 'Doplatek energie', other: 'Jiné' };
+                const typeLabels = { rent: 'Nájem', deposit: 'Kauce', deposit_return: 'Vrácení kauce', energy: 'Energie', other: 'Jiné' };
                 const typeLabel = typeLabels[p.payment_type] || 'Nájem';
                 const isRent = p.payment_type === 'rent';
                 const diff = isRent ? amt - rent : null;

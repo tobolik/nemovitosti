@@ -3,6 +3,7 @@
 const BankAccountsView = (() => {
     let form = null;
     let _cache = [];
+    let _contracts = [];
 
     function initForm() {
         if (form) return;
@@ -143,15 +144,31 @@ const BankAccountsView = (() => {
         });
     }
 
+    /** K datu YYYY-MM-DD přičte/odečte počet měsíců, vrátí YYYY-MM-DD. */
+    function addMonthsToDate(dateStr, delta) {
+        if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+        const d = new Date(dateStr + 'T12:00:00');
+        d.setMonth(d.getMonth() + delta);
+        return d.toISOString().slice(0, 10);
+    }
+
     function fillFioFetchForm() {
         const sel = document.getElementById('fio-fetch-account');
         if (!sel) return;
+        const prevValue = sel.value;
         const withToken = _cache.filter(b => b.fio_token_isset);
         sel.innerHTML = '<option value="">— Vyberte účet —</option>' +
             withToken.map(b => {
                 const id = b.bank_accounts_id ?? b.id;
                 return '<option value="' + id + '">' + UI.esc(b.name) + (b.account_number ? ' – ' + UI.esc(b.account_number) : '') + '</option>';
             }).join('');
+        if (prevValue && Array.from(sel.options).some(o => o.value === prevValue)) sel.value = prevValue;
+        const contractSel = document.getElementById('fio-fetch-contract');
+        if (contractSel) {
+            const cid = (c) => c.contracts_id ?? c.id;
+            contractSel.innerHTML = '<option value="">— Volitelně: podle smlouvy —</option>' +
+                (_contracts || []).map(c => '<option value="' + cid(c) + '">' + UI.esc(c.tenant_name || '') + ' – ' + UI.esc(c.property_name || '') + '</option>').join('');
+        }
         const fromEl = document.getElementById('fio-fetch-from');
         const toEl = document.getElementById('fio-fetch-to');
         if (fromEl && toEl && !fromEl.value) {
@@ -159,6 +176,24 @@ const BankAccountsView = (() => {
             fromEl.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
             toEl.value = now.toISOString().slice(0, 10);
         }
+    }
+
+    function applyFioFetchContractDates(contractId) {
+        const c = (_contracts || []).find(x => String(x.contracts_id ?? x.id) === String(contractId));
+        if (!c) return;
+        const start = (c.contract_start || '').toString().slice(0, 10);
+        let end = (c.contract_end || '').toString().slice(0, 10);
+        if (!start || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return;
+        if (!end || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+            const d = new Date();
+            d.setMonth(d.getMonth() + 1);
+            end = d.toISOString().slice(0, 10);
+        }
+        const from = addMonthsToDate(start, -1);
+        const fromEl = document.getElementById('fio-fetch-from');
+        const toEl = document.getElementById('fio-fetch-to');
+        if (fromEl) fromEl.value = from;
+        if (toEl) toEl.value = addMonthsToDate(end, 1);
     }
 
     async function loadList() {
@@ -182,12 +217,21 @@ const BankAccountsView = (() => {
         const btn = document.getElementById('btn-fio-fetch');
         const alertEl = document.getElementById('fio-fetch-alert');
         const resultEl = document.getElementById('fio-import-result');
+        const contractSel = document.getElementById('fio-fetch-contract');
+        if (contractSel) {
+            contractSel.addEventListener('change', function () {
+                const v = this.value;
+                if (v) applyFioFetchContractDates(parseInt(v, 10));
+            });
+        }
         if (!btn) return;
         btn.addEventListener('click', async () => {
-            const accountId = document.getElementById('fio-fetch-account').value;
+            const accountEl = document.getElementById('fio-fetch-account');
+            const accountId = accountEl ? accountEl.value : '';
+            const numAccountId = parseInt(accountId, 10);
             const from = document.getElementById('fio-fetch-from').value;
             const to = document.getElementById('fio-fetch-to').value;
-            if (!accountId) {
+            if (!accountId || !(numAccountId > 0)) {
                 if (alertEl) { alertEl.textContent = 'Vyberte účet s FIO tokenem.'; alertEl.className = 'alert alert-err show'; alertEl.style.display = ''; }
                 if (resultEl) resultEl.style.display = 'none';
                 return;
@@ -196,7 +240,7 @@ const BankAccountsView = (() => {
             if (alertEl) alertEl.style.display = 'none';
             if (resultEl) resultEl.style.display = 'none';
             try {
-                const data = await Api.fioImport(parseInt(accountId, 10), from || undefined, to || undefined);
+                const data = await Api.fioImport(numAccountId, from || undefined, to || undefined);
                 const n = data.imported || 0;
                 const sk = data.skipped || 0;
                 const skFilter = data.skipped_filter || 0;
@@ -221,6 +265,7 @@ const BankAccountsView = (() => {
         initBankTableSortClick();
         initFioFetch();
         form.exitEdit();
+        try { _contracts = await Api.crudList('contracts'); } catch (e) { _contracts = []; }
         await loadList();
     }
 

@@ -108,7 +108,7 @@ const ContractsView = (() => {
     let _rentChangesContractsId = null;
     let _paymentRequestsContractsId = null;
 
-    const PAYMENT_REQUEST_TYPE_LABELS = { energy: 'Doplatek energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
+    const PAYMENT_REQUEST_TYPE_LABELS = { energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
 
     async function loadPaymentRequests(contractsId) {
         _paymentRequestsContractsId = contractsId;
@@ -320,6 +320,11 @@ const ContractsView = (() => {
                 if (typeof UI.updateSearchableSelectDisplay === 'function') {
                     UI.updateSearchableSelectDisplay('con-property');
                     UI.updateSearchableSelectDisplay('con-tenant');
+                    // Po přepnutí z Platby se musí znovu aktivovat zobrazení – odložíme o jeden frame
+                    requestAnimationFrame(() => {
+                        UI.updateSearchableSelectDisplay('con-property');
+                        UI.updateSearchableSelectDisplay('con-tenant');
+                    });
                 }
                 toggleFirstMonthRentVisibility();
                 toggleLastMonthRentVisibility();

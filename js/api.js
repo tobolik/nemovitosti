@@ -122,7 +122,7 @@ const Api = (() => {
         return get('/api/crud.php?table=payment_imports' + (q.toString() ? '&' + q.toString() : ''));
     }
 
-    /** Úprava importu (párování: contracts_id, period_year, period_month, period_year_to?, period_month_to?, payment_type). */
+    /** Úprava importu (párování: contracts_id, period_year, period_month, period_year_to?, period_month_to?, payment_type, payment_request_id?). */
     function paymentImportEdit(id, data) {
         return post('/api/crud.php?table=payment_imports', { action: 'edit', table: 'payment_imports', id: id, ...data });
     }

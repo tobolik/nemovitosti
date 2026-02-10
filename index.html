@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=2.1.28">
+<link rel="stylesheet" href="css/style.css?v=2.2.2">
 </head>
 <body>
 
@@ -55,13 +55,16 @@
         <button class="nav-link" data-view="bank_accounts"><span class="icon">🏦</span> Bankovní účty</button>
         <button class="nav-link" data-view="payment_imports"><span class="icon">📥</span> Kontrola importů</button>
         <button class="nav-link" data-view="users" id="nav-users" style="display:none"><span class="icon">⚙</span> Uživatelé</button>
+        <div class="global-search-wrap">
+          <input type="text" id="global-search-input" class="global-search-input" placeholder="Hledat nájemníka, nemovitost, smlouvu…" autocomplete="off">
+          <div id="global-search-dropdown" class="global-search-dropdown" aria-hidden="true"></div>
+        </div>
       </nav>
-      <div class="global-search-wrap">
-        <input type="text" id="global-search-input" class="global-search-input" placeholder="Hledat nájemníka, nemovitost, smlouvu…" autocomplete="off">
-        <div id="global-search-dropdown" class="global-search-dropdown" aria-hidden="true"></div>
-      </div>
       <div class="sidebar-footer">
-        <div class="sidebar-user" id="nav-username"></div>
+        <div class="sidebar-footer-top">
+          <span class="sidebar-user" id="nav-username"></span>
+          <span class="sidebar-version">v2.2.2</span>
+        </div>
         <button class="btn-logout" id="btn-logout">Odhlásit se</button>
       </div>
     </aside>
@@ -259,7 +262,7 @@
           </div>
           <div id="con-payment-requests-wrap" class="fg" style="display:none">
             <label>Požadavky na platbu</label>
-            <p class="text-muted" style="font-size:.8rem;margin-bottom:8px">Doplatek energie, vyúčtování, kauce – můžete upravit.</p>
+            <p class="text-muted" style="font-size:.8rem;margin-bottom:8px">Energie, vyúčtování, kauce – můžete upravit.</p>
             <div id="con-payment-requests-list"></div>
           </div>
           <div class="fg"><label>Poznámka</label><textarea id="con-note" rows="2"></textarea></div>
@@ -291,7 +294,7 @@
               <option value="rent" selected>Nájem</option>
               <option value="deposit">Kauce</option>
               <option value="deposit_return">Vrácení kauce</option>
-              <option value="energy">Doplatek energie</option>
+              <option value="energy">Energie</option>
               <option value="other">Jiné</option>
             </select>
           </div>
@@ -397,7 +400,7 @@
             <select id="pay-filter-type">
               <option value="">— Všechny —</option>
               <option value="rent">Nájem</option><option value="deposit">Kauce</option><option value="deposit_return">Vrácení kauce</option>
-              <option value="energy">Doplatek energie</option><option value="other">Jiné</option>
+              <option value="energy">Energie</option><option value="other">Jiné</option>
             </select>
           </div>
           <div class="filter-row filter-row-search">
@@ -453,6 +456,7 @@
           <p class="text-muted" style="margin-bottom:12px">Vyberte účet a období. Příchozí platby se naimportují do Kontroly importů, kde je napárujete na smlouvy a měsíce a hromadně schválíte.</p>
           <div class="form-row">
             <div class="fg"><label>Účet</label><select id="fio-fetch-account"><option value="">— Vyberte účet —</option></select></div>
+            <div class="fg"><label>Smlouva (období)</label><select id="fio-fetch-contract"><option value="">— Volitelně: podle smlouvy —</option></select></div>
             <div class="fg"><label>Od data</label><input type="date" id="fio-fetch-from"></div>
             <div class="fg"><label>Do data</label><input type="date" id="fio-fetch-to"></div>
             <div class="fg" style="align-self:flex-end"><button type="button" class="btn btn-pri" id="btn-fio-fetch">Importovat z FIO</button></div>
@@ -486,7 +490,7 @@
         </div>
         <div class="list-actions" style="margin-bottom:8px"><button type="button" class="btn btn-pri" id="import-approve-btn" disabled>Hromadně schválit vybrané</button></div>
         <div id="import-alert" class="alert" style="display:none"></div>
-        <div id="import-table-wrap" class="tbl-wrap"><table class="tbl tbl-striped" id="import-table"><thead><tr><th class="th-cb"><input type="checkbox" id="import-select-all" title="Vybrat vše"></th><th>Stav</th><th>Datum</th><th>Částka</th><th class="col-hide-mobile">Měna</th><th>Protiúčet</th><th>Shoda</th><th class="col-hide-mobile">Zpráva</th><th>Smlouva</th><th>Období od</th><th>Období do</th><th>Typ</th><th class="th-act"></th></tr></thead><tbody id="import-tbody"></tbody></table></div>
+        <div id="import-table-wrap" class="tbl-wrap"><table class="tbl tbl-striped" id="import-table"><thead><tr><th class="th-cb import-col-cb"><input type="checkbox" id="import-select-all" title="Vybrat vše"></th><th>Stav</th><th class="import-col-date">Datum</th><th class="import-col-amount">Částka</th><th class="import-col-counterpart">Protiúčet</th><th>Shoda účtu</th><th class="import-col-msg">Zpráva</th><th colspan="4">Párování</th><th class="th-act"></th></tr></thead><tbody id="import-tbody"></tbody></table></div>
         <div id="import-empty" class="empty" style="display:none">Žádné importy. Naimportujte pohyby v sekci <a href="#bank_accounts">Bankovní účty</a> → Načíst z FIO.</div>
       </div>
 
@@ -521,7 +525,6 @@
   </main>
 
   <footer class="app-footer">
-    <span class="footer-version">v2.1.28</span>
     <span id="footer-php-version" class="footer-php-version" title="Verze PHP na serveru"></span>
     © 2026 Nemovitosti – Správa nemovitostí &amp; platební morálka
     <span class="footer-credits">Navajbkódováno by <a href="https://www.linkedin.com/in/jantobolik" target="_blank" rel="noopener">Honza Tobolík</a> @ <a href="https://sensio.cz" target="_blank" rel="noopener">Sensio.cz</a></span>
@@ -567,6 +570,13 @@
           </div>
           <div class="fg"><label title="Např. 26 → 2026">Do roku *</label><input type="text" id="pay-modal-year-to" placeholder="26" inputmode="numeric" maxlength="4"></div>
         </div>
+        <div class="fg pay-modal-period-row" id="pay-modal-period-wrap" style="display:none">
+        <label>Období (měsíc platby pro heatmapu)</label>
+        <div class="form-row" style="gap:8px;align-items:center">
+          <select id="pay-modal-period-month" style="min-width:100px"><option value="1">Leden</option><option value="2">Únor</option><option value="3">Březen</option><option value="4">Duben</option><option value="5">Květen</option><option value="6">Červen</option><option value="7">Červenec</option><option value="8">Srpen</option><option value="9">Září</option><option value="10">Říjen</option><option value="11">Listopad</option><option value="12">Prosinec</option></select>
+          <input type="text" id="pay-modal-period-year" placeholder="2020" inputmode="numeric" maxlength="4" style="width:5em">
+        </div>
+      </div>
         <div class="fg">
         <label>Částka (Kč) *</label>
         <input type="number" id="pay-modal-amount" step="0.01">
@@ -577,7 +587,7 @@
           <option value="rent" selected>Nájem</option>
           <option value="deposit">Kauce</option>
           <option value="deposit_return">Vrácení kauce</option>
-          <option value="energy">Doplatek energie</option>
+          <option value="energy">Energie</option>
           <option value="other">Jiné</option>
         </select>
       </div>
@@ -586,6 +596,7 @@
           <input type="checkbox" id="pay-modal-paid">
           <span>Zaplaceno</span>
         </label>
+        <span id="pay-modal-uncheck-hint" class="pay-modal-uncheck-hint" style="display:none">Zrušte zaškrtnutí pro smazání všech plateb.</span>
       </div>
       <div class="fg" id="pay-modal-date-wrap" style="display:none">
         <label>Datum úhrady *</label>
@@ -614,10 +625,10 @@
         <label>Poznámka k platbě</label>
         <textarea id="pay-modal-note" rows="2" placeholder="Volitelná poznámka…"></textarea>
       </div>
-      <div class="fg" id="pay-modal-request-link-wrap" style="display:none">
-        <label>Propojit s požadavkem</label>
-        <p class="text-muted" style="font-size:.8rem;margin-bottom:6px">Přiřaďte tuto platbu k nevyřízenému požadavku (doplatek energie, vrácení kauce…).</p>
-        <select id="pay-modal-linked-request" style="min-width:220px"><option value="">— Žádný —</option></select>
+      <div class="fg pay-modal-requests-block" id="pay-modal-request-link-wrap" style="display:none">
+        <label>Propojit s požadavky</label>
+        <p class="text-muted" style="font-size:.8rem;margin-bottom:6px">Přiřaďte tuto platbu k jedné nebo více nevyřízeným požadavkům (doplatek nájmu, energie, vrácení kauce…). Můžete zaklikat více. Předvybrané zaškrtnutí je návrh podle neuhrazeného požadavku nebo podle kontextu otevření modalu.</p>
+        <div id="pay-modal-linked-request-list" class="pay-modal-request-checkboxes"></div>
       </div>
         <div class="form-actions">
           <button type="button" class="btn btn-success" id="btn-pay-modal-save">Uložit</button>
@@ -642,7 +653,7 @@
     <div class="alert" id="pay-req-alert"></div>
     <div class="fg"><label>Smlouva (nájemník + nemovitost) *</label><select id="pay-req-contract"><option value="">— Vyberte —</option></select></div>
     <div class="fg"><label>Částka (Kč) *</label><input type="number" id="pay-req-amount" step="0.01" placeholder="kladná = příjem, záporná = výdej"></div>
-    <div class="fg"><label>Typ</label><select id="pay-req-type"><option value="energy">Doplatek energie</option><option value="settlement">Vyúčtování</option><option value="deposit">Kauce</option><option value="deposit_return">Vrácení kauce</option><option value="other">Jiné</option></select></div>
+    <div class="fg"><label>Typ</label><select id="pay-req-type"><option value="energy">Energie</option><option value="settlement">Vyúčtování</option><option value="deposit">Kauce</option><option value="deposit_return">Vrácení kauce</option><option value="other">Jiné</option></select></div>
     <div class="fg"><label>Splatnost (volitelně)</label><input type="date" id="pay-req-due-date"></div>
     <div class="fg"><label>Poznámka</label><input type="text" id="pay-req-note" placeholder="např. Vyúčtování 2025"></div>
     <div class="fg" id="pay-req-link-wrap" style="display:none">
@@ -736,17 +747,17 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=2.1.28"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=2.1.28"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=2.1.28"></script>
-<script src="js/app.js?v=2.1.28"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=2.1.28"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=2.1.28"></script>
-<script src="js/views/tenants.js?v=2.1.28"></script>
-<script src="js/views/contracts.js?v=2.1.28"></script>
-<script src="js/views/payments.js?v=2.1.28"></script>
-<script src="js/views/bank_accounts.js?v=2.1.28"></script>
-<script src="js/views/payment_imports.js?v=2.1.28"></script>
-<script src="js/views/users.js?v=2.1.28"></script>
+<script src="js/api.js?v=2.2.2"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=2.2.2"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=2.2.2"></script>
+<script src="js/app.js?v=2.2.2"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=2.2.2"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=2.2.2"></script>
+<script src="js/views/tenants.js?v=2.2.2"></script>
+<script src="js/views/contracts.js?v=2.2.2"></script>
+<script src="js/views/payments.js?v=2.2.2"></script>
+<script src="js/views/bank_accounts.js?v=2.2.2"></script>
+<script src="js/views/payment_imports.js?v=2.2.2"></script>
+<script src="js/views/users.js?v=2.2.2"></script>
 </body>
 </html>

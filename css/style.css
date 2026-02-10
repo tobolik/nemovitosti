@@ -193,10 +193,15 @@ button, select, input, textarea { font-family: var(--font-ui); }
 }
 .sidebar-nav .nav-link .icon { font-size: 1.1rem; opacity: .9; }
 
-/* Globální vyhledávání v sidebaru */
+/* Globální vyhledávání v sidebaru (pod Uživatelé) */
 .global-search-wrap {
   position: relative;
   padding: 12px;
+}
+.sidebar-nav .global-search-wrap {
+  flex-shrink: 0;
+  margin-top: 8px;
+  padding: 12px 0 0;
   border-top: 1px solid rgba(255,255,255,.06);
 }
 .global-search-input {
@@ -261,9 +266,21 @@ button, select, input, textarea { font-family: var(--font-ui); }
   padding: 16px;
   border-top: 1px solid rgba(255,255,255,.08);
 }
+.sidebar-footer-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
 .sidebar-user {
   font-size: .8rem; color: var(--txt3);
-  margin-bottom: 10px; word-break: break-word;
+  word-break: break-word;
+}
+.sidebar-version {
+  font-size: .75rem; color: var(--txt3);
+  opacity: .85;
+  flex-shrink: 0;
 }
 .btn-logout {
   width: 100%;
@@ -420,7 +437,7 @@ footer .footer-php-version { margin-left: 0.5rem; opacity: .7; font-size: 0.9em;
 .form-row .fg { flex: 1; min-width: 0; }
 .fg { margin-bottom: 15px; }
 .fg label { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--txt2); margin-bottom: 5px; font-weight: 500; }
-.fg input, .fg select, .fg textarea {
+.fg input:not([type="checkbox"]):not([type="radio"]), .fg select, .fg textarea {
   width: 100%;
   padding: 9px 12px;
   background: rgba(0,0,0,.2);
@@ -461,6 +478,7 @@ footer .footer-php-version { margin-left: 0.5rem; opacity: .7; font-size: 0.9em;
   min-width: 260px;
 }
 .form-actions { margin-top: 18px; display: flex; gap: 9px; align-items: center; }
+#modal-payment .form-actions { padding-bottom: 16px; }
 .select-with-btn, .input-with-btn {
   display: flex;
   gap: 8px;
@@ -728,6 +746,9 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .stat.stat-danger { border-color: rgba(220,38,38,.3); }
 .stat.stat-ok { border-color: rgba(22,163,74,.25); }
 
+.dash-stats-divider { grid-column: 1 / -1; height: 0; border-top: 1px solid var(--glass-border); margin: 4px 0 8px; }
+.stat.stat-by-due .stat-label { color: var(--txt3); font-size: .7rem; }
+
 /* DASHBOARD MODE BAR & EXTENDED */
 .dash-mode-bar { display: flex; flex-wrap: wrap; gap: 16px 24px; margin-bottom: 16px; align-items: center; }
 .dash-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--txt2); cursor: pointer; }
@@ -849,11 +870,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .heatmap-sum-label { font-weight: 600; color: var(--txt); font-size: .9rem; }
 .heatmap-sum-cell { color: var(--txt2); font-size: .84rem; }
 .heatmap-sum-total { font-weight: 700; color: var(--txt); font-size: .9rem; }
-.pay-modal-partial, .pay-modal-full { margin-top: 8px; padding: 8px; background: var(--bg2); border-radius: var(--r); font-size: .9rem; }
-.pay-modal-full { color: var(--green-600); }
+.pay-modal-partial, .pay-modal-full { margin-top: 4px; color: var(--txt); }
 .pay-modal-full.pay-modal-overpaid { color: var(--orange-600); }
 .pay-modal-batch-hint { margin: 8px 0; padding: 8px 12px; background: rgba(234,88,12,.15); border-radius: var(--r); font-size: .85rem; color: var(--orange-600); border: 1px solid rgba(234,88,12,.3); }
-.pay-modal-prefill-msg { margin: 8px 0; padding: 8px 12px; background: rgba(59,130,246,.12); border-radius: var(--r); font-size: .85rem; color: var(--txt); border: 1px solid rgba(59,130,246,.25); }
+.pay-modal-prefill-msg { margin: 8px 0 4px 0; padding: 8px 12px; background: rgba(59,130,246,.12); border-radius: var(--r); font-size: .85rem; color: var(--txt); border: 1px solid rgba(59,130,246,.25); }
+.pay-modal-prefill-msg .pay-modal-add-extra-link { color: var(--purple-300); text-decoration: underline; cursor: pointer; }
+.pay-modal-prefill-msg .pay-modal-add-extra-link:hover { color: var(--purple-200); }
 .pay-modal-existing { margin: 12px 0; padding: 10px; background: var(--bg2); border-radius: var(--r); }
 .pay-modal-breakdown { margin: 12px 0; padding: 10px 0; border-bottom: 1px solid var(--glass-border); }
 .pay-modal-breakdown-title { font-size: .85rem; font-weight: 600; margin-bottom: 8px; color: var(--txt2); }
@@ -866,11 +888,42 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .pay-modal-by-contract-0 { background: rgba(59, 130, 246, .08); border-left: 3px solid rgba(59, 130, 246, .5); }
 .pay-modal-by-contract-1 { background: rgba(34, 197, 94, .08); border-left: 3px solid rgba(34, 197, 94, .5); }
 .pay-modal-by-contract-2 { background: rgba(168, 85, 247, .08); border-left: 3px solid rgba(168, 85, 247, .5); }
+.pay-modal-existing-item--editing.pay-modal-by-contract-0 { background: rgba(59, 130, 246, .22); }
+.pay-modal-existing-item--editing.pay-modal-by-contract-1 { background: rgba(34, 197, 94, .22); }
+.pay-modal-existing-item--editing.pay-modal-by-contract-2 { background: rgba(168, 85, 247, .22); }
+.pay-modal-existing-item--outside-month .pay-modal-main-label,
+.pay-modal-existing-item--outside-month .pay-modal-main-date,
+.pay-modal-existing-item--outside-month .pay-modal-main-amount { color: var(--txt3); font-weight: 500; }
+.pay-modal-sum-amount { color: var(--accent); font-weight: 600; }
+.pay-modal-uncheck-hint { margin-left: 10px; font-size: .85rem; color: var(--txt2); }
 .pay-modal-tenant-label { font-size: .8rem; color: var(--txt3); margin-left: 6px; font-weight: 500; }
+.pay-modal-existing-content { display: grid; grid-template-columns: 1fr auto auto; align-items: baseline; gap: 8px 12px; min-width: 0; flex: 1; }
+.pay-modal-main-label { min-width: 0; }
+.pay-modal-main-date { text-align: right; white-space: nowrap; font-weight: 600; color: var(--txt); }
+.pay-modal-main-amount { text-align: right; white-space: nowrap; font-weight: 600; color: var(--txt); }
+.pay-modal-breakdown-block { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; margin-top: 2px; margin-left: 2px; padding-left: 10px; border-left: 3px solid rgba(59, 130, 246, .5); border-radius: 0 0 0 6px; gap: 2px 12px; }
+.pay-modal-breakdown-row { display: contents; }
+.pay-modal-breakdown-row .pay-modal-breakdown-label { min-width: 0; font-size: .75rem; color: var(--txt3); font-weight: 500; }
+.pay-modal-breakdown-row .pay-modal-breakdown-date { text-align: right; white-space: nowrap; font-size: .75rem; color: var(--txt3); font-weight: 500; }
+.pay-modal-breakdown-row .pay-modal-breakdown-amount { text-align: right; white-space: nowrap; font-size: .75rem; font-weight: 500; color: var(--txt3); }
+.pay-modal-breakdown-part--active .pay-modal-breakdown-label,
+.pay-modal-breakdown-part--active .pay-modal-breakdown-date,
+.pay-modal-breakdown-part--active .pay-modal-breakdown-amount { color: var(--txt); font-weight: 600; }
 .pay-modal-range-row .fg select { min-width: 90px; }
-.pay-modal-add-link { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.pay-modal-requests-block { background: rgba(255,255,255,.06); padding: 12px; border-radius: var(--r); margin-top: 10px; border: 1px solid var(--glass-border); }
+.pay-modal-requests-block .pay-modal-request-checkboxes { background: transparent; padding: 0; }
+.pay-modal-request-checkboxes { display: flex; flex-direction: column; gap: 0; margin-top: 6px; max-height: 200px; overflow-y: auto; padding: 0; }
+.pay-modal-request-cb { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; font-size: .9rem; cursor: pointer; padding: 8px 0; line-height: 1.4; border-bottom: 1px solid var(--glass-border); }
+.pay-modal-request-cb:last-child { border-bottom: none; }
+.pay-modal-request-cb-text { min-width: 0; line-height: 1.4; }
+.pay-modal-request-cb input { margin: 0; vertical-align: middle; justify-self: end; width: 18px; height: 18px; flex-shrink: 0; }
+.pay-modal-add-block { margin-top: 10px; padding: 10px 12px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--r); }
+.pay-modal-add-link { margin: 0; padding: 0; border: none; }
 .pay-modal-add-link a { font-size: .9rem; color: var(--primary); }
-.pay-modal-form-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--glass-border); }
+.pay-modal-form-section { margin-top: 8px; padding: 12px; border: 1px solid var(--glass-border); border-radius: var(--r); background: var(--bg2); }
+.pay-modal-form-section--contract-0 { border-left: 3px solid rgba(59, 130, 246, .5); background: rgba(59, 130, 246, .12); padding-left: 10px; margin-left: -1px; padding-top: 12px; margin-top: 12px; border-radius: var(--r); }
+.pay-modal-form-section--contract-1 { border-left: 3px solid rgba(34, 197, 94, .5); background: rgba(34, 197, 94, .12); padding-left: 10px; margin-left: -1px; padding-top: 12px; margin-top: 12px; border-radius: var(--r); }
+.pay-modal-form-section--contract-2 { border-left: 3px solid rgba(168, 85, 247, .5); background: rgba(168, 85, 247, .12); padding-left: 10px; margin-left: -1px; padding-top: 12px; margin-top: 12px; border-radius: var(--r); }
 .pay-modal-form-title { margin: 0 0 10px 0; font-size: .95rem; font-weight: 600; color: var(--txt2); }
 .pay-modal-range-row .fg input[type="number"] { min-width: 70px; }
 .pay-modal-type-wrap { padding-left: 12px; border-left: 3px solid transparent; border-radius: 0 var(--r) var(--r) 0; }
@@ -890,8 +943,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .payment-info { background: rgba(0,0,0,.2); padding: 12px; border-radius: var(--r); margin-bottom: 16px; font-size: .9rem; color: var(--txt2); border: 1px solid var(--glass-border); }
 .payment-info div { margin: 4px 0; }
 .payment-info strong { color: var(--txt); }
+.payment-info .pay-modal-add-extra-link { color: var(--primary); text-decoration: underline; cursor: pointer; }
+.payment-info .pay-modal-add-extra-link:hover { color: var(--primary-light, #c4b5fd); }
+.pay-modal-missing { margin-top: 6px; }
+.payment-info .pay-modal-prefill-link { color: var(--primary); text-decoration: underline; cursor: pointer; }
+.payment-info .pay-modal-prefill-link:hover { color: var(--primary-light, #c4b5fd); }
 .payment-checkbox-wrap { margin: 12px 0; }
-.payment-checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(22,163,74,.15); padding: 12px; border-radius: var(--r); font-weight: 600; color: #86efac; border: 1px solid rgba(22,163,74,.3); }
+.payment-checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500; color: var(--txt2); }
 .payment-checkbox-label input { width: 20px; height: 20px; accent-color: var(--green-600); }
 
 /* ADDRESS AUTOCOMPLETE */
@@ -971,6 +1029,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 
 .tags { display: flex; flex-wrap: wrap; gap: 4px; max-width: 250px; }
 .dash-unpaid-tags { max-width: 100%; }
+.dash-unpaid-tags .tag { white-space: nowrap; }
 .dash-unpaid-cell { white-space: normal; }
 .dash-p-col { width: 2.5em; text-align: center; vertical-align: middle; }
 .dash-add-req-btn { width: 28px; height: 28px; padding: 0; font-size: 1.1rem; line-height: 1; border-radius: var(--r); }
@@ -1036,26 +1095,65 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 #import-table .searchable-select-wrap .searchable-select-input::placeholder {
   color: #64748b;
 }
-#import-table td.import-cell-paired .searchable-select-wrap .searchable-select-input,
+/* Napárované buňky mohou být td nebo span (v bloku Párování) */
+#import-table .import-cell-paired .searchable-select-wrap .searchable-select-input,
 #import-table tr.import-row-processed .searchable-select-wrap .searchable-select-input {
   background: transparent;
   color: var(--txt);
   border-color: rgba(255,255,255,.18);
 }
-#import-table td.import-cell-paired .searchable-select-wrap .searchable-select-input::placeholder,
+#import-table .import-cell-paired .searchable-select-wrap .searchable-select-input::placeholder,
 #import-table tr.import-row-processed .searchable-select-wrap .searchable-select-input::placeholder {
   color: var(--txt3);
 }
-#import-table td.import-cell-paired select,
+#import-table .import-cell-paired select,
 #import-table tr.import-row-processed select {
   background: transparent;
   color: inherit;
 }
-#import-table td.import-cell-paired .searchable-select-wrap .searchable-select-native,
+#import-table .import-cell-paired .searchable-select-wrap .searchable-select-native,
 #import-table tr.import-row-processed .searchable-select-wrap .searchable-select-native {
   background: transparent;
 }
+/* Párování: dva řádky – Smlouva + Typ, pod tím Období od + Období do */
+#import-table .import-cell-pairing {
+  vertical-align: top;
+  min-width: 280px;
+}
+#import-table .import-pairing-row1,
+#import-table .import-pairing-row2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+#import-table .import-pairing-row1 { margin-bottom: 8px; }
+#import-table .import-pairing-row1 .import-cell-contract { flex: 1; min-width: 140px; }
+#import-table .import-pairing-row1 .import-cell-type { flex: 0 0 auto; min-width: 100px; }
+#import-table .import-pairing-row1 .import-cell-request { flex: 0 1 auto; min-width: 160px; max-width: 280px; }
+#import-table .import-pairing-row2 .import-cell-period-from,
+#import-table .import-pairing-row2 .import-cell-period-to {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* Kontrola importů: tabulka bez vlastních posuvníků – roste s obsahem, roluje celá stránka */
+#import-table-wrap.tbl-wrap {
+  overflow: visible;
+  max-height: none;
+}
 .tbl td.col-status { white-space: nowrap; }
+
+/* Importy: úzký sloupec checkboxu, zarovnání datum/částka doprava, protiúčet celý, zpráva širší */
+#import-table th.import-col-cb,
+#import-table td.import-col-cb { width: 1%; min-width: 2.25rem; max-width: 2.5rem; text-align: center; }
+#import-table th.import-col-date,
+#import-table td.import-col-date { text-align: right; white-space: nowrap; }
+#import-table th.import-col-amount,
+#import-table td.import-col-amount { text-align: right; white-space: nowrap; }
+#import-table td.import-col-counterpart { min-width: 10rem; overflow: visible; word-break: break-all; }
+#import-table th.import-col-msg,
+#import-table td.import-col-msg { min-width: 280px; max-width: 520px; }
 
 /* ============================================================
    ALERTS
@@ -1261,6 +1359,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
     border-radius: var(--r);
     overflow-x: hidden;
   }
+  #import-table-wrap.tbl-wrap {
+    overflow: visible;
+    max-height: none;
+  }
   table.tbl {
     width: 100%;
     table-layout: fixed;
@@ -1354,6 +1456,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 }
 
 @media (max-width: 480px) {
+  .dash-unpaid-tags .tag { white-space: normal; }
   .page-title { 
     font-size: 1.1rem;
     padding-left: 52px;

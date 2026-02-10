@@ -92,6 +92,13 @@ foreach ($ids as $rawId) {
     }
     db()->prepare('UPDATE payment_imports SET approved_at = ?, payments_id = ? WHERE id = ? AND valid_to IS NULL')
         ->execute([date('Y-m-d H:i:s'), $firstPaymentEntityId, $importId]);
+    $prId = isset($ov['payment_request_id']) ? (int)$ov['payment_request_id'] : (isset($imp['payment_request_id']) ? (int)$imp['payment_request_id'] : 0);
+    if ($prId > 0 && $firstPaymentEntityId !== null) {
+        $prRow = findActiveByEntityId('payment_requests', $prId);
+        if ($prRow && (int)($prRow['contracts_id'] ?? 0) === $cid) {
+            softUpdate('payment_requests', (int)$prRow['id'], ['payments_id' => $firstPaymentEntityId, 'paid_at' => $paymentDate ?: date('Y-m-d')]);
+        }
+    }
     $approved++;
 }
 

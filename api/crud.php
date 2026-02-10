@@ -4,11 +4,10 @@
 // GET  ?table=X&id=N     → single record
 // POST { action, table, ...fields }  → add / edit / delete
 declare(strict_types=1);
-@file_put_contents(__DIR__ . '/diag.txt', date('c') . ' 0_crud_entry' . "\n", FILE_APPEND | LOCK_EX);
 require __DIR__ . '/_bootstrap.php';
-apiDiag('3_crud_after_bootstrap');
-requireLogin();
-apiDiag('4_after_login');
+if (!defined('CRUD_CLI')) {
+    requireLogin();
+}
 
 // Whitelist: tabulka → povolená pole
 $FIELDS = [
@@ -20,7 +19,7 @@ $FIELDS = [
     'bank_accounts' => ['name','account_number','currency','is_primary','sort_order','fio_token'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
     'payment_requests' => ['contracts_id','amount','type','note','due_date'],
-    'payment_imports' => ['bank_accounts_id','payment_date','amount','currency','counterpart_account','note','fio_transaction_id','contracts_id','period_year','period_month','period_year_to','period_month_to','payment_type'],
+    'payment_imports' => ['bank_accounts_id','payment_date','amount','currency','counterpart_account','note','fio_transaction_id','contracts_id','period_year','period_month','period_year_to','period_month_to','payment_type','payment_request_id'],
 ];
 
 // Povinná pole při přidávání
@@ -46,16 +45,11 @@ $FIELD_LABELS = [
     'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu','currency'=>'Měna','fio_token'=>'FIO API token'],
     'contract_rent_changes' => ['contracts_id'=>'Smlouva','amount'=>'Částka','effective_from'=>'Platné od'],
     'payment_requests' => ['contracts_id'=>'Smlouva','amount'=>'Částka','type'=>'Typ','note'=>'Poznámka','due_date'=>'Splatnost'],
-    'payment_imports' => ['contracts_id'=>'Smlouva','period_year'=>'Rok od','period_month'=>'Měsíc od','period_year_to'=>'Rok do','period_month_to'=>'Měsíc do','currency'=>'Měna','payment_type'=>'Typ platby'],
+    'payment_imports' => ['contracts_id'=>'Smlouva','period_year'=>'Rok od','period_month'=>'Měsíc od','period_year_to'=>'Rok do','period_month_to'=>'Měsíc do','currency'=>'Měna','payment_type'=>'Typ platby','payment_request_id'=>'Požadavek na platbu'],
 ];
 
 $table = $_GET['table'] ?? body()['table'] ?? '';
 if (!isset($FIELDS[$table])) jsonErr('Neznámá tabulka.');
-
-if (function_exists('apiLog500')) {
-    apiLog500('REQUEST: table=' . $table . ' method=' . ($_SERVER['REQUEST_METHOD'] ?? ''));
-}
-apiDiag('5_request table=' . $table);
 
 /** U bank_accounts nevracíme fio_token do klienta, jen příznak fio_token_isset */
 function maskBankAccountFioToken(array $row): array {
@@ -65,46 +59,173 @@ function maskBankAccountFioToken(array $row): array {
     return $row;
 }
 
-/** Návrh párování importu: podle částky, data a protiúčtu najde vhodnou smlouvu a období (nájem). */
-function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string $counterpartAccount, array $contractsWithRent, array $rentChangesByContract): ?array {
+/** Vrací true, pokud protiúčet (normalizovaný) odpovídá některému účtu nájemníka (celé číslo nebo před lomítkem). */
+function counterpartMatchesTenant(int $tenantsId, string $counterpartNorm): bool {
+    if ($counterpartNorm === '') return false;
+    $base = preg_replace('/\/.*$/', '', $counterpartNorm);
+    $st = db()->prepare("
+        SELECT 1 FROM tenant_bank_accounts tba
+        WHERE tba.tenants_id = ? AND tba.valid_to IS NULL
+        AND (LOWER(REPLACE(TRIM(tba.account_number), ' ', '')) = ?
+             OR SUBSTRING_INDEX(LOWER(REPLACE(TRIM(tba.account_number), ' ', '')), '/', 1) = ?)
+    ");
+    $st->execute([$tenantsId, $counterpartNorm, $base]);
+    return (bool)$st->fetch();
+}
+
+/** Návrh párování importu: podle částky, data a protiúčtu najde vhodnou smlouvu a období. Požadavky (payment_requests) se berou v úvahu i když jsou uhrazené – pro historické narovnání a provázání na bankovní transakci. */
+function suggestPaymentImportPairing(float $amount, string $paymentDate, ?string $counterpartAccount, array $contractsWithRent, array $rentChangesByContract, array $unpaidRequestsByContract = [], array $requestAmountsByContract = [], array $totalRequestsByContract = []): ?array {
     if ($amount <= 0 || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $paymentDate, $m)) return null;
     $y = (int)$m[1]; $mo = (int)$m[2];
     $counterpartNorm = $counterpartAccount !== null && $counterpartAccount !== '' ? strtolower(preg_replace('/\s+/', '', trim($counterpartAccount))) : '';
     $best = null;
     $bestScore = -1;
+    // 1) Shoda na jeden měsíc (částka ≈ nájem za daný měsíc, případně + neuhrazené požadavky)
     foreach ($contractsWithRent as $c) {
-        $expectedRent = getRentForMonth((float)$c['monthly_rent'], (int)$c['contracts_id'], $y, $mo, $rentChangesByContract);
-        $diff = abs($expectedRent - $amount);
+        $cid = (int)($c['contracts_id'] ?? $c['id']);
+        $expectedRent = getRentForMonth((float)$c['monthly_rent'], $cid, $y, $mo, $rentChangesByContract);
+        $requestsSum = (float)($unpaidRequestsByContract[$cid] ?? 0);
+        $expectedTotal = $expectedRent + $requestsSum;
+        $diff = abs($expectedTotal - $amount);
         if ($diff > 0.02) continue; // tolerance 2 haléře
-        $score = 0;
-        if ($counterpartNorm !== '') {
-            $tenantAccounts = db()->prepare("
-                SELECT 1 FROM tenant_bank_accounts tba
-                WHERE tba.tenants_id = ? AND tba.valid_to IS NULL
-                AND LOWER(REPLACE(TRIM(tba.account_number), ' ', '')) = ?
-            ");
-            $tenantAccounts->execute([(int)$c['tenants_id'], $counterpartNorm]);
-            if ($tenantAccounts->fetch()) $score = 10; // protiúčet odpovídá nájemníkovi
-        } else {
-            $score = 1;
-        }
+        $score = ($counterpartNorm !== '' && counterpartMatchesTenant((int)$c['tenants_id'], $counterpartNorm)) ? 10 : (($counterpartNorm === '') ? 1 : 0);
         if ($score > $bestScore || ($score === $bestScore && $diff < ($best['diff'] ?? 999))) {
             $bestScore = $score;
             $best = [
-                'suggested_contracts_id' => (int)($c['contracts_id'] ?? $c['id']),
+                'suggested_contracts_id' => $cid,
                 'suggested_period_year'  => $y,
                 'suggested_period_month' => $mo,
+                'suggested_period_year_to'  => $y,
+                'suggested_period_month_to' => $mo,
                 'suggested_payment_type' => 'rent',
                 'diff' => $diff,
             ];
         }
     }
-    return $best ? [
+    // 1b) Částka = některý požadavek na platbu (uhrazený i neuhrazený – pro historické narovnání a provázání)
+    if ($best === null && $counterpartNorm !== '' && !empty($requestAmountsByContract)) {
+        foreach ($contractsWithRent as $c) {
+            $cid = (int)($c['contracts_id'] ?? $c['id']);
+            $amounts = $requestAmountsByContract[$cid] ?? [];
+            $match = null;
+            foreach ($amounts as $reqAmount) {
+                if (abs((float)$reqAmount - $amount) <= 0.02) {
+                    $match = (float)$reqAmount;
+                    break;
+                }
+            }
+            if ($match === null) continue;
+            if (!counterpartMatchesTenant((int)$c['tenants_id'], $counterpartNorm)) continue;
+            $score = 10;
+            $diff = abs($match - $amount);
+            if ($score > $bestScore || ($score === $bestScore && $diff < ($best['diff'] ?? 999))) {
+                $bestScore = $score;
+                $best = [
+                    'suggested_contracts_id' => $cid,
+                    'suggested_period_year'  => $y,
+                    'suggested_period_month' => $mo,
+                    'suggested_period_year_to'  => $y,
+                    'suggested_period_month_to' => $mo,
+                    'suggested_payment_type' => 'energy',
+                    'diff' => $diff,
+                ];
+            }
+        }
+    }
+    // 2) Žádný jeden měsíc – zkusit N měsíců (např. roční platba 12× nájem) + součet požadavků (uhrazených i neuhrazených, pro historické provázání)
+    if ($best === null) {
+        foreach ($contractsWithRent as $c) {
+            $cid = (int)($c['contracts_id'] ?? $c['id']);
+            $rent = getRentForMonth((float)$c['monthly_rent'], $cid, $y, $mo, $rentChangesByContract);
+            if ($rent <= 0) continue;
+            $requestsSum = (float)($totalRequestsByContract[$cid] ?? $unpaidRequestsByContract[$cid] ?? 0);
+            for ($n = 2; $n <= 24; $n++) {
+                $expected = $rent * $n + $requestsSum;
+                if (abs($expected - $amount) > 0.02 * $n + 0.02) continue; // tolerance
+                $score = ($counterpartNorm !== '' && counterpartMatchesTenant((int)$c['tenants_id'], $counterpartNorm)) ? 10 : (($counterpartNorm === '') ? 1 : 0);
+                $moFrom = $mo - ($n - 1);
+                $yFrom = $y;
+                while ($moFrom < 1) { $moFrom += 12; $yFrom--; }
+                $yTo = $y;
+                $moTo = $mo;
+                if ($n === 12) {
+                    $yFrom = $y;
+                    $moFrom = 1;
+                    $yTo = $y;
+                    $moTo = 12;
+                }
+                $diff = abs($expected - $amount);
+                if ($score > $bestScore || ($score === $bestScore && $diff < ($best['diff'] ?? 999))) {
+                    $bestScore = $score;
+                    $best = [
+                        'suggested_contracts_id' => $cid,
+                        'suggested_period_year'  => $yFrom,
+                        'suggested_period_month' => $moFrom,
+                        'suggested_period_year_to'  => $yTo,
+                        'suggested_period_month_to' => $moTo,
+                        'suggested_payment_type' => 'rent',
+                        'diff' => $diff,
+                    ];
+                }
+            }
+        }
+    }
+    // 3) Žádná shoda N× konstantní nájem – zkusit součet nájmů za rozsah měsíců (změny nájmu: např. 12×2200 + 3300 = 29700)
+    if ($best === null) {
+        foreach ($contractsWithRent as $c) {
+            $cid = (int)($c['contracts_id'] ?? $c['id']);
+            $baseRent = (float)$c['monthly_rent'];
+            $score = ($counterpartNorm !== '' && counterpartMatchesTenant((int)$c['tenants_id'], $counterpartNorm)) ? 10 : (($counterpartNorm === '') ? 1 : 0);
+            $requestsSum = (float)($totalRequestsByContract[$cid] ?? $unpaidRequestsByContract[$cid] ?? 0);
+            for ($len = 2; $len <= 24; $len++) {
+                $moTo = $mo;
+                $yTo = $y;
+                $moFrom = $moTo - ($len - 1);
+                $yFrom = $yTo;
+                while ($moFrom < 1) { $moFrom += 12; $yFrom--; }
+                $sum = 0.0;
+                $cy = $yFrom;
+                $cm = $moFrom;
+                for ($i = 0; $i < $len; $i++) {
+                    $sum += getRentForMonth($baseRent, $cid, $cy, $cm, $rentChangesByContract);
+                    $cm++;
+                    if ($cm > 12) { $cm = 1; $cy++; }
+                }
+                $expected = $sum + $requestsSum;
+                $diff = abs($expected - $amount);
+                if ($diff > 0.02 * $len + 0.02) continue;
+                $moTo = $moFrom + ($len - 1);
+                $yTo = $yFrom;
+                while ($moTo > 12) { $moTo -= 12; $yTo++; }
+                if ($score > $bestScore || ($score === $bestScore && $diff < ($best['diff'] ?? 999))) {
+                    $bestScore = $score;
+                    $best = [
+                        'suggested_contracts_id' => $cid,
+                        'suggested_period_year'  => $yFrom,
+                        'suggested_period_month' => $moFrom,
+                        'suggested_period_year_to'  => $yTo,
+                        'suggested_period_month_to' => $moTo,
+                        'suggested_payment_type' => 'rent',
+                        'diff' => $diff,
+                    ];
+                }
+            }
+        }
+    }
+    if ($best === null) return null;
+    return [
         'suggested_contracts_id' => $best['suggested_contracts_id'],
         'suggested_period_year'  => $best['suggested_period_year'],
         'suggested_period_month' => $best['suggested_period_month'],
+        'suggested_period_year_to'  => $best['suggested_period_year_to'],
+        'suggested_period_month_to' => $best['suggested_period_month_to'],
         'suggested_payment_type' => $best['suggested_payment_type'],
-    ] : null;
+    ];
+}
+
+// Při použití z cronu (CRUD_CLI) končíme zde – request handling níže se nespouští
+if (defined('CRUD_CLI')) {
+    return;
 }
 
 /** Ověří, zda řetězec YYYY-MM-DD představuje platné datum. Vrací chybovou zprávu nebo null. */
@@ -205,7 +326,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 return $r['counterpart_matches'] === true;
             }));
         }
-        // Převyplnění: pro smlouvu+období už existuje platba
+        // Spárováno: pro smlouvu+období už existuje platba
         $existingPaymentsKey = [];
         $existingSt = db()->query("
             SELECT contracts_id, period_year, period_month
@@ -223,11 +344,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $row['overpayment'] = ($cid > 0 && $py > 0 && $pm > 0) && isset($existingPaymentsKey[$cid . '_' . $py . '_' . $pm]);
         }
         unset($row);
-        // Auto-párování: návrh smlouva/období/typ podle částky, data a protiúčtu
+        // Auto-párování: návrh smlouva/období/typ podle částky, data a protiúčtu (včetně smluv skončených v posledních 24 měsících – platba za dobu nájmu)
         $contractsWithRent = db()->query("
-            SELECT c.contracts_id, c.id, c.tenants_id, c.monthly_rent
+            SELECT c.contracts_id, c.id, c.tenants_id, c.monthly_rent, c.contract_start, c.contract_end
             FROM contracts c
-            WHERE c.valid_to IS NULL AND (c.contract_end IS NULL OR c.contract_end >= CURDATE())
+            WHERE c.valid_to IS NULL
+            AND (c.contract_end IS NULL OR c.contract_end >= CURDATE() OR c.contract_end >= DATE_SUB(CURDATE(), INTERVAL 24 MONTH))
         ")->fetchAll(PDO::FETCH_ASSOC);
         $rentChangesRaw = db()->query("SELECT * FROM contract_rent_changes WHERE valid_to IS NULL ORDER BY contracts_id, effective_from ASC")->fetchAll();
         $rentChangesByContract = [];
@@ -236,18 +358,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             if (!isset($rentChangesByContract[$cid2])) $rentChangesByContract[$cid2] = [];
             $rentChangesByContract[$cid2][] = $rc;
         }
+        $unpaidRequestsByContract = [];
+        $unpaidReq = db()->query("
+            SELECT contracts_id, SUM(amount) AS total
+            FROM payment_requests
+            WHERE valid_to IS NULL AND paid_at IS NULL
+            GROUP BY contracts_id
+        ")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($unpaidReq as $r) {
+            $unpaidRequestsByContract[(int)$r['contracts_id']] = (float)$r['total'];
+        }
+        $requestAmountsByContract = [];
+        $totalRequestsByContract = [];
+        $allReq = db()->query("
+            SELECT contracts_id, amount
+            FROM payment_requests
+            WHERE valid_to IS NULL
+        ")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($allReq as $r) {
+            $cid = (int)$r['contracts_id'];
+            $amt = (float)$r['amount'];
+            if (!isset($requestAmountsByContract[$cid])) $requestAmountsByContract[$cid] = [];
+            $requestAmountsByContract[$cid][] = $amt;
+            $totalRequestsByContract[$cid] = ($totalRequestsByContract[$cid] ?? 0) + $amt;
+        }
         foreach ($rows as &$row) {
             $suggestion = suggestPaymentImportPairing(
                 (float)$row['amount'],
                 (string)$row['payment_date'],
                 isset($row['counterpart_account']) ? trim((string)$row['counterpart_account']) : null,
                 $contractsWithRent,
-                $rentChangesByContract
+                $rentChangesByContract,
+                $unpaidRequestsByContract,
+                $requestAmountsByContract,
+                $totalRequestsByContract
             );
             if ($suggestion) {
                 $row['suggested_contracts_id'] = $suggestion['suggested_contracts_id'];
                 $row['suggested_period_year'] = $suggestion['suggested_period_year'];
                 $row['suggested_period_month'] = $suggestion['suggested_period_month'];
+                $row['suggested_period_year_to'] = $suggestion['suggested_period_year_to'] ?? $suggestion['suggested_period_year'];
+                $row['suggested_period_month_to'] = $suggestion['suggested_period_month_to'] ?? $suggestion['suggested_period_month'];
                 $row['suggested_payment_type'] = $suggestion['suggested_payment_type'];
             }
         }
@@ -348,6 +499,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             SELECT pay.*, c.monthly_rent, p.name AS property_name, t.name AS tenant_name,
                    ba.account_number AS account_number,
                    (SELECT COALESCE(pr.payment_requests_id, pr.id) FROM payment_requests pr WHERE pr.payments_id = pay.payments_id AND pr.valid_to IS NULL ORDER BY pr.id DESC LIMIT 1) AS linked_payment_request_id,
+                   (SELECT GROUP_CONCAT(COALESCE(pr.payment_requests_id, pr.id) ORDER BY pr.id) FROM payment_requests pr WHERE pr.payments_id = pay.payments_id AND pr.valid_to IS NULL) AS linked_payment_request_ids,
                    (SELECT pr.note FROM payment_requests pr WHERE pr.payments_id = pay.payments_id AND pr.valid_to IS NULL ORDER BY pr.id DESC LIMIT 1) AS linked_request_note,
                    (SELECT pr.amount FROM payment_requests pr WHERE pr.payments_id = pay.payments_id AND pr.valid_to IS NULL ORDER BY pr.id DESC LIMIT 1) AS linked_request_amount
             FROM payments pay
@@ -637,21 +789,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!array_key_exists('approved_at', $data)) $data['approved_at'] = date('Y-m-d H:i:s');
             $amt = (float)($data['amount'] ?? 0);
             if ($amt === 0.0) jsonErr('Zadejte částku platby.');
-            $paymentRequestEntityId = isset($b['payment_request_id']) ? (int)$b['payment_request_id'] : 0;
+            $paymentRequestIds = isset($b['payment_request_ids']) && is_array($b['payment_request_ids'])
+                ? array_values(array_unique(array_filter(array_map('intval', $b['payment_request_ids']))))
+                : [];
+            if (empty($paymentRequestIds) && isset($b['payment_request_id']) && (int)$b['payment_request_id'] > 0) {
+                $paymentRequestIds[] = (int)$b['payment_request_id'];
+            }
             $newId = softInsert($table, $data);
-            if ($paymentRequestEntityId > 0) {
-                $prRow = findActiveByEntityId('payment_requests', $paymentRequestEntityId);
+            $paidAt = !empty($data['payment_date']) ? substr($data['payment_date'], 0, 10) : date('Y-m-d');
+            $paymentRow = findActive('payments', $newId);
+            $paymentEntityId = $paymentRow ? (int)($paymentRow['payments_id'] ?? $paymentRow['id']) : $newId;
+            foreach ($paymentRequestIds as $prEntityId) {
+                if ($prEntityId <= 0) continue;
+                $prRow = findActiveByEntityId('payment_requests', $prEntityId);
                 if (!$prRow) {
                     $st = db()->prepare("SELECT * FROM payment_requests WHERE id = ? AND valid_to IS NULL");
-                    $st->execute([$paymentRequestEntityId]);
+                    $st->execute([$prEntityId]);
                     $prRow = $st->fetch(PDO::FETCH_ASSOC) ?: null;
                 }
-                if ($prRow) {
-                    $paidAt = !empty($data['payment_date']) ? substr($data['payment_date'], 0, 10) : date('Y-m-d');
-                    $paymentRow = findActive('payments', $newId);
-                    $paymentEntityId = $paymentRow ? (int)($paymentRow['payments_id'] ?? $paymentRow['id']) : $newId;
+                if ($prRow && (int)($prRow['contracts_id'] ?? 0) === (int)($data['contracts_id'] ?? 0)) {
                     softUpdate('payment_requests', (int)$prRow['id'], ['paid_at' => $paidAt, 'payments_id' => $paymentEntityId]);
-                    // Křížová aktualizace: u vrácení kauce nastavíme ve smlouvě datum vrácení kauce
                     if (($prRow['type'] ?? '') === 'deposit_return') {
                         $contractRow = findActiveByEntityId('contracts', (int)$prRow['contracts_id']);
                         if ($contractRow && (empty($contractRow['deposit_return_date']) || $contractRow['deposit_return_date'] === null)) {
@@ -739,13 +896,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $s->execute([$rowId]);
             $row = $s->fetch(PDO::FETCH_ASSOC);
             if (!$row) jsonErr('Záznam neexistuje.', 404);
-            $allowed = ['contracts_id', 'period_year', 'period_month', 'period_year_to', 'period_month_to', 'payment_type'];
+            $allowed = ['contracts_id', 'period_year', 'period_month', 'period_year_to', 'period_month_to', 'payment_type', 'payment_request_id'];
             $upd = [];
             foreach ($allowed as $f) {
                 if (!array_key_exists($f, $data)) continue;
                 if ($f === 'payment_type') {
                     $v = $data[$f] ?? null;
                     $upd[$f] = in_array($v, ['rent', 'deposit', 'deposit_return', 'energy', 'other']) ? $v : null;
+                } elseif ($f === 'payment_request_id') {
+                    $v = $data[$f];
+                    $upd[$f] = ($v === null || $v === '') ? null : (int)$v;
                 } else {
                     $v = $data[$f];
                     $upd[$f] = ($v === null || $v === '') ? null : (int)$v;
