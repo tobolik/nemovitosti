@@ -241,6 +241,7 @@ async function loadDashboard(year) {
                 const contractEntityId = contract ? (contract.contracts_id ?? contract.id) : '';
                 const contractStart = contract && contract.contract_start ? String(contract.contract_start).slice(0, 10) : '';
                 const contractEnd = contract && contract.contract_end ? String(contract.contract_end).slice(0, 10) : '';
+                const tenantsId = contract && contract.tenants_id ? String(contract.tenants_id) : '';
                 const rentChangesJson = (contract && contract.rent_changes && contract.rent_changes.length > 0)
                     ? JSON.stringify(contract.rent_changes).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
                     : '';
@@ -249,7 +250,7 @@ async function loadDashboard(year) {
                 const defaultBankAccountId = contract && contract.default_bank_accounts_id != null && contract.default_bank_accounts_id !== '' ? String(contract.default_bank_accounts_id) : '';
                 const propIdForCell = prop.properties_id ?? prop.id;
                 const dataAttrs = !isEmptyOrNotRented
-                    ? ' data-property-id="' + propIdForCell + '" data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"' + (cell.remaining_rent != null ? ' data-remaining-rent="' + cell.remaining_rent + '"' : '') + (contractStart ? ' data-contract-start="' + contractStart.replace(/"/g, '&quot;') + '"' : '') + (contractEnd ? ' data-contract-end="' + contractEnd.replace(/"/g, '&quot;') + '"' : '') + (rentChangesJson ? ' data-rent-changes="' + rentChangesJson + '"' : '') + (monthlyRent > 0 ? ' data-monthly-rent="' + monthlyRent + '"' : '') + (defaultPaymentMethod ? ' data-default-payment-method="' + defaultPaymentMethod.replace(/"/g, '&quot;') + '"' : '') + (defaultBankAccountId ? ' data-default-bank-account-id="' + defaultBankAccountId.replace(/"/g, '&quot;') + '"' : '')
+                    ? ' data-property-id="' + propIdForCell + '" data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"' + (cell.remaining_rent != null ? ' data-remaining-rent="' + cell.remaining_rent + '"' : '') + (contractStart ? ' data-contract-start="' + contractStart.replace(/"/g, '&quot;') + '"' : '') + (contractEnd ? ' data-contract-end="' + contractEnd.replace(/"/g, '&quot;') + '"' : '') + (rentChangesJson ? ' data-rent-changes="' + rentChangesJson + '"' : '') + (monthlyRent > 0 ? ' data-monthly-rent="' + monthlyRent + '"' : '') + (defaultPaymentMethod ? ' data-default-payment-method="' + defaultPaymentMethod.replace(/"/g, '&quot;') + '"' : '') + (defaultBankAccountId ? ' data-default-bank-account-id="' + defaultBankAccountId.replace(/"/g, '&quot;') + '"' : '') + (tenantsId ? ' data-tenants-id="' + tenantsId + '"' : '')
                     : ' data-property-id="' + propIdForCell + '" data-month-key="' + monthKey + '"';
 
                 let titleAttr = '';
@@ -819,6 +820,9 @@ async function openPaymentModal(el) {
     const monthName = MONTH_NAMES[parseInt(month, 10) - 1] || month;
     const propName = el.dataset.propertyName || (el.closest('tr') && el.closest('tr').querySelector('.heatmap-property') ? el.closest('tr').querySelector('.heatmap-property').textContent : '') || '';
     const propertyId = el.dataset.propertyId ? String(el.dataset.propertyId).trim() : '';
+    const tenantsId = el.dataset.tenantsId ? String(el.dataset.tenantsId).trim() : '';
+    const contractStart = el.dataset.contractStart || '';
+    const contractEnd = el.dataset.contractEnd || '';
 
     const info = document.getElementById('pay-modal-info');
     const amount = document.getElementById('pay-modal-amount');
@@ -1006,7 +1010,7 @@ async function openPaymentModal(el) {
             return (effectiveMonthKey(p) === monthKey) ? (parseFloat(p.amount) || 0) : 0;
         }
         let sum = 0;
-        if (remainder !== 0 && paymentMonthKey === monthKey) sum += remainder;
+        if (remainder > 0 && paymentMonthKey === monthKey) sum += remainder;
         linkedReqs.forEach(r => {
             const reqMonthKey = r.due_date ? String(r.due_date).slice(0, 7) : '';
             if (reqMonthKey === monthKey) sum += parseFloat(r.amount) || 0;
@@ -1031,41 +1035,46 @@ async function openPaymentModal(el) {
         if (parts.length === 0) return '';
         return '<div class="pay-modal-missing"><strong>Ještě chybí tyto platby:</strong> ' + parts.join(', ') + '.</div>';
     }
-    let infoHtml = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
-        '<div><strong>Nájemce:</strong> ' + UI.esc(tenantName) + '</div>' +
-        '<div><strong>Období:</strong> ' + monthName + ' ' + year + '</div>';
-    if (sumForMonth >= amountVal) {
-        const overpaid = sumForMonth > amountVal;
-        infoHtml += '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen' : 'plně uhrazen') + ' částkou ' + UI.fmt(sumForMonth) + ' Kč</strong> (můžete <a href="#" class="pay-modal-add-extra-link" data-action="add">přidat další platbu navíc</a> za přeplatek, doplatek…).</div>';
-    } else {
-        if (sumForMonth > 0) infoHtml += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(sumForMonth) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(Math.round((amountVal - sumForMonth) * 100) / 100) + ' Kč</div>';
+    // Helper: format date "YYYY-MM-DD" → "D. M. YYYY"
+    function fmtDateShort(d) {
+        if (!d || d.length < 10) return d || '';
+        return parseInt(d.slice(8, 10), 10) + '. ' + parseInt(d.slice(5, 7), 10) + '. ' + d.slice(0, 4);
+    }
+    // Helper: build modal header with clickable links
+    function buildModalHeader() {
+        const propLink = propertyId ? '<a href="#properties&edit=' + UI.esc(propertyId) + '" class="pay-modal-link">' + UI.esc(propName) + '</a>' : UI.esc(propName);
+        const tenantLink = tenantsId ? '<a href="javascript:void(0)" onclick="DashboardView.openEdit(\'tenants\',' + UI.esc(tenantsId) + ')" class="pay-modal-link">' + UI.esc(tenantName) + '</a>' : UI.esc(tenantName);
+        const contractLabel = (contractStart || contractEnd) ? (fmtDateShort(contractStart) + ' – ' + fmtDateShort(contractEnd)) : '';
+        const contractLink = contractsId && contractLabel ? '<a href="#contracts&edit=' + UI.esc(contractsId) + '" class="pay-modal-link">' + contractLabel + '</a>' : contractLabel;
+        let h = '<div><strong>Nemovitost:</strong> ' + propLink + '</div>' +
+            '<div><strong>Nájemce:</strong> ' + tenantLink + '</div>';
+        if (contractLink) h += '<div><strong>Smlouva:</strong> ' + contractLink + '</div>';
+        h += '<div><strong>Období:</strong> ' + monthName + ' ' + year + '</div>';
+        return h;
+    }
+    function buildStatusHtml(sum) {
+        if (sum >= amountVal) {
+            const overpaid = sum > amountVal;
+            const overpaidAmt = Math.round((sum - amountVal) * 100) / 100;
+            return '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen částkou ' + UI.fmt(overpaidAmt) : 'plně uhrazen částkou ' + UI.fmt(sum)) + ' Kč</strong> (můžete <a href="#" class="pay-modal-add-extra-link" data-action="add">přidat další platbu navíc</a> za přeplatek, doplatek…).</div>';
+        }
+        let s = '';
+        if (sum > 0) s += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(sum) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(Math.round((amountVal - sum) * 100) / 100) + ' Kč</div>';
         const unfulfilledForMonth = paymentRequests.filter(function(r) {
             const d = r.due_date;
             return d && String(d).slice(0, 7) === monthKey && !r.paid_at && String(r.contracts_id ?? '') === String(contractsId);
         });
-        infoHtml += buildMissingPaymentsHtml(remainingRent, unfulfilledForMonth);
+        s += buildMissingPaymentsHtml(remainingRent, unfulfilledForMonth);
+        return s;
     }
+    let infoHtml = buildModalHeader() + buildStatusHtml(sumForMonth);
     info.innerHTML = infoHtml;
     const initialInfoHtml = infoHtml;
 
     function refreshModalInfo() {
         if (!info) return;
         const sum = forMonth.reduce((s, p) => s + amountContributingToMonth(p), 0);
-        let html = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
-            '<div><strong>Nájemce:</strong> ' + UI.esc(tenantName) + '</div>' +
-            '<div><strong>Období:</strong> ' + monthName + ' ' + year + '</div>';
-        if (sum >= amountVal) {
-            const overpaid = sum > amountVal;
-            html += '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen' : 'plně uhrazen') + ' částkou ' + UI.fmt(sum) + ' Kč</strong> (můžete <a href="#" class="pay-modal-add-extra-link" data-action="add">přidat další platbu navíc</a> za přeplatek, doplatek…).</div>';
-        } else {
-            if (sum > 0) html += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(sum) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(Math.round((amountVal - sum) * 100) / 100) + ' Kč</div>';
-            const unfulfilledForMonth = paymentRequests.filter(function(r) {
-                const d = r.due_date;
-                return d && String(d).slice(0, 7) === monthKey && !r.paid_at && String(r.contracts_id ?? '') === String(contractsId);
-            });
-            html += buildMissingPaymentsHtml(remainingRent, unfulfilledForMonth);
-        }
-        info.innerHTML = html;
+        info.innerHTML = buildModalHeader() + buildStatusHtml(sum);
     }
 
     const typeLabels = { rent: 'Nájem', deposit: 'Kauce', deposit_return: 'Vrácení kauce', energy: 'Energie', other: 'Jiné' };
@@ -1149,7 +1158,9 @@ async function openPaymentModal(el) {
         }
         let html = '<div class="pay-modal-existing-title">Existující platby:</div><ul class="pay-modal-existing-list">';
         forMonth.forEach(p => {
-            const amt = UI.fmt(p.amount ?? 0);
+            const fullAmt = UI.fmt(p.amount ?? 0);
+            const contributingAmt = amountContributingToMonth(p);
+            const amt = UI.fmt(contributingAmt);
             const dt = p.payment_date ? UI.fmtDate(p.payment_date) : '—';
             const method = p.payment_method || 'account';
             const accId = p.bank_accounts_id ?? '';
@@ -1194,16 +1205,18 @@ async function openPaymentModal(el) {
                     return '<div class="' + rowClass + '"><span class="pay-modal-breakdown-label">' + UI.esc(part.label) + '</span><span class="pay-modal-breakdown-date">' + UI.esc(part.dateLabel || '') + '</span><span class="pay-modal-breakdown-amount">' + part.amount + '</span></div>';
                 }).join('')
                 : '';
+            const amtDiffers = Math.abs((parseFloat(p.amount) || 0) - contributingAmt) > 0.5;
+            const amtSuffix = amtDiffers ? ' <span class="pay-modal-full-amount" title="Celková částka platby: ' + fullAmt + ' Kč">(z ' + fullAmt + ')</span>' : '';
             const contentHtml = hasBreakdown && partsWithMonth.length
                 ? ('<div class="pay-modal-existing-content">' +
                     '<span class="pay-modal-main-label">' + typeBadge + batchTag + tenantLabel + '</span>' +
                     '<span class="pay-modal-main-date">' + dt + '</span>' +
-                    '<span class="pay-modal-main-amount">' + amt + ' Kč</span>' +
+                    '<span class="pay-modal-main-amount">' + amt + ' Kč' + amtSuffix + '</span>' +
                     '<div class="pay-modal-breakdown-block">' + breakdownRows + '</div></div>')
                 : ('<div class="pay-modal-existing-content">' +
                     '<span class="pay-modal-main-label">' + typeBadge + batchTag + tenantLabel + '</span>' +
                     '<span class="pay-modal-main-date">' + dt + '</span>' +
-                    '<span class="pay-modal-main-amount">' + amt + ' Kč</span></div>');
+                    '<span class="pay-modal-main-amount">' + amt + ' Kč' + amtSuffix + '</span></div>');
             const contributesAny = amountContributingToMonth(p) > 0;
             const allPartsInMonth = !hasBreakdown ? (effectiveMonthKey(p) === monthKey) : (partsWithMonth.length > 0 && partsWithMonth.every(part => part.partMonthKey === monthKey));
             const rowOutsideMonth = !contributesAny || (hasBreakdown && !allPartsInMonth);

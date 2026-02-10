@@ -270,7 +270,7 @@ foreach ($heatmapByPayment as $group) {
         ];
     }
     $remainder = round($payAmt - $allocated, 2);
-    if ($remainder != 0) {
+    if ($remainder > 0) {
         $monthKey = $periodKey ?: $fallbackMonthKey;
         if ($monthKey) {
             if (!isset($heatmapPaymentsByContract[$eid][$monthKey])) {
@@ -657,6 +657,8 @@ foreach ($properties as $p) {
                     'contract'             => $primaryContract ? [
                     'id' => $primaryEntityId,
                     'contracts_id' => $primaryEntityId,
+                    'properties_id' => $primaryContract['properties_id'] ?? null,
+                    'tenants_id' => $primaryContract['tenants_id'] ?? null,
                     'monthly_rent' => (float)($primaryContract['monthly_rent'] ?? 0),
                     'tenant_name' => $primaryContract['tenant_name'] ?? '',
                     'contract_start' => $primaryContract['contract_start'] ?? null,
@@ -771,6 +773,8 @@ foreach ($properties as $p) {
                 'contract'             => [
                     'id' => $primaryEntityId,
                     'contracts_id' => $primaryEntityId,
+                    'properties_id' => $primaryContract['properties_id'] ?? null,
+                    'tenants_id' => $primaryContract['tenants_id'] ?? null,
                     'monthly_rent' => (float)($primaryContract['monthly_rent'] ?? 0),
                     'tenant_name' => $primaryContract['tenant_name'] ?? '',
                     'contract_start' => $primaryContract['contract_start'] ?? null,
