@@ -144,7 +144,7 @@ $contractsForView = $showEnded ? $contracts : array_values(array_filter($contrac
 $paymentRequestsSumByContract = [];
 $allRequestsStmt = db()->query("
     SELECT contracts_id, type, amount FROM payment_requests
-    WHERE valid_to IS NULL
+    WHERE valid_to IS NULL AND type != 'rent'
 ");
 foreach ($allRequestsStmt->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
@@ -323,7 +323,7 @@ $hasUnfulfilledByContractMonth = [];
 $unfulfilledListByContractMonth = []; // [contractId][monthKey] => [ ['label'=>..., 'amount'=>...], ... ]
 $stmtUnfulfilled = db()->query("
     SELECT contracts_id, due_date, amount, type, note FROM payment_requests
-    WHERE valid_to IS NULL AND due_date IS NOT NULL AND paid_at IS NULL
+    WHERE valid_to IS NULL AND due_date IS NOT NULL AND paid_at IS NULL AND type != 'rent'
 ");
 foreach ($stmtUnfulfilled->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
@@ -382,7 +382,7 @@ foreach ($contracts as $c) {
 $stmtPrMonth = db()->query("
     SELECT id, payment_requests_id, contracts_id, due_date, amount, type, note
     FROM payment_requests
-    WHERE valid_to IS NULL AND due_date IS NOT NULL
+    WHERE valid_to IS NULL AND due_date IS NOT NULL AND type != 'rent'
 ");
 foreach ($stmtPrMonth->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];

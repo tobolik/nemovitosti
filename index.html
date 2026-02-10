@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=2.2.15">
+<link rel="stylesheet" href="css/style.css?v=2.3.0">
 </head>
 <body>
 
@@ -30,7 +30,7 @@
     </div>
     <div id="login-error"></div>
     <button class="btn-login" id="btn-login">Přihlásit se</button>
-    <p class="login-version">Verze <span class="footer-version">v2.2.15</span></p>
+    <p class="login-version">Verze <span class="footer-version">v2.3.0</span></p>
   </div>
 </div>
 
@@ -64,7 +64,7 @@
       <div class="sidebar-footer">
         <div class="sidebar-footer-top">
           <span class="sidebar-user" id="nav-username"></span>
-          <span class="sidebar-version">v2.2.15</span>
+          <span class="sidebar-version">v2.3.0</span>
         </div>
         <button class="btn-logout" id="btn-logout">Odhlásit se</button>
       </div>
@@ -265,6 +265,10 @@
             <label>Požadavky na platbu</label>
             <p class="text-muted" style="font-size:.8rem;margin-bottom:8px">Energie, vyúčtování, kauce – můžete upravit.</p>
             <div id="con-payment-requests-list"></div>
+            <div id="con-settlement-btns" style="margin-top:10px;display:none">
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-energy-settlement">Vyúčtování energií</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-deposit-settlement" style="margin-left:8px">Zúčtovat kauci</button>
+            </div>
           </div>
           <div class="fg"><label>Poznámka</label><textarea id="con-note" rows="2"></textarea></div>
           <div class="form-row" id="con-default-payment-wrap">
@@ -654,7 +658,7 @@
     <div class="alert" id="pay-req-alert"></div>
     <div class="fg"><label>Smlouva (nájemník + nemovitost) *</label><select id="pay-req-contract"><option value="">— Vyberte —</option></select></div>
     <div class="fg"><label>Částka (Kč) *</label><input type="number" id="pay-req-amount" step="0.01" placeholder="kladná = příjem, záporná = výdej"></div>
-    <div class="fg"><label>Typ</label><select id="pay-req-type"><option value="energy">Energie</option><option value="settlement">Vyúčtování</option><option value="deposit">Kauce</option><option value="deposit_return">Vrácení kauce</option><option value="other">Jiné</option></select></div>
+    <div class="fg"><label>Typ</label><select id="pay-req-type"><option value="rent">Nájem</option><option value="energy">Energie</option><option value="settlement">Vyúčtování</option><option value="deposit">Kauce</option><option value="deposit_return">Vrácení kauce</option><option value="other">Jiné</option></select></div>
     <div class="fg"><label>Splatnost (volitelně)</label><input type="date" id="pay-req-due-date"></div>
     <div class="fg"><label>Poznámka</label><input type="text" id="pay-req-note" placeholder="např. Vyúčtování 2025"></div>
     <div class="fg" id="pay-req-link-wrap" style="display:none">
@@ -678,6 +682,48 @@
       <button type="button" class="btn btn-success" id="btn-pay-req-save" data-save-btn>Přidat</button>
       <button type="button" class="btn btn-ghost" id="btn-pay-req-delete" style="display:none">Smazat požadavek</button>
       <button type="button" class="btn btn-ghost" onclick="UI.modalClose('modal-payment-request')">Zrušit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Vyúčtování energií ═══ -->
+<div class="modal" id="modal-energy-settlement">
+  <div class="modal-ov" onclick="UI.modalClose('modal-energy-settlement')"></div>
+  <div class="modal-box" style="max-width:540px">
+    <div class="modal-header">
+      <h3 class="modal-title">Vyúčtování energií</h3>
+      <button type="button" class="modal-close" onclick="UI.modalClose('modal-energy-settlement')" aria-label="Zavřít">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert" id="energy-settle-alert"></div>
+      <div id="energy-settle-info" class="text-muted" style="font-size:.85rem;margin-bottom:12px"></div>
+      <div class="fg"><label>Skutečná částka energií (Kč) *</label><input type="number" id="energy-settle-actual" step="0.01" min="0" placeholder="např. 1700"></div>
+      <div id="energy-settle-result" style="margin-top:12px;font-weight:600"></div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-success" id="btn-energy-settle-save">Provést vyúčtování</button>
+      <button type="button" class="btn btn-ghost" onclick="UI.modalClose('modal-energy-settlement')">Zrušit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Zúčtování kauce ═══ -->
+<div class="modal" id="modal-deposit-settlement">
+  <div class="modal-ov" onclick="UI.modalClose('modal-deposit-settlement')"></div>
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-header">
+      <h3 class="modal-title">Zúčtování kauce</h3>
+      <button type="button" class="modal-close" onclick="UI.modalClose('modal-deposit-settlement')" aria-label="Zavřít">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert" id="deposit-settle-alert"></div>
+      <div id="deposit-settle-info" style="font-size:.9rem;margin-bottom:12px"></div>
+      <div id="deposit-settle-list" style="margin-bottom:12px"></div>
+      <div id="deposit-settle-result" style="font-weight:600"></div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-success" id="btn-deposit-settle-save">Provést zúčtování</button>
+      <button type="button" class="btn btn-ghost" onclick="UI.modalClose('modal-deposit-settlement')">Zrušit</button>
     </div>
   </div>
 </div>
@@ -748,17 +794,17 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=2.2.15"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=2.2.15"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=2.2.15"></script>
-<script src="js/app.js?v=2.2.15"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=2.2.15"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=2.2.15"></script>
-<script src="js/views/tenants.js?v=2.2.15"></script>
-<script src="js/views/contracts.js?v=2.2.15"></script>
-<script src="js/views/payments.js?v=2.2.15"></script>
-<script src="js/views/bank_accounts.js?v=2.2.15"></script>
-<script src="js/views/payment_imports.js?v=2.2.15"></script>
-<script src="js/views/users.js?v=2.2.15"></script>
+<script src="js/api.js?v=2.3.0"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=2.3.0"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=2.3.0"></script>
+<script src="js/app.js?v=2.3.0"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=2.3.0"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=2.3.0"></script>
+<script src="js/views/tenants.js?v=2.3.0"></script>
+<script src="js/views/contracts.js?v=2.3.0"></script>
+<script src="js/views/payments.js?v=2.3.0"></script>
+<script src="js/views/bank_accounts.js?v=2.3.0"></script>
+<script src="js/views/payment_imports.js?v=2.3.0"></script>
+<script src="js/views/users.js?v=2.3.0"></script>
 </body>
 </html>

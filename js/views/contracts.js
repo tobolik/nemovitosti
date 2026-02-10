@@ -108,7 +108,7 @@ const ContractsView = (() => {
     let _rentChangesContractsId = null;
     let _paymentRequestsContractsId = null;
 
-    const PAYMENT_REQUEST_TYPE_LABELS = { energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
+    const PAYMENT_REQUEST_TYPE_LABELS = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
 
     async function loadPaymentRequests(contractsId) {
         _paymentRequestsContractsId = contractsId;
@@ -249,6 +249,177 @@ const ContractsView = (() => {
         };
     }
 
+    // ── Vyúčtování energií + Zúčtování kauce ──────────────────────────
+    let _settlementInited = false;
+    function initSettlementHandlers() {
+        if (_settlementInited) return;
+        _settlementInited = true;
+        const TYPE_LABELS = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
+
+        // --- Vyúčtování energií ---
+        const btnEnergy = document.getElementById('btn-energy-settlement');
+        if (btnEnergy) {
+            btnEnergy.onclick = async () => {
+                const cid = _paymentRequestsContractsId;
+                if (!cid) return;
+                const alertEl = document.getElementById('energy-settle-alert');
+                const infoEl = document.getElementById('energy-settle-info');
+                const actualEl = document.getElementById('energy-settle-actual');
+                const resultEl = document.getElementById('energy-settle-result');
+                if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
+                if (resultEl) resultEl.textContent = '';
+                if (actualEl) actualEl.value = '';
+                try {
+                    const resp = await fetch('/api/settlement.php', {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': Api.getCsrf() },
+                        body: JSON.stringify({ action: 'energy_info', contracts_id: cid })
+                    });
+                    const data = await resp.json();
+                    if (!data.ok) throw new Error(data.error || 'Chyba');
+                    const d = data.data || data;
+                    const items = d.items || [];
+                    let html = '<strong>Zálohy na energie:</strong><br>';
+                    if (!items.length) {
+                        html += 'Žádné zálohové požadavky.';
+                    } else {
+                        items.forEach(it => {
+                            const paid = it.paid_at ? ' (uhrazeno)' : ' (neuhrazeno)';
+                            const due = it.due_date ? ' – splatnost ' + it.due_date.slice(0,10) : '';
+                            html += UI.esc((it.note || 'Energie') + ': ' + UI.fmt(it.amount) + ' Kč' + paid + due) + '<br>';
+                        });
+                        html += '<br>Uhrazené zálohy: <strong>' + UI.fmt(d.paid_sum) + ' Kč</strong>';
+                        html += '<br>Neuhrazené zálohy: ' + UI.fmt(d.unpaid_sum) + ' Kč (budou uzavřeny)';
+                    }
+                    if (infoEl) infoEl.innerHTML = html;
+                } catch (e) {
+                    if (infoEl) infoEl.textContent = 'Chyba při načítání: ' + e.message;
+                }
+                UI.modalOpen('modal-energy-settlement');
+            };
+        }
+
+        const btnEnergySave = document.getElementById('btn-energy-settle-save');
+        if (btnEnergySave) {
+            btnEnergySave.onclick = async () => {
+                const cid = _paymentRequestsContractsId;
+                const actualEl = document.getElementById('energy-settle-actual');
+                const alertEl = document.getElementById('energy-settle-alert');
+                const resultEl = document.getElementById('energy-settle-result');
+                const actual = parseFloat(actualEl?.value);
+                if (isNaN(actual) || actual < 0) {
+                    if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Zadejte platnou částku.'; }
+                    return;
+                }
+                try {
+                    const resp = await fetch('/api/settlement.php', {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': Api.getCsrf() },
+                        body: JSON.stringify({ action: 'energy_settlement', contracts_id: cid, actual_amount: actual })
+                    });
+                    const data = await resp.json();
+                    if (!data.ok) throw new Error(data.error || 'Chyba');
+                    const d = data.data || data;
+                    let msg = 'Vyúčtování provedeno. Zálohy uhrazené: ' + UI.fmt(d.paid_advances) + ' Kč, uzavřeno neuhrazených: ' + d.unpaid_closed + '.';
+                    if (d.settlement_amount > 0) msg += ' Nedoplatek: ' + UI.fmt(d.settlement_amount) + ' Kč (nový požadavek vytvořen).';
+                    else if (d.settlement_amount < 0) msg += ' Přeplatek: ' + UI.fmt(Math.abs(d.settlement_amount)) + ' Kč (nový požadavek vytvořen).';
+                    else msg += ' Vyrovnáno přesně.';
+                    if (resultEl) { resultEl.textContent = msg; resultEl.style.color = '#16a34a'; }
+                    loadPaymentRequests(_paymentRequestsContractsId);
+                    setTimeout(() => UI.modalClose('modal-energy-settlement'), 2500);
+                } catch (e) {
+                    if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = e.message; }
+                }
+            };
+        }
+
+        // --- Zúčtování kauce ---
+        const btnDeposit = document.getElementById('btn-deposit-settlement');
+        if (btnDeposit) {
+            btnDeposit.onclick = async () => {
+                const cid = _paymentRequestsContractsId;
+                if (!cid) return;
+                const alertEl = document.getElementById('deposit-settle-alert');
+                const infoEl = document.getElementById('deposit-settle-info');
+                const listEl = document.getElementById('deposit-settle-list');
+                const resultEl = document.getElementById('deposit-settle-result');
+                if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
+                if (resultEl) resultEl.textContent = '';
+                try {
+                    const resp = await fetch('/api/settlement.php', {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': Api.getCsrf() },
+                        body: JSON.stringify({ action: 'deposit_info', contracts_id: cid })
+                    });
+                    const data = await resp.json();
+                    if (!data.ok) throw new Error(data.error || 'Chyba');
+                    const d = data.data || data;
+                    if (infoEl) infoEl.innerHTML = '<strong>Kauce:</strong> ' + UI.fmt(d.deposit_amount) + ' Kč';
+                    const items = d.unpaid_requests || [];
+                    if (!items.length) {
+                        if (listEl) listEl.innerHTML = '<div class="text-muted">Žádné neuhrazené požadavky.</div>';
+                    } else {
+                        let html = '<div style="font-size:.85rem;margin-bottom:8px">Vyberte dluhy, které pokryje kauce:</div>';
+                        items.forEach(it => {
+                            const label = (TYPE_LABELS[it.type] || it.type) + (it.note ? ' – ' + it.note : '') +
+                                (it.period_year && it.period_month ? ' (' + it.period_month + '/' + it.period_year + ')' : '');
+                            html += '<label style="display:block;padding:4px 0;cursor:pointer">' +
+                                '<input type="checkbox" class="dep-settle-cb" data-id="' + it.entity_id + '" data-amount="' + Math.abs(parseFloat(it.amount)) + '" checked> ' +
+                                UI.esc(label) + ': <strong>' + UI.fmt(Math.abs(parseFloat(it.amount))) + ' Kč</strong></label>';
+                        });
+                        if (listEl) listEl.innerHTML = html;
+                        // Aktualizovat zbývající částku při změně zaškrtnutí
+                        const updateResult = () => {
+                            let sum = 0;
+                            listEl.querySelectorAll('.dep-settle-cb:checked').forEach(cb => { sum += parseFloat(cb.dataset.amount) || 0; });
+                            const toReturn = Math.max(0, d.deposit_amount - sum);
+                            if (resultEl) resultEl.innerHTML = 'Pokryto z kauce: <strong>' + UI.fmt(sum) + ' Kč</strong><br>K vrácení nájemci: <strong>' + UI.fmt(toReturn) + ' Kč</strong>';
+                        };
+                        listEl.querySelectorAll('.dep-settle-cb').forEach(cb => { cb.onchange = updateResult; });
+                        updateResult();
+                    }
+                } catch (e) {
+                    if (infoEl) infoEl.textContent = 'Chyba: ' + e.message;
+                }
+                UI.modalOpen('modal-deposit-settlement');
+            };
+        }
+
+        const btnDepositSave = document.getElementById('btn-deposit-settle-save');
+        if (btnDepositSave) {
+            btnDepositSave.onclick = async () => {
+                const cid = _paymentRequestsContractsId;
+                const alertEl = document.getElementById('deposit-settle-alert');
+                const resultEl = document.getElementById('deposit-settle-result');
+                const listEl = document.getElementById('deposit-settle-list');
+                const ids = [];
+                if (listEl) listEl.querySelectorAll('.dep-settle-cb:checked').forEach(cb => { ids.push(parseInt(cb.dataset.id, 10)); });
+                if (!ids.length) {
+                    if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Vyberte alespoň jeden požadavek.'; }
+                    return;
+                }
+                try {
+                    const resp = await fetch('/api/settlement.php', {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': Api.getCsrf() },
+                        body: JSON.stringify({ action: 'deposit_settlement', contracts_id: cid, request_ids: ids })
+                    });
+                    const data = await resp.json();
+                    if (!data.ok) throw new Error(data.error || 'Chyba');
+                    const d = data.data || data;
+                    let msg = 'Zúčtování provedeno. Pokryto: ' + UI.fmt(d.covered) + ' Kč.';
+                    if (d.to_return > 0) msg += ' K vrácení: ' + UI.fmt(d.to_return) + ' Kč (požadavek deposit_return vytvořen/aktualizován).';
+                    else msg += ' Celá kauce spotřebována.';
+                    if (resultEl) { resultEl.textContent = msg; resultEl.style.color = '#16a34a'; }
+                    loadPaymentRequests(_paymentRequestsContractsId);
+                    setTimeout(() => UI.modalClose('modal-deposit-settlement'), 2500);
+                } catch (e) {
+                    if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = e.message; }
+                }
+            };
+        }
+    }
+
     function initForm() {
         if (form) return;
         form = UI.createCrudForm({
@@ -332,6 +503,8 @@ const ContractsView = (() => {
                 loadRentChanges(contractsId);
                 loadPaymentRequests(contractsId);
                 document.getElementById('con-rent-changes-wrap').style.display = 'block';
+                const settleBtns = document.getElementById('con-settlement-btns');
+                if (settleBtns) settleBtns.style.display = 'flex';
             },
             resetForm() {
                 ['con-property','con-tenant','con-start','con-end','con-rent','con-first-month-rent','con-contract-url','con-deposit-amount','con-deposit-paid-date','con-deposit-return-date','con-note','con-default-payment-method','con-default-account']
@@ -342,6 +515,8 @@ const ContractsView = (() => {
                 document.getElementById('con-rent-changes-wrap').style.display = 'none';
                 const prWrap = document.getElementById('con-payment-requests-wrap');
                 if (prWrap) prWrap.style.display = 'none';
+                const settleBtns = document.getElementById('con-settlement-btns');
+                if (settleBtns) settleBtns.style.display = 'none';
             },
             onSaved: loadList,
         });
@@ -579,6 +754,7 @@ const ContractsView = (() => {
         form.exitEdit();
         initTenantModal();
         initRentChangesHandlers();
+        initSettlementHandlers();
         initTableSortClick();
         _cache = [];
         await fillDropdowns();

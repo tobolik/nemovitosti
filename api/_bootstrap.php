@@ -262,6 +262,65 @@ function getRentForMonth(float $baseRent, int $contractsId, int $y, int $m, arra
     return $applicable !== null ? $applicable : $baseRent;
 }
 
+/**
+ * Synchronizuje rent požadavky (payment_requests type=rent) pro smlouvu:
+ * pro každý měsíc v rozsahu contract_start .. contract_end (nebo do konce běžného měsíce)
+ * najde/aktualizuje/vytvoří požadavek; mimo rozsah smaže jen neuhrazené.
+ */
+function syncRentPaymentRequests(int $contractsId): void {
+    $c = findActiveByEntityId('contracts', $contractsId);
+    if (!$c || empty($c['contract_start'])) return;
+    $start = substr(trim($c['contract_start']), 0, 10);
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $start, $m)) return;
+    $yStart = (int)$m[1]; $monthStart = (int)$m[2];
+    $end = trim($c['contract_end'] ?? '');
+    if ($end !== '' && $end !== null) {
+        if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $end, $m2)) return;
+        $yEnd = (int)$m2[1]; $monthEnd = (int)$m2[2];
+    } else {
+        $yEnd = (int)date('Y'); $monthEnd = (int)date('n');
+    }
+    $baseRent = (float)($c['monthly_rent'] ?? 0);
+    $rentChangesRaw = db()->prepare("SELECT * FROM contract_rent_changes WHERE contracts_id = ? AND valid_to IS NULL ORDER BY effective_from ASC");
+    $rentChangesRaw->execute([$contractsId]);
+    $rentChangesByContract = [$contractsId => $rentChangesRaw->fetchAll(PDO::FETCH_ASSOC)];
+    $findRent = db()->prepare("SELECT id, amount, due_date FROM payment_requests WHERE contracts_id = ? AND period_year = ? AND period_month = ? AND type = 'rent' AND valid_to IS NULL");
+    $syncedMonths = [];
+    for ($y = $yStart, $m = $monthStart; $y < $yEnd || ($y === $yEnd && $m <= $monthEnd); ) {
+        $amount = getRentForMonth($baseRent, $contractsId, $y, $m, $rentChangesByContract);
+        $dueDate = date('Y-m-t', strtotime("$y-$m-01"));
+        $findRent->execute([$contractsId, $y, $m]);
+        $existing = $findRent->fetch(PDO::FETCH_ASSOC);
+        if ($existing) {
+            $exAmt = (float)$existing['amount'];
+            $exDue = $existing['due_date'] ? substr($existing['due_date'], 0, 10) : null;
+            if (abs($exAmt - $amount) > 0.005 || $exDue !== $dueDate) {
+                softUpdate('payment_requests', (int)$existing['id'], ['amount' => round($amount, 2), 'due_date' => $dueDate]);
+            }
+        } else {
+            softInsert('payment_requests', [
+                'contracts_id'  => $contractsId,
+                'amount'        => round($amount, 2),
+                'type'          => 'rent',
+                'due_date'      => $dueDate,
+                'period_year'   => $y,
+                'period_month'  => $m,
+            ]);
+        }
+        $syncedMonths[$y . '_' . $m] = true;
+        if (++$m > 12) { $m = 1; $y++; }
+    }
+    $del = db()->prepare("SELECT id, period_year, period_month FROM payment_requests WHERE contracts_id = ? AND type = 'rent' AND valid_to IS NULL AND payments_id IS NULL");
+    $del->execute([$contractsId]);
+    foreach ($del->fetchAll(PDO::FETCH_ASSOC) as $pr) {
+        if ($pr['period_year'] === null || $pr['period_month'] === null) continue;
+        $key = (int)$pr['period_year'] . '_' . (int)$pr['period_month'];
+        if (!isset($syncedMonths[$key])) {
+            softDelete('payment_requests', (int)$pr['id']);
+        }
+    }
+}
+
 /** Vyhledá aktivní řádek podle entity_id (users_id, properties_id, …). */
 function findActiveByEntityId(string $tbl, int $entityId): ?array {
     $eidCol = _entityIdCol($tbl);

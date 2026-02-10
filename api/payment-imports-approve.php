@@ -99,6 +99,19 @@ foreach ($ids as $rawId) {
             softUpdate('payment_requests', (int)$prRow['id'], ['payments_id' => $firstPaymentEntityId, 'paid_at' => $paymentDate ?: date('Y-m-d')]);
         }
     }
+    // Auto-propojení: rent platba → rent požadavek (pokud nebyl explicitní prId)
+    if ($prId <= 0 && $paymentType === 'rent' && $firstPaymentEntityId !== null) {
+        foreach ($months as [$yLink, $mLink]) {
+            $stAutoLink = db()->prepare("SELECT id FROM payment_requests WHERE contracts_id = ? AND period_year = ? AND period_month = ? AND type = 'rent' AND valid_to IS NULL AND payments_id IS NULL LIMIT 1");
+            $stAutoLink->execute([$cid, $yLink, $mLink]);
+            $prAutoLink = $stAutoLink->fetch(PDO::FETCH_ASSOC);
+            if ($prAutoLink) {
+                $payRow = findActive('payments', db()->lastInsertId() ?: 0);
+                $payEid = $payRow ? (int)($payRow['payments_id'] ?? $payRow['id']) : $firstPaymentEntityId;
+                softUpdate('payment_requests', (int)$prAutoLink['id'], ['payments_id' => $payEid, 'paid_at' => $paymentDate ?: date('Y-m-d')]);
+            }
+        }
+    }
     $approved++;
 }
 

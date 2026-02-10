@@ -387,7 +387,7 @@ async function loadDashboard(year) {
             }
 
             let tags = '';
-            const requestTypeLabels = { energy: 'Energie', settlement: 'Vyúčt.', deposit: 'Kauce', deposit_return: 'Vrác. kauce', other: 'Jiné' };
+            const requestTypeLabels = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčt.', deposit: 'Kauce', deposit_return: 'Vrác. kauce', other: 'Jiné' };
             (d.unpaid_months || []).forEach(u => {
                 const tenant = (d.tenant_name || '').replace(/"/g, '&quot;');
                 const prop = (d.property_name || '').replace(/"/g, '&quot;');
@@ -551,7 +551,7 @@ function initPaymentRequestModal() {
                 if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Vyberte smlouvu.'; }
                 return;
             }
-            const type = ['energy', 'settlement', 'other', 'deposit', 'deposit_return'].includes(typeEl.value) ? typeEl.value : 'energy';
+            const type = ['rent', 'energy', 'settlement', 'other', 'deposit', 'deposit_return'].includes(typeEl.value) ? typeEl.value : 'energy';
             const dueDate = dueDateEl && dueDateEl.value ? dueDateEl.value.trim() : null;
             const payload = {
                 contracts_id: cid,
@@ -1020,7 +1020,7 @@ async function openPaymentModal(el) {
         return sum;
     }
     const sumForMonth = forMonth.reduce((s, p) => s + amountContributingToMonth(p), 0);
-    const reqTypeLabelsShort = { energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
+    const reqTypeLabelsShort = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
     function buildMissingPaymentsHtml(remainingRentVal, unfulfilledReqs) {
         const parts = [];
         if (!isNaN(remainingRentVal) && remainingRentVal > 0) {
@@ -1123,7 +1123,7 @@ async function openPaymentModal(el) {
             return 0;
         });
         let html = '';
-        const reqTypeLabels = { energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
+        const reqTypeLabels = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
         sorted.forEach(r => {
             const rid = prId(r);
             const typeLabel = reqTypeLabels[r.type] || 'Požadavek';
@@ -1147,7 +1147,7 @@ async function openPaymentModal(el) {
     const contractIdToIndex = {};
     contractIdsInMonth.forEach((cid, i) => { contractIdToIndex[cid] = i; });
 
-    const requestTypeLabelsShort = { energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
+    const requestTypeLabelsShort = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
     function renderExisting() {
         if (!forMonth.length) {
             existingWrap.innerHTML = '';

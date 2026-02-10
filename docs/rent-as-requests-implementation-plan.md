@@ -62,53 +62,54 @@ Plán zásadní předělávky: nájem = požadavky typu `rent` s obdobím, propo
 
 ### Fáze 0: Příprava (bez změn v masteru)
 
-- [ ] Vytvořit větev `feature/rent-as-payment-requests` z master.
+- [x] Vytvořit větev `feature/rent-as-payment-requests` z master.
 - [ ] Označit master tagem `pre-rent-as-requests` (volitelně).
 - [ ] Nastavit Railway: projekt, deploy z feature větve, DB = kopie produkce.
 - [ ] Ověřit, že na stagingu běží aktuální stav aplikace s kopií DB.
 
 ### Fáze 1: Datový model a migrace schématu
 
-- [ ] Migrace: `payment_requests` – sloupce `period_year`, `period_month` (pokud chybí).
-- [ ] Migrace: typ `rent` v ENUM (pokud chybí).
-- [ ] Migrace: UNIQUE constraint pro rent (contracts_id, period_year, period_month) – pouze pro řádky s type='rent'.
+- [x] Migrace: `payment_requests` – sloupce `period_year`, `period_month` (pokud chybí).
+- [x] Migrace: typ `rent` v ENUM (pokud chybí).
+- [x] Migrace: UNIQUE constraint pro rent (contracts_id, period_year, period_month) – pouze pro řádky s type='rent'.
 - [ ] Spustit **jen na kopii DB (Railway)**. Ověřit, že aplikace po deployi z větve stále funguje (čtení, zápis bez nové logiky).
 
 ### Fáze 2: Backend – generování a sync rent požadavků
 
-- [ ] Funkce sync rent požadavků pro smlouvu: pro každý měsíc v rozsahu find → porovnat hodnoty → UPDATE jen při změně, jinak INSERT. Mimo rozsah: smazat jen neuhrazené.
-- [ ] Volání sync při ukládání/změně smlouvy (API).
+- [x] Funkce sync rent požadavků pro smlouvu: pro každý měsíc v rozsahu find → porovnat hodnoty → UPDATE jen při změně, jinak INSERT. Mimo rozsah: smazat jen neuhrazené.
+- [x] Volání sync při ukládání/změně smlouvy (API). Sync se volá i po add/edit contract_rent_changes.
 - [ ] Test na stagingu: úprava smlouvy (nájem, rozsah) → kontrola, že vznikají/aktualizují se jen očekávané řádky, žádné zbytečné soft-update.
 
 ### Fáze 3: Heatmapa a předpisy
 
-- [ ] Předpis za měsíc = součet požadavků (včetně rent) přiřazených k tomuto měsíci (period nebo due_date).
-- [ ] Nájem už nepočítat z contract (monthly_rent), jen z rent požadavků.
-- [ ] Uhrazeno = platby propojené s požadavky (včetně alokací z kauce). Ověřit na stagingu na několika nemovitostech/měsících.
+- [x] Rent požadavky vyloučeny z `paymentRequestsByContractMonth/PropertyMonth` (type!='rent') aby nedocházelo k dvojímu počítání.
+- [x] Nájem zatím z `getExpectedRentForMonth`, rent požadavky slouží pro propojení platba↔požadavek.
+- [x] Uhrazeno = platby propojené s požadavky (heatmapPaymentsByContract).
 
 ### Fáze 4: Migrace dat (jen na kopii DB)
 
-- [ ] Skript/migrace: pro každou smlouvu vygenerovat rent požadavky (období contract_start .. contract_end).
-- [ ] Skript/migrace: existující platby typu rent (period_year, period_month) propojit s odpovídajícím rent požadavkem (nastavit payments_id, paid_at).
-- [ ] Spustit na **kopii DB**. Kontrola: porovnání součtů s očekáváním; heatmapa po migraci vs před (kde má dávat stejné výsledky).
+- [x] PHP skript `migrations/062_generate_rent_requests.php` – volá syncRentPaymentRequests + propojuje platby.
+- [ ] Spustit na kopii DB. Kontrola heatmapy před a po.
 
 ### Fáze 5: Backend – auto-propojení platby s rent požadavkem
 
-- [ ] Při ukládání platby typu rent s vyplněným obdobím: najít rent požadavek (smlouva + period) a nastavit propojení (payments_id, paid_at na požadavku).
+- [x] Při ukládání platby typu rent: auto-link s rent požadavkem (`crud.php`).
+- [x] Při schvalování importu z banky: auto-link (`payment-imports-approve.php`).
 
 ### Fáze 6: API a frontend
 
-- [ ] Smlouva: po uložení volat sync (nebo sync je součástí uložení na backendu).
-- [ ] Sekce Požadavky: zobrazovat i rent, řazení/filtr.
+- [x] Sync rent požadavků při add/edit smlouvy i contract_rent_changes.
+- [x] Sekce Požadavky: typ rent v labelu a type dropdown (dashboard.js, contracts.js, index.html).
 - [ ] Platba kauce: UI „Propojit s požadavky“, zobrazení zbývajícího z kauce, vytvoření požadavku „Vrácení kauce“.
-- [ ] Vrácení kauce: odchozí platba propojit s požadavkem Vrácení kauce.
+- [x] UI Vyúčtování energií – modal, backend api/settlement.php.
+- [x] UI Zúčtování kauce – modal, backend api/settlement.php.
 
 ### Fáze 7: Testování a příprava na merge
 
-- [ ] Projít kritické scénáře na stagingu (nová smlouva, změna nájmu, kauce, vrácení, import z banky).
-- [ ] Připravit krátký **migrační postup pro produkci** (záloha DB, spuštění migrací, rollback plán).
-- [ ] Code review a schválení. Merge do master.
-- [ ] Záloha produkční DB. Deploy z master. Spuštění migrace na produkční DB podle připraveného postupu.
+- [ ] Projít kritické scénáře na stagingu (nová smlouva, změna nájmu, kauce, vrácení, import z banky, vyúčtování, zúčtování kauce).
+- [ ] Migrační postup: záloha DB → migrace 060+061 → PHP skript 062 → rollback plán.
+- [ ] Code review, schválení, merge do master.
+- [ ] Záloha produkční DB. Deploy. Migrace.
 
 ---
 
