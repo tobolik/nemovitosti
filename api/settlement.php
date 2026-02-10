@@ -45,6 +45,13 @@ if ($action === 'energy_settlement') {
 
     $settlementId = null;
     if (abs($settlementAmount) > 0.005) {
+        // Fetch contract to get contract_end for due_date/period
+        $contract = findActiveByEntityId('contracts', $contractsId);
+        $contractEnd = $contract['contract_end'] ?? null;
+        $settlementDueDate = ($contractEnd !== null && $contractEnd !== '') ? date('Y-m-d', strtotime($contractEnd)) : date('Y-m-d', strtotime('+14 days'));
+        $settlementPeriodYear = ($contractEnd !== null && $contractEnd !== '') ? (int)date('Y', strtotime($contractEnd)) : null;
+        $settlementPeriodMonth = ($contractEnd !== null && $contractEnd !== '') ? (int)date('n', strtotime($contractEnd)) : null;
+
         $newId = softInsert('payment_requests', [
             'contracts_id' => $contractsId,
             'amount'       => $settlementAmount,
@@ -52,7 +59,9 @@ if ($action === 'energy_settlement') {
             'note'         => $settlementAmount > 0
                 ? 'Vyúčtování energií: nedoplatek (skutečnost ' . number_format($actualAmount, 0, ',', ' ') . ' – zálohy ' . number_format($paidSum, 0, ',', ' ') . ')'
                 : 'Vyúčtování energií: přeplatek (zálohy ' . number_format($paidSum, 0, ',', ' ') . ' – skutečnost ' . number_format($actualAmount, 0, ',', ' ') . ')',
-            'due_date'     => date('Y-m-d', strtotime('+14 days')),
+            'due_date'     => $settlementDueDate,
+            'period_year'  => $settlementPeriodYear,
+            'period_month' => $settlementPeriodMonth,
         ]);
         $settlementId = $newId;
     }
@@ -107,6 +116,31 @@ if ($action === 'deposit_settlement') {
     $toReturn = round($depositAmount - $coveredSum, 2);
     if ($toReturn < 0) $toReturn = 0;
 
+    // Compute due_date and period from contract_end
+    $contractEnd = $contract['contract_end'] ?? null;
+    $returnDueDate = ($contractEnd !== null && $contractEnd !== '') ? date('Y-m-d', strtotime($contractEnd . ' +14 days')) : date('Y-m-d', strtotime('+14 days'));
+    $returnPeriodYear = ($contractEnd !== null && $contractEnd !== '') ? (int)date('Y', strtotime($contractEnd)) : null;
+    $returnPeriodMonth = ($contractEnd !== null && $contractEnd !== '') ? (int)date('n', strtotime($contractEnd)) : null;
+
+    // Build detailed note with covered request breakdown
+    $coveredDetails = [];
+    $reqTypeLabels = ['rent' => 'Nájem', 'energy' => 'Energie', 'settlement' => 'Vyúčtování', 'deposit' => 'Kauce', 'deposit_return' => 'Vrácení kauce', 'other' => 'Jiné'];
+    foreach ($requestIds as $reqId) {
+        $reqId = (int)$reqId;
+        if ($reqId <= 0) continue;
+        $prDetail = findActiveByEntityId('payment_requests', $reqId);
+        if (!$prDetail) continue;
+        if ((int)($prDetail['contracts_id'] ?? 0) !== $contractsId) continue;
+        $typeLabel = $reqTypeLabels[$prDetail['type'] ?? ''] ?? ($prDetail['type'] ?? '?');
+        $periodPart = '';
+        if (!empty($prDetail['period_month']) && !empty($prDetail['period_year'])) {
+            $periodPart = ' ' . (int)$prDetail['period_month'] . '/' . (int)$prDetail['period_year'];
+        }
+        $coveredDetails[] = $typeLabel . $periodPart . ' ' . number_format(abs((float)$prDetail['amount']), 0, ',', ' ');
+    }
+    $detailStr = $coveredDetails ? ': ' . implode(', ', $coveredDetails) : '';
+    $returnNote = 'Vrácení kauce (po zúčtování: ' . number_format($depositAmount, 0, ',', ' ') . ' – pokryto ' . number_format($coveredSum, 0, ',', ' ') . $detailStr . ')';
+
     // Aktualizovat nebo vytvořit deposit_return požadavek
     $st2 = db()->prepare("SELECT id, amount FROM payment_requests WHERE contracts_id = ? AND type = 'deposit_return' AND valid_to IS NULL LIMIT 1");
     $st2->execute([$contractsId]);
@@ -116,9 +150,11 @@ if ($action === 'deposit_settlement') {
         if ($existingReturn) {
             if (abs((float)$existingReturn['amount'] - (-$toReturn)) > 0.005) {
                 softUpdate('payment_requests', (int)$existingReturn['id'], [
-                    'amount'  => -$toReturn,
-                    'note'    => 'Vrácení kauce (po zúčtování: ' . number_format($depositAmount, 0, ',', ' ') . ' – pokryto ' . number_format($coveredSum, 0, ',', ' ') . ')',
-                    'due_date'=> date('Y-m-d', strtotime('+14 days')),
+                    'amount'       => -$toReturn,
+                    'note'         => $returnNote,
+                    'due_date'     => $returnDueDate,
+                    'period_year'  => $returnPeriodYear,
+                    'period_month' => $returnPeriodMonth,
                 ]);
             }
         } else {
@@ -126,8 +162,10 @@ if ($action === 'deposit_settlement') {
                 'contracts_id' => $contractsId,
                 'amount'       => -$toReturn,
                 'type'         => 'deposit_return',
-                'note'         => 'Vrácení kauce (po zúčtování: ' . number_format($depositAmount, 0, ',', ' ') . ' – pokryto ' . number_format($coveredSum, 0, ',', ' ') . ')',
-                'due_date'     => date('Y-m-d', strtotime('+14 days')),
+                'note'         => $returnNote,
+                'due_date'     => $returnDueDate,
+                'period_year'  => $returnPeriodYear,
+                'period_month' => $returnPeriodMonth,
             ]);
         }
     } elseif ($existingReturn && empty($existingReturn['payments_id'])) {

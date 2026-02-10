@@ -990,10 +990,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $dueDate = date('Y-m-d', strtotime($contractEnd . ' +14 days'));
                         softInsert('payment_requests', [
                             'contracts_id' => $entityId,
-                            'amount'      => -$depositAmount,
-                            'type'        => 'deposit_return',
-                            'note'        => 'Vrácení kauce',
-                            'due_date'    => $dueDate,
+                            'amount'       => -$depositAmount,
+                            'type'         => 'deposit_return',
+                            'note'         => 'Vrácení kauce',
+                            'due_date'     => $dueDate,
+                            'period_year'  => (int)date('Y', strtotime($contractEnd)),
+                            'period_month' => (int)date('n', strtotime($contractEnd)),
                         ]);
                     }
                 }

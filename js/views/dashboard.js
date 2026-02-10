@@ -388,14 +388,8 @@ async function loadDashboard(year) {
 
             let tags = '';
             const requestTypeLabels = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčt.', deposit: 'Kauce', deposit_return: 'Vrác. kauce', other: 'Jiné' };
-            (d.unpaid_months || []).forEach(u => {
-                const tenant = (d.tenant_name || '').replace(/"/g, '&quot;');
-                const prop = (d.property_name || '').replace(/"/g, '&quot;');
-                const rent = u.rent != null ? u.rent : d.monthly_rent;
-                tags += '<span class="tag">' + u.month + '/' + u.year +
-                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-property-id="' + (d.properties_id ?? '') + '" data-year="' + u.year + '" data-month="' + u.month + '" data-rent="' + rent + '" data-tenant="' + tenant + '" data-property="' + prop + '" title="Přidat platbu">+</span></span>';
-            });
-            const sortedRequests = (d.payment_requests || []).slice().sort((a, b) => {
+            // unpaid_months tags removed – rent is now tracked via payment_requests of type 'rent'
+            const sortedRequests = (d.payment_requests || []).filter(pr => !pr.paid_at || !String(pr.paid_at).trim()).slice().sort((a, b) => {
                 const da = (a.due_date || '').toString().slice(0, 10);
                 const db = (b.due_date || '').toString().slice(0, 10);
                 if (!da && !db) return 0;
@@ -1171,7 +1165,7 @@ async function openPaymentModal(el) {
             const periodLabelLower = periodLabel ? (periodLabel.charAt(0).toLowerCase() + periodLabel.slice(1)) : '';
             const paymentMonthKey = (p.period_year != null && p.period_month != null) ? (String(p.period_year) + '-' + String(p.period_month).padStart(2, '0')) : '';
             const partsWithMonth = [];
-            if (remainder !== 0 && periodLabel) partsWithMonth.push({ label: 'Nájem', dateLabel: periodLabelLower, amount: UI.fmt(remainder) + ' Kč', partMonthKey: paymentMonthKey });
+            if (remainder > 0 && periodLabel) partsWithMonth.push({ label: 'Nájem', dateLabel: periodLabelLower, amount: UI.fmt(remainder) + ' Kč', partMonthKey: paymentMonthKey });
             linkedReqs.forEach(r => {
                 const reqLabel = requestTypeLabelsShort[r.type] || 'Požadavek';
                 const reqDate = r.due_date ? UI.fmtDate(r.due_date) : '';

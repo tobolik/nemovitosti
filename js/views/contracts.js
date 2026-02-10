@@ -518,7 +518,7 @@ const ContractsView = (() => {
                 const settleBtns = document.getElementById('con-settlement-btns');
                 if (settleBtns) settleBtns.style.display = 'none';
             },
-            onSaved(result, editMode) {
+            async onSaved(result, editMode) {
                 loadList();
                 if (!editMode || !result) return;
                 const end = result.contract_end;
