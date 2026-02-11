@@ -321,10 +321,14 @@ foreach ($heatmapByPayment as $group) {
 }
 
 // Deposit events: sběr kaucí a vrácení kaucí podle payment_date měsíce (pro Ⓚ ikonu v heatmapě)
-// Mapa contracts_id => tenant_name pro tooltip
-$tenantByContract = [];
+// Mapa contracts_id => tenant_name + deposit_amount pro tooltip
+$contractInfoMap = [];
 foreach ($contracts as $c) {
-    $tenantByContract[(int)($c['contracts_id'] ?? $c['id'])] = $c['tenant_name'] ?? '';
+    $cid = (int)($c['contracts_id'] ?? $c['id']);
+    $contractInfoMap[$cid] = [
+        'tenant' => $c['tenant_name'] ?? '',
+        'deposit_amount' => (float)($c['deposit_amount'] ?? 0),
+    ];
 }
 $depositEventsByContract = [];
 foreach ($heatmapByPayment as $group) {
@@ -337,13 +341,15 @@ foreach ($heatmapByPayment as $group) {
     if ($pType === 'deposit_return' && $amt > 0) $amt = -$amt;
     // Efektivní typ: záporná částka = vrácení kauce, kladná = přijetí kauce (bez ohledu na payment_type)
     $effectiveType = $amt < 0 ? 'deposit_return' : 'deposit';
+    $info = $contractInfoMap[$eid] ?? ['tenant' => '', 'deposit_amount' => 0];
     if (!isset($depositEventsByContract[$eid])) $depositEventsByContract[$eid] = [];
     if (!isset($depositEventsByContract[$eid][$monthKey])) $depositEventsByContract[$eid][$monthKey] = [];
     $depositEventsByContract[$eid][$monthKey][] = [
         'type' => $effectiveType,
         'amount' => $amt,
         'date' => $group['payment_date'],
-        'tenant' => $tenantByContract[$eid] ?? '',
+        'tenant' => $info['tenant'],
+        'deposit_amount' => $info['deposit_amount'],
     ];
 }
 

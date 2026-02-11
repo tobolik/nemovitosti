@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.5.9 (aktuální)
+## v2.5.10 (aktuální)
+
+- **Částečné vrácení kauce:** tooltip u oranžové K ikony i v buňce rozlišuje plné vs. částečné vrácení (např. „Kauce vrácena částečně: 16 000 Kč z 18 000 Kč")
+
+## v2.5.9
 
 - **Tooltip kaucí: jméno nájemníka:** v tooltipu K ikony i v tooltipu buňky se zobrazuje jméno nájemníka (od koho kauce přijata / komu vrácena)
 

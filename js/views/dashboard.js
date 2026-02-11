@@ -282,7 +282,12 @@ async function loadDashboard(year) {
                         }
                         if (returnEvents.length > 0) {
                             const retTip = returnEvents.map(function(de) {
-                                var line = 'Kauce vrácena: ' + UI.fmt(Math.abs(de.amount)) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                                var returnAmt = Math.abs(de.amount);
+                                var origDeposit = de.deposit_amount || 0;
+                                var isPartial = origDeposit > 0 && returnAmt < origDeposit;
+                                var label = isPartial ? 'Kauce vrácena částečně' : 'Kauce vrácena';
+                                var line = label + ': ' + UI.fmt(returnAmt) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                                if (isPartial) line += ' z ' + UI.fmt(origDeposit) + ' Kč';
                                 if (de.tenant) line += ' – ' + de.tenant;
                                 return line;
                             }).join('\n');
@@ -349,9 +354,14 @@ async function loadDashboard(year) {
                     if (cell.deposit_events && cell.deposit_events.length > 0) {
                         tipParts.push('───');
                         cell.deposit_events.forEach(function(de) {
-                            const label = de.amount < 0 ? '🔑 Kauce vrácena' : '🔑 Kauce přijata';
-                            const displayAmt = de.amount < 0 ? Math.abs(de.amount) : de.amount;
+                            var displayAmt = de.amount < 0 ? Math.abs(de.amount) : de.amount;
+                            var origDeposit = de.deposit_amount || 0;
+                            var isPartialReturn = de.amount < 0 && origDeposit > 0 && displayAmt < origDeposit;
+                            var label = de.amount < 0
+                                ? (isPartialReturn ? '🔑 Kauce vrácena částečně' : '🔑 Kauce vrácena')
+                                : '🔑 Kauce přijata';
                             var line = label + ': ' + UI.fmt(displayAmt) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                            if (isPartialReturn) line += ' z ' + UI.fmt(origDeposit) + ' Kč';
                             if (de.tenant) line += ' – ' + de.tenant;
                             tipParts.push(line);
                         });
