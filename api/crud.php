@@ -992,7 +992,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Požadavek na vrácení kauce vytvořit jen když na smlouvě nejsou neuhrazené dluhy (nájem, energie…).
             // Jinak uživatel provede zúčtování kauce a tam se vytvoří správná částka.
             if ($contractEnd !== null && $contractEnd !== '' && $depositAmount > 0) {
-                $stUnpaid = db()->prepare("SELECT 1 FROM payment_requests WHERE contracts_id = ? AND type NOT IN ('deposit', 'deposit_return') AND valid_to IS NULL AND paid_at IS NULL AND (settled_by_request_id IS NULL OR settled_by_request_id = '') LIMIT 1");
+                $stUnpaid = db()->prepare("SELECT 1 FROM payment_requests WHERE contracts_id = ? AND type NOT IN ('deposit', 'deposit_return') AND valid_to IS NULL AND paid_at IS NULL AND settled_by_request_id IS NULL LIMIT 1");
                 $stUnpaid->execute([$entityId]);
                 $hasUnpaid = $stUnpaid->fetch() !== false;
                 if (!$hasUnpaid) {

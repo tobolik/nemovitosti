@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.8 (aktuální)
+## v2.6.9 (aktuální)
+
+- **Fix:** Kontrola neuhrazených dluhů před auto-vytvořením deposit_return používá pouze `settled_by_request_id IS NULL` (bez porovnání s `''`); integer pole se v MySQL neporovnává s prázdným řetězcem, jinak by se mohly nesprávně vytvářet požadavky na vrácení kauce i při existujících neuhrazených položkách
+
+## v2.6.8
 
 - **Fix:** Jednotná verze v celém index.html – sidebar footer zobrazoval v2.6.6, nyní v souladu s login a cache busting
 - **Fix:** Při automatickém vytvoření platby za vrácení kauce (vyplnění data vrácení kauce na smlouvě) se ukládá `payment_type = 'deposit_return'` místo `'deposit'`; kontrola existence platby a heatmapa tak správně rozlišují příjem vs. vrácení kauce
