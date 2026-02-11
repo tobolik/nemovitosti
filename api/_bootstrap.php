@@ -366,10 +366,12 @@ function runMigration062(): array {
         $countAfter = (int)$after->fetchColumn();
         $generated += max(0, (int)$countAfter - $countBefore);
     }
+    // Pouze platby s vyplněným payments_id (entity_id) – do payment_requests.payments_id ukládáme jen logické ID
     $payments = db()->query("
-        SELECT p.id, COALESCE(p.payments_id, p.id) AS entity_id, p.contracts_id, p.period_year, p.period_month, p.amount, p.payment_date
+        SELECT p.id, p.payments_id AS entity_id, p.contracts_id, p.period_year, p.period_month, p.amount, p.payment_date
         FROM payments p
         WHERE p.valid_to IS NULL AND p.payment_type = 'rent'
+          AND p.payments_id IS NOT NULL
           AND p.period_year IS NOT NULL AND p.period_month IS NOT NULL
           AND p.period_year > 0 AND p.period_month BETWEEN 1 AND 12
         ORDER BY p.contracts_id, p.period_year, p.period_month

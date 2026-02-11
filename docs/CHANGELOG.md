@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.9 (aktuální)
+## v2.6.10 (aktuální)
+
+- **Fix:** Migrace 062 (rent požadavky) propojuje pouze platby s vyplněným `payments_id` (entity_id); do `payment_requests.payments_id` se ukládá jen logické ID, ne fyzické `id` při NULL
+
+## v2.6.9
 
 - **Fix:** Kontrola neuhrazených dluhů před auto-vytvořením deposit_return používá pouze `settled_by_request_id IS NULL` (bez porovnání s `''`); integer pole se v MySQL neporovnává s prázdným řetězcem, jinak by se mohly nesprávně vytvářet požadavky na vrácení kauce i při existujících neuhrazených položkách
 
