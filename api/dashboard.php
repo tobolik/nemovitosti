@@ -330,10 +330,12 @@ foreach ($heatmapByPayment as $group) {
     $monthKey = date('Y-m', strtotime($group['payment_date']));
     $amt = (float)$group['amount'];
     if ($pType === 'deposit_return' && $amt > 0) $amt = -$amt;
+    // Efektivní typ: záporná částka = vrácení kauce, kladná = přijetí kauce (bez ohledu na payment_type)
+    $effectiveType = $amt < 0 ? 'deposit_return' : 'deposit';
     if (!isset($depositEventsByContract[$eid])) $depositEventsByContract[$eid] = [];
     if (!isset($depositEventsByContract[$eid][$monthKey])) $depositEventsByContract[$eid][$monthKey] = [];
     $depositEventsByContract[$eid][$monthKey][] = [
-        'type' => $pType,
+        'type' => $effectiveType,
         'amount' => $amt,
         'date' => $group['payment_date'],
     ];

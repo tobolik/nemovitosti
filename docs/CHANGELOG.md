@@ -4,7 +4,12 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.5.5 (aktuální)
+## v2.5.8 (aktuální)
+
+- **Fix: K ikony podle znaménka částky:** rozlišení přijetí/vrácení kauce se řídí znaménkem částky (kladná = přijata, záporná = vrácena), ne typem platby – opravuje případ, kdy záporná kauce měla `payment_type=deposit` místo `deposit_return`
+- **Fix: tooltip kauce:** správně zobrazuje „Kauce přijata" vs „Kauce vrácena" podle znaménka a ukazuje absolutní hodnotu u vrácení
+
+## v2.5.5
 
 - **Heatmap deposit indicator fix:** při dvou kaucích v jednom měsíci (přijetí + vrácení) se zobrazí dvě K ikony vedle sebe (modrá + oranžová); ikony jsou v řádku vedle fajfky/křížku, ne pod ní
 

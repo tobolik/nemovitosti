@@ -269,19 +269,18 @@ async function loadDashboard(year) {
                     // Každý typ (přijetí/vrácení) dostane vlastní ikonu, aby bylo vidět oba současně
                     let depositIcons = '';
                     if (cell.deposit_events && cell.deposit_events.length > 0) {
-                        const hasDeposit = cell.deposit_events.some(function(de) { return de.type === 'deposit'; });
-                        const hasReturn = cell.deposit_events.some(function(de) { return de.type === 'deposit_return'; });
-                        const depositEvents = cell.deposit_events.filter(function(de) { return de.type === 'deposit'; });
-                        const returnEvents = cell.deposit_events.filter(function(de) { return de.type === 'deposit_return'; });
-                        if (hasDeposit) {
+                        // Rozlišení podle znaménka částky: kladná = přijetí, záporná = vrácení
+                        const depositEvents = cell.deposit_events.filter(function(de) { return de.amount >= 0; });
+                        const returnEvents = cell.deposit_events.filter(function(de) { return de.amount < 0; });
+                        if (depositEvents.length > 0) {
                             const depTip = depositEvents.map(function(de) {
                                 return 'Kauce přijata: ' + UI.fmt(de.amount) + ' Kč (' + UI.fmtDate(de.date) + ')';
                             }).join('\n');
                             depositIcons += '<span class="heatmap-deposit-icon" title="' + UI.esc(depTip) + '">K</span>';
                         }
-                        if (hasReturn) {
+                        if (returnEvents.length > 0) {
                             const retTip = returnEvents.map(function(de) {
-                                return 'Kauce vrácena: ' + UI.fmt(de.amount) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                                return 'Kauce vrácena: ' + UI.fmt(Math.abs(de.amount)) + ' Kč (' + UI.fmtDate(de.date) + ')';
                             }).join('\n');
                             depositIcons += '<span class="heatmap-deposit-icon deposit-return" title="' + UI.esc(retTip) + '">K</span>';
                         }
@@ -346,8 +345,9 @@ async function loadDashboard(year) {
                     if (cell.deposit_events && cell.deposit_events.length > 0) {
                         tipParts.push('───');
                         cell.deposit_events.forEach(function(de) {
-                            const label = de.type === 'deposit' ? '🔑 Kauce přijata' : '🔑 Kauce vrácena';
-                            tipParts.push(label + ': ' + UI.fmt(de.amount) + ' Kč (' + UI.fmtDate(de.date) + ')');
+                            const label = de.amount < 0 ? '🔑 Kauce vrácena' : '🔑 Kauce přijata';
+                            const displayAmt = de.amount < 0 ? Math.abs(de.amount) : de.amount;
+                            tipParts.push(label + ': ' + UI.fmt(displayAmt) + ' Kč (' + UI.fmtDate(de.date) + ')');
                         });
                         tipParts.push('(Kauce není zahrnuta v předpisu ani v uhrazené částce.)');
                     }
