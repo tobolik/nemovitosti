@@ -156,8 +156,6 @@ foreach ($allRequestsStmt->fetchAll() as $pr) {
     // Vyloučit deposit a deposit_return z Expected
     if (in_array($type, ['deposit', 'deposit_return'])) continue;
     $amt = (float)$pr['amount'];
-    // Zpětná kompatibilita: staré deposit_return měly kladnou částku, v novém modelu je výdej záporný
-    if ($type === 'deposit_return' && $amt > 0) $amt = -$amt;
     $paymentRequestsSumByContract[$cid] = ($paymentRequestsSumByContract[$cid] ?? 0) + $amt;
 }
 foreach ($contracts as $c) {
