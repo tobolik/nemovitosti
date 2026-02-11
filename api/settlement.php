@@ -167,9 +167,7 @@ if ($action === 'settlement_save') {
     if ($settlementRequestId) {
         foreach ($selectedRequests as $pr) {
             if (empty($pr['paid_at']) && empty($pr['payments_id'])) {
-                $prEntityId = (int)($pr['payment_requests_id'] ?? $pr['id']);
-                db()->prepare("UPDATE payment_requests SET settled_by_request_id = ? WHERE payment_requests_id = ? AND valid_to IS NULL")
-                    ->execute([$settlementRequestId, $prEntityId]);
+                softUpdate('payment_requests', (int)$pr['id'], ['settled_by_request_id' => $settlementRequestId]);
             }
         }
     }
@@ -213,8 +211,11 @@ if ($action === 'settlement_update') {
     // ── Odebrat settled_by_request_id ze starých záloh ──
     $oldRequestId = $settlement['settlement_request_id'] ? (int)$settlement['settlement_request_id'] : null;
     if ($oldRequestId) {
-        db()->prepare("UPDATE payment_requests SET settled_by_request_id = NULL WHERE settled_by_request_id = ? AND valid_to IS NULL")
-            ->execute([$oldRequestId]);
+        $stClear = db()->prepare("SELECT id FROM payment_requests WHERE settled_by_request_id = ? AND valid_to IS NULL");
+        $stClear->execute([$oldRequestId]);
+        foreach ($stClear->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            softUpdate('payment_requests', (int)$row['id'], ['settled_by_request_id' => null]);
+        }
     }
 
     // ── Smazat staré settlement_items ──
@@ -324,9 +325,7 @@ if ($action === 'settlement_update') {
     if ($settlementRequestId && !empty($selectedRequests)) {
         foreach ($selectedRequests as $pr) {
             if (empty($pr['paid_at']) && empty($pr['payments_id'])) {
-                $prEntityId = (int)($pr['payment_requests_id'] ?? $pr['id']);
-                db()->prepare("UPDATE payment_requests SET settled_by_request_id = ? WHERE payment_requests_id = ? AND valid_to IS NULL")
-                    ->execute([$settlementRequestId, $prEntityId]);
+                softUpdate('payment_requests', (int)$pr['id'], ['settled_by_request_id' => $settlementRequestId]);
             }
         }
     }
@@ -386,8 +385,11 @@ if ($action === 'settlement_delete') {
     // ── Odebrat settled_by_request_id ze záloh ──
     $reqId = $settlement['settlement_request_id'] ? (int)$settlement['settlement_request_id'] : null;
     if ($reqId) {
-        db()->prepare("UPDATE payment_requests SET settled_by_request_id = NULL WHERE settled_by_request_id = ? AND valid_to IS NULL")
-            ->execute([$reqId]);
+        $stClear = db()->prepare("SELECT id FROM payment_requests WHERE settled_by_request_id = ? AND valid_to IS NULL");
+        $stClear->execute([$reqId]);
+        foreach ($stClear->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            softUpdate('payment_requests', (int)$row['id'], ['settled_by_request_id' => null]);
+        }
 
         // Smazat payment_request (jen pokud nebyl uhrazen)
         $pr = findActiveByEntityId('payment_requests', $reqId);
@@ -452,14 +454,15 @@ if ($action === 'energy_settlement') {
             'period_year'  => $settlementPeriodYear,
             'period_month' => $settlementPeriodMonth,
         ]);
-        $settlementId = $newId;
+        $newPrRow = db()->query("SELECT payment_requests_id FROM payment_requests WHERE id = $newId")->fetch();
+        $settlementRequestEntityId = (int)($newPrRow['payment_requests_id'] ?? $newId);
+        $settlementId = $settlementRequestEntityId;
 
-        $stUpd = db()->prepare("
-            UPDATE payment_requests
-            SET settled_by_request_id = ?
-            WHERE contracts_id = ? AND type = 'energy' AND paid_at IS NULL AND payments_id IS NULL AND valid_to IS NULL
-        ");
-        $stUpd->execute([$newId, $contractsId]);
+        $stEnergy = db()->prepare("SELECT id FROM payment_requests WHERE contracts_id = ? AND type = 'energy' AND paid_at IS NULL AND payments_id IS NULL AND valid_to IS NULL");
+        $stEnergy->execute([$contractsId]);
+        foreach ($stEnergy->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            softUpdate('payment_requests', (int)$row['id'], ['settled_by_request_id' => $settlementRequestEntityId]);
+        }
     }
 
     jsonOk([
