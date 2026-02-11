@@ -286,6 +286,12 @@ function syncRentPaymentRequests(int $contractsId): void {
     if ($end !== '' && $end !== null) {
         if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $end, $m2)) return;
         $yEnd = (int)$m2[1]; $monthEnd = (int)$m2[2];
+        $dayEnd = (int)($m2[3] ?? 1);
+        // Smlouva končící 1. v měsíci = nájem za ten měsíc se neúčtuje (nájemce tam ten měsíc není)
+        if ($dayEnd === 1) {
+            $monthEnd--;
+            if ($monthEnd < 1) { $monthEnd = 12; $yEnd--; }
+        }
     } else {
         $yEnd = (int)date('Y'); $monthEnd = (int)date('n');
     }
