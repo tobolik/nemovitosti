@@ -2,7 +2,7 @@
 -- Marks energy advances that have been covered by a settlement (vyúčtování energií).
 -- These remain visible for historical context but are excluded from Expected calculations.
 
-ALTER TABLE payment_requests ADD COLUMN settled_by_request_id INT DEFAULT NULL;
+ALTER TABLE payment_requests ADD COLUMN settled_by_request_id INT DEFAULT NULL AFTER payments_id;
 
 -- Back-populate: for each contract that has a settlement request,
 -- mark all unpaid/unlinked energy advances as settled by that settlement.
