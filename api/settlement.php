@@ -117,11 +117,11 @@ if ($action === 'deposit_settlement') {
     $toReturn = round($depositAmount - $coveredSum, 2);
     if ($toReturn < 0) $toReturn = 0;
 
-    // Compute due_date and period from contract_end
+    // Compute due_date and period from contract_end (+14 days); period z due_date, ne z contract_end
     $contractEnd = $contract['contract_end'] ?? null;
     $returnDueDate = ($contractEnd !== null && $contractEnd !== '') ? date('Y-m-d', strtotime($contractEnd . ' +14 days')) : date('Y-m-d', strtotime('+14 days'));
-    $returnPeriodYear = ($contractEnd !== null && $contractEnd !== '') ? (int)date('Y', strtotime($contractEnd)) : null;
-    $returnPeriodMonth = ($contractEnd !== null && $contractEnd !== '') ? (int)date('n', strtotime($contractEnd)) : null;
+    $returnPeriodYear = (int)date('Y', strtotime($returnDueDate));
+    $returnPeriodMonth = (int)date('n', strtotime($returnDueDate));
 
     // Build detailed note with covered request breakdown
     $coveredDetails = [];

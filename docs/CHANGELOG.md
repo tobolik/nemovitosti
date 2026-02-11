@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.5.4 (aktuální)
+## v2.5.5 (aktuální)
+
+- **Heatmap deposit indicator fix:** při dvou kaucích v jednom měsíci (přijetí + vrácení) se zobrazí dvě K ikony vedle sebe (modrá + oranžová); ikony jsou v řádku vedle fajfky/křížku, ne pod ní
+
+## v2.5.4
 
 - **Heatmap deposit indicator:** v buňce heatmapy se zobrazí modré „K" v kroužku při přijetí kauce, oranžové „K" při vrácení kauce; tooltip ukazuje detail (částka, datum)
 - **Depozitní účet:** nahrazeny dvě jednoduché stat karty jednou „Držené kauce" kartou s rozbalovacím detailem per smlouva (nájemník, nemovitost, částka, datum přijetí, stav: Aktivní / K vrácení / Vrácena)

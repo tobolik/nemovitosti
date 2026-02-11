@@ -1006,8 +1006,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'type'         => 'deposit_return',
                             'note'         => 'Vrácení kauce',
                             'due_date'     => $dueDate,
-                            'period_year'  => (int)date('Y', strtotime($contractEnd)),
-                            'period_month' => (int)date('n', strtotime($contractEnd)),
+                            'period_year'  => (int)date('Y', strtotime($dueDate)),
+                            'period_month' => (int)date('n', strtotime($dueDate)),
                         ]);
                     }
                 }
