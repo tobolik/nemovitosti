@@ -297,7 +297,9 @@ function syncRentPaymentRequests(int $contractsId): void {
     $rentChangesByContract = [$contractsId => $rentChangesRaw->fetchAll(PDO::FETCH_ASSOC)];
     $findRent = db()->prepare("SELECT id, amount, due_date FROM payment_requests WHERE contracts_id = ? AND period_year = ? AND period_month = ? AND type = 'rent' AND valid_to IS NULL");
     $syncedMonths = [];
-    for ($y = $yStart, $m = $monthStart; $y < $yEnd || ($y === $yEnd && $m <= $monthEnd); ) {
+    $limit = $yEnd * 12 + $monthEnd; // jedno číslo pro porovnání (y,m) <= (yEnd, monthEnd)
+    if (($yStart * 12 + $monthStart) > $limit) return; // start až za koncem – žádné období
+    for ($y = $yStart, $m = $monthStart; ($y * 12 + $m) <= $limit; ) {
         $firstOfMonth = sprintf('%04d-%02d-01', $y, $m);
         $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
         if ($start > $firstOfMonth && (int)date('Y', strtotime($start)) === $y && (int)date('n', strtotime($start)) === $m && $firstMonthRent !== null) {
