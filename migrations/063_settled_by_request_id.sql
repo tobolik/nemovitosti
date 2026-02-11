@@ -5,7 +5,9 @@
 ALTER TABLE payment_requests ADD COLUMN settled_by_request_id INT DEFAULT NULL AFTER payments_id;
 
 -- Back-populate: for each contract that has a settlement request,
--- mark all unpaid/unlinked energy advances as settled by that settlement.
+-- mark unpaid energy advances CREATED BEFORE the settlement as settled.
+-- Only advances with payment_requests_id < settlement entity_id are covered;
+-- advances created after the settlement (higher entity_id) are new obligations.
 UPDATE payment_requests pr
 JOIN (
   SELECT contracts_id, MIN(payment_requests_id) AS settlement_pr_id
@@ -16,5 +18,5 @@ JOIN (
 SET pr.settled_by_request_id = s.settlement_pr_id
 WHERE pr.type = 'energy'
   AND pr.paid_at IS NULL
-  AND pr.payments_id IS NULL
-  AND pr.valid_to IS NULL;
+  AND pr.valid_to IS NULL
+  AND pr.payment_requests_id < s.settlement_pr_id;

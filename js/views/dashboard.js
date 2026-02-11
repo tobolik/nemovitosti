@@ -390,7 +390,7 @@ async function loadDashboard(year) {
             let tags = '';
             const requestTypeLabels = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčt.', deposit: 'Kauce', deposit_return: 'Vrác. kauce', other: 'Jiné' };
             // unpaid_months tags removed – rent is now tracked via payment_requests of type 'rent'
-            const sortedRequests = (d.payment_requests || []).filter(pr => !pr.paid_at || !String(pr.paid_at).trim()).slice().sort((a, b) => {
+            const sortedRequests = (d.payment_requests || []).filter(pr => (!pr.paid_at || !String(pr.paid_at).trim()) && !pr.settled_by_request_id).slice().sort((a, b) => {
                 const da = (a.due_date || '').toString().slice(0, 10);
                 const db = (b.due_date || '').toString().slice(0, 10);
                 if (!da && !db) return 0;
@@ -1086,6 +1086,9 @@ async function openPaymentModal(el) {
         if (sum > 0) s += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(sum) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(Math.round((amountVal - sum) * 100) / 100) + ' Kč</div>';
         const unfulfilledForMonth = paymentRequests.filter(function(r) {
             const d = r.due_date;
+            if (r.settled_by_request_id) return false;
+            const t = r.type || '';
+            if (t === 'deposit' || t === 'deposit_return') return false;
             return d && String(d).slice(0, 7) === monthKey && !r.paid_at && String(r.contracts_id ?? '') === String(contractsId);
         });
         s += buildMissingPaymentsHtml(remainingRent, unfulfilledForMonth);
@@ -1292,6 +1295,9 @@ async function openPaymentModal(el) {
         const paidTotal = sumForMonth;
         prefillUnfulfilledReqs = paymentRequests.filter(r => {
             const d = r.due_date;
+            if (r.settled_by_request_id) return false;
+            const t = r.type || '';
+            if (t === 'deposit' || t === 'deposit_return') return false;
             return d && String(d).slice(0, 7) === monthKey && !r.paid_at && String(r.contracts_id ?? '') === String(contractsId);
         });
         if (!isNaN(remainingRent) && remainingRent > 0) {
