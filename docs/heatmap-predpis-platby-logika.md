@@ -353,7 +353,8 @@ ORDER BY due_date ASC
 
 ```php
 if (!empty($pr['settled_by_request_id'])) continue;  // settled zálohy
-if (in_array($type, ['deposit', 'deposit_return'])) continue;  // kauce
+if ($type === 'deposit_return') continue;  // deposit_return vyloučen (závazek pronajímatele)
+// deposit (kauce) PROJDE – zobrazí se jako oranžový badge dokud není zaplacen (paid_at IS NULL v SQL)
 ```
 
 ### Výsledek
@@ -361,6 +362,7 @@ if (in_array($type, ['deposit', 'deposit_return'])) continue;  // kauce
 - `hasUnfulfilledByContractMonth[$cid][$monthKey] = true` — pro oranžový okraj buňky.
 - `unfulfilledListByContractMonth[$cid][$monthKey][]` — seznam s `label` a `amount` pro tooltip.
 - Agregováno i na úroveň nemovitosti (`hasUnfulfilledByPropertyMonth`, `unfulfilledRequestsByPropertyMonth`).
+- **Deposit (kauce):** neuhrazená kauce se zobrazí jako oranžový badge s textem „Kauce 18 000 Kč". Jakmile je zaplacena (`paid_at` nastaveno), zmizí ze seznamu (SQL filtr `paid_at IS NULL`). Deposit NENÍ v Expected – je jen vizuální indikátor.
 
 ### Řazení
 
@@ -435,10 +437,13 @@ Následující invarianty musí **vždy platit**. Při jakékoliv úpravě kódu
 Požadavky typu 'deposit' a 'deposit_return' jsou VŽDY vyloučeny z:
 - paymentRequestsSumByContract
 - paymentRequestsByContractMonth
-- hasUnfulfilledByContractMonth / unfulfilledListByContractMonth
 ```
 
-**Důvod:** Kauce není závazek nájemce (nájem, energie). Je to složená jistota, která se vrací. Kdyby se počítala do Expected, zkreslila by bilanci smlouvy.
+**Ale:** Neuhrazený deposit (`paid_at IS NULL`) se ZOBRAZUJE v nesplněných požadavcích (oranžový badge) – viz sekce 7. Po zaplacení zmizí.
+
+`deposit_return` je vyloučen i z nesplněných požadavků (je to závazek pronajímatele, ne nájemce).
+
+**Důvod vyloučení z Expected:** Kauce není běžný závazek nájemce (nájem, energie). Je to složená jistota, která se vrací nebo zúčtovává. Kdyby se počítala do Expected, zkreslila by bilanci smlouvy (viz diskuse v sekci 6).
 
 ### INV-2: Settled zálohy (settled_by_request_id IS NOT NULL) se NIKDY nepočítají do Expected
 

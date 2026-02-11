@@ -1088,7 +1088,7 @@ async function openPaymentModal(el) {
             const d = r.due_date;
             if (r.settled_by_request_id) return false;
             const t = r.type || '';
-            if (t === 'deposit' || t === 'deposit_return') return false;
+            if (t === 'deposit_return') return false;
             return d && String(d).slice(0, 7) === monthKey && !r.paid_at && String(r.contracts_id ?? '') === String(contractsId);
         });
         s += buildMissingPaymentsHtml(remainingRent, unfulfilledForMonth);
@@ -1297,7 +1297,7 @@ async function openPaymentModal(el) {
             const d = r.due_date;
             if (r.settled_by_request_id) return false;
             const t = r.type || '';
-            if (t === 'deposit' || t === 'deposit_return') return false;
+            if (t === 'deposit_return') return false;
             return d && String(d).slice(0, 7) === monthKey && !r.paid_at && String(r.contracts_id ?? '') === String(contractsId);
         });
         if (!isNaN(remainingRent) && remainingRent > 0) {
