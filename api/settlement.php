@@ -133,7 +133,9 @@ if ($action === 'settlement_save') {
             'period_month' => $periodMonth,
         ]);
         // softInsert vrací row id, potřebujeme entity_id
-        $newPrRow = db()->query("SELECT payment_requests_id FROM payment_requests WHERE id = $newPrId")->fetch();
+        $stPr = db()->prepare("SELECT payment_requests_id FROM payment_requests WHERE id = ?");
+        $stPr->execute([$newPrId]);
+        $newPrRow = $stPr->fetch();
         $settlementRequestId = (int)($newPrRow['payment_requests_id'] ?? $newPrId);
     }
 
@@ -152,7 +154,9 @@ if ($action === 'settlement_save') {
         'locked_by'             => $lockAfterSave ? ($_SESSION['uid'] ?? null) : null,
         'note'                  => $note ?: null,
     ]);
-    $sRow = db()->query("SELECT settlements_id FROM settlements WHERE id = $sId")->fetch();
+    $stS = db()->prepare("SELECT settlements_id FROM settlements WHERE id = ?");
+    $stS->execute([$sId]);
+    $sRow = $stS->fetch();
     $settlementEntityId = (int)($sRow['settlements_id'] ?? $sId);
 
     // ── Uložit settlement_items ──
@@ -294,7 +298,9 @@ if ($action === 'settlement_update') {
             'period_year'  => $periodYear,
             'period_month' => $periodMonth,
         ]);
-        $newPrRow = db()->query("SELECT payment_requests_id FROM payment_requests WHERE id = $newPrId")->fetch();
+        $stPr = db()->prepare("SELECT payment_requests_id FROM payment_requests WHERE id = ?");
+        $stPr->execute([$newPrId]);
+        $newPrRow = $stPr->fetch();
         $settlementRequestId = (int)($newPrRow['payment_requests_id'] ?? $newPrId);
     }
 
@@ -455,7 +461,9 @@ if ($action === 'energy_settlement') {
             'period_year'  => $settlementPeriodYear,
             'period_month' => $settlementPeriodMonth,
         ]);
-        $newPrRow = db()->query("SELECT payment_requests_id FROM payment_requests WHERE id = $newId")->fetch();
+        $stPr = db()->prepare("SELECT payment_requests_id FROM payment_requests WHERE id = ?");
+        $stPr->execute([$newId]);
+        $newPrRow = $stPr->fetch();
         $settlementRequestEntityId = (int)($newPrRow['payment_requests_id'] ?? $newId);
         $settlementId = $settlementRequestEntityId;
 

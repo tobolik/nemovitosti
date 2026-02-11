@@ -10,6 +10,7 @@ Při každé úpravě kódu aplikace (nové funkce, opravy bugů, změny UI) **v
 - Verze je v patičce: `<span class="footer-version">v1.0.5</span>`
 - Formát: `vMAJOR.MINOR.PATCH` – při změně zvyš PATCH (např. v1.0.5 → v1.0.6)
 - **Cache busting:** Aktualizuj i `?v=1.0.5` u všech odkazů na CSS a JS (link href, script src) – stejná hodnota bez „v“
+- **Poznámka:** Na feature branchi může být verze vyšší než na main (např. main má v2.2.2, branch v2.6.0 dle CHANGELOG). To je záměr – nesnižovat verzi zpět na main; srovnání s main není chyba.
 - Toto je kritická instrukce – nikdy na to nezapomenout.
 
 # Závěrečná hláška – POKAŽDÉ
