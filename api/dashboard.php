@@ -392,7 +392,7 @@ $hasUnfulfilledByContractMonth = [];
 $unfulfilledListByContractMonth = []; // [contractId][monthKey] => [ ['label'=>..., 'amount'=>...], ... ]
 $stmtUnfulfilled = db()->query("
     SELECT contracts_id, due_date, amount, type, note, settled_by_request_id FROM payment_requests
-    WHERE valid_to IS NULL AND due_date IS NOT NULL AND paid_at IS NULL AND type != 'rent'
+    WHERE valid_to IS NULL AND due_date IS NOT NULL AND paid_at IS NULL
     ORDER BY due_date ASC
 ");
 foreach ($stmtUnfulfilled->fetchAll() as $pr) {
@@ -409,7 +409,7 @@ foreach ($stmtUnfulfilled->fetchAll() as $pr) {
     if ($type === 'deposit_return' && $amt > 0) $amt = -$amt;
     $label = trim($pr['note'] ?? '') !== '' ? $pr['note'] : (
         $type === 'deposit' ? 'Kauce' :
-        ($type === 'deposit_return' ? 'Vrácení kauce' : ($type === 'energy' ? 'Energie' : 'Požadavek'))
+        ($type === 'deposit_return' ? 'Vrácení kauce' : ($type === 'rent' ? 'Nájem' : ($type === 'energy' ? 'Energie' : 'Požadavek')))
     );
     if (!isset($unfulfilledListByContractMonth[$cid])) $unfulfilledListByContractMonth[$cid] = [];
     if (!isset($unfulfilledListByContractMonth[$cid][$monthKey])) $unfulfilledListByContractMonth[$cid][$monthKey] = [];
@@ -1064,7 +1064,6 @@ if ($extended) {
                 $depStatus = 'to_return';
                 $depBalance = $depAmt;
                 $depositTotalToReturn += $depAmt;
-                $depositTotalHeld += $depAmt;
                 $depositCountToReturn++;
             } else {
                 $depStatus = 'active';
