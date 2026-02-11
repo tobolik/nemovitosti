@@ -4,7 +4,32 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.0 (aktuální)
+## v2.6.6 (aktuální)
+
+- **Fix:** Neuhrazený nájem se zobrazuje v nevyřízených požadavcích (oranžový okraj heatmapy a tooltip)
+- **Fix:** Depozitní statistiky – u ukončených smluv se kauce započítá jen do „K vrácení“, ne do „Držené“ (odstraněno dvojí započtení)
+
+## v2.6.5
+
+- **Fix:** Před automatickým vytvořením požadavku na vrácení kauce se z kontroly neuhrazených dluhů vyřazují settled zálohy (settled_by_request_id IS NOT NULL)
+
+## v2.6.4
+
+- **Fix:** Smlouva končící 1. v měsíci – nájem za ten měsíc se neúčtuje (syncRentPaymentRequests nepřidá rent request pro ten měsíc)
+
+## v2.6.3
+
+- **Fix:** Odstraněn mrtvý kód (zpětná kompatibilita deposit_return) v součtu Expected v dashboard.php
+
+## v2.6.2
+
+- **Fix:** Smyčka syncRentPaymentRequests – horní mez pomocí skaláru (y*12+m) <= limit; ochrana při start > end
+
+## v2.6.1
+
+- **Fix:** Kontrola neuhrazených dluhů před auto-vytvořením deposit_return vylučuje i typ deposit_return (type NOT IN ('deposit','deposit_return'))
+
+## v2.6.0
 
 - **Redesign vyúčtování energií i kauce:** nahrazeny původní modaly za tabulkový výpis (`UI.renderTable`) s auditní stopou
 - **Nové DB tabulky:** `settlements` a `settlement_items` (migrace 064) uchovávají kompletní historii vyúčtování
