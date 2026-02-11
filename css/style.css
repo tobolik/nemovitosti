@@ -1748,3 +1748,27 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
   font-size: .9rem;
 }
 .contract-preview-popover a:hover { text-decoration: underline; }
+
+/* ── Settlement badges ────────────────────────────────────────────── */
+.badge-locked {
+  background: var(--surface3, #374151);
+  color: var(--txt2, #9ca3af);
+  font-size: .7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.badge-unlocked {
+  background: var(--blue-700, #1d4ed8);
+  color: #fff;
+  font-size: .7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.input-readonly {
+  background: var(--surface2, #1e293b);
+  border-color: transparent;
+  color: var(--txt2, #9ca3af);
+  cursor: default;
+}
+.text-danger { color: #ef4444; }
+.text-success { color: #22c55e; }

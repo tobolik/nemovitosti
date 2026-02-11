@@ -4,7 +4,18 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.5.10 (aktuální)
+## v2.6.0 (aktuální)
+
+- **Redesign vyúčtování energií i kauce:** nahrazeny původní modaly za tabulkový výpis (`UI.renderTable`) s auditní stopou
+- **Nové DB tabulky:** `settlements` a `settlement_items` (migrace 064) uchovávají kompletní historii vyúčtování
+- **Lock/unlock mechanismus:** vyúčtování je po uložení editovatelné, lze zamknout pro readonly; odemknutí umožňuje editaci
+- **Nové API akce:** `settlement_save`, `settlement_update`, `settlement_lock`, `settlement_unlock`, `settlement_delete`, `settlements_list`
+- **Formulář pro vyúčtování:** výběr konkrétních záloh (checkboxy), skutečná částka, automatický výpočet rozdílu, editovatelný název požadavku na platbu
+- **Migrace existujících dat:** skript 065 migruje stávající settlement požadavky do nové struktury
+- **Přejmenování:** „Zúčtovat kauci" → „Vyúčtování kauce" v UI
+- **CSS:** nové styly pro badge zamčeno/otevřeno, readonly inputy
+
+## v2.5.10
 
 - **Částečné vrácení kauce:** tooltip u oranžové K ikony i v buňce rozlišuje plné vs. částečné vrácení (např. „Kauce vrácena částečně: 16 000 Kč z 18 000 Kč")
 

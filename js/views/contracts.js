@@ -249,173 +249,347 @@ const ContractsView = (() => {
         };
     }
 
-    // ── Vyúčtování energií + Zúčtování kauce ──────────────────────────
+    // ── Vyúčtování energií + Vyúčtování kauce (v2 – tabulkový výpis) ──
     let _settlementInited = false;
+    const TYPE_LABELS = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
+
+    // Pomocná: API volání na settlement.php
+    async function settlementApi(body) {
+        const resp = await fetch('/api/settlement.php', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': Api.getCsrf() },
+            body: JSON.stringify(body)
+        });
+        const data = await resp.json();
+        if (!data.ok) throw new Error(data.error || 'Chyba');
+        return data.data || data;
+    }
+
+    // ── Načtení a vykreslení tabulky vyúčtování ─────────────────────
+    async function loadSettlements(type) {
+        const cid = _paymentRequestsContractsId;
+        if (!cid) return;
+        const containerId = type === 'energy' ? 'con-energy-settlements-table' : 'con-deposit-settlements-table';
+        const sectionEl = document.getElementById(type === 'energy' ? 'con-energy-settlements-section' : 'con-deposit-settlements-section');
+        try {
+            const d = await settlementApi({ action: 'settlements_list', contracts_id: cid, type });
+            const settlements = d.settlements || [];
+            if (sectionEl) sectionEl.style.display = '';
+
+            UI.renderTable(containerId,
+                [
+                    { label: 'Datum', sortKey: 'settled_at' },
+                    { label: 'Název' },
+                    { label: 'Skutečnost' },
+                    { label: 'Zálohy' },
+                    { label: 'Rozdíl' },
+                    { label: 'Stav' },
+                    { label: 'Akce', act: true },
+                ],
+                settlements,
+                (s) => {
+                    const locked = !!s.locked_at;
+                    const lockBadge = locked
+                        ? '<span class="badge badge-locked" title="Zamčeno ' + UI.fmtDate(s.locked_at) + '">zamčeno</span>'
+                        : '<span class="badge badge-unlocked">otevřeno</span>';
+                    const diff = parseFloat(s.settlement_amount) || 0;
+                    const diffLabel = diff > 0 ? 'nedoplatek' : (diff < 0 ? 'přeplatek' : 'vyrovnáno');
+                    const diffClass = diff > 0 ? 'text-danger' : (diff < 0 ? 'text-success' : '');
+
+                    let actHtml = '';
+                    if (locked) {
+                        actHtml += '<button type="button" class="btn btn-ghost btn-sm btn-settle-unlock" data-id="' + s.entity_id + '" title="Odemknout pro editaci">Odemknout</button> ';
+                    } else {
+                        actHtml += '<button type="button" class="btn btn-ghost btn-sm btn-settle-edit" data-id="' + s.entity_id + '" data-type="' + type + '">Upravit</button> ';
+                        actHtml += '<button type="button" class="btn btn-ghost btn-sm btn-settle-lock" data-id="' + s.entity_id + '">Zamknout</button> ';
+                        actHtml += '<button type="button" class="btn btn-danger btn-sm btn-settle-delete" data-id="' + s.entity_id + '">Smazat</button>';
+                    }
+
+                    // Items tooltip
+                    const items = s.items || [];
+                    const itemsTip = items.map(it => {
+                        const tl = TYPE_LABELS[it.pr_type] || it.pr_type;
+                        const period = it.period_year && it.period_month ? ' ' + it.period_month + '/' + it.period_year : '';
+                        return tl + period + ': ' + UI.fmt(it.amount) + ' Kč' + (it.paid_at ? ' (uhrazeno)' : '');
+                    }).join('\n');
+
+                    return '<td>' + UI.fmtDate(s.settled_at) + '</td>' +
+                        '<td>' + UI.esc(s.label || '—') + '</td>' +
+                        '<td title="' + UI.esc(itemsTip) + '">' + UI.fmt(s.actual_amount) + ' Kč</td>' +
+                        '<td title="' + UI.esc(itemsTip) + '">' + UI.fmt(s.advances_sum) + ' Kč</td>' +
+                        '<td class="' + diffClass + '">' + UI.fmt(Math.abs(diff)) + ' Kč <small>(' + diffLabel + ')</small></td>' +
+                        '<td>' + lockBadge + '</td>' +
+                        '<td class="td-act">' + actHtml + '</td>';
+                },
+                { emptyMsg: 'Žádná vyúčtování.', striped: true }
+            );
+
+            // Připojit event handlery
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            container.querySelectorAll('.btn-settle-lock').forEach(btn => {
+                btn.onclick = async () => {
+                    if (!confirm('Zamknout toto vyúčtování?')) return;
+                    try {
+                        await settlementApi({ action: 'settlement_lock', settlement_id: parseInt(btn.dataset.id, 10) });
+                        loadSettlements(type);
+                    } catch (e) { alert(e.message); }
+                };
+            });
+
+            container.querySelectorAll('.btn-settle-unlock').forEach(btn => {
+                btn.onclick = async () => {
+                    if (!confirm('Odemknout vyúčtování pro editaci?')) return;
+                    try {
+                        await settlementApi({ action: 'settlement_unlock', settlement_id: parseInt(btn.dataset.id, 10) });
+                        loadSettlements(type);
+                    } catch (e) { alert(e.message); }
+                };
+            });
+
+            container.querySelectorAll('.btn-settle-delete').forEach(btn => {
+                btn.onclick = async () => {
+                    if (!confirm('Opravdu smazat toto vyúčtování? Smaže se i vytvořený požadavek na platbu.')) return;
+                    try {
+                        await settlementApi({ action: 'settlement_delete', settlement_id: parseInt(btn.dataset.id, 10) });
+                        loadSettlements(type);
+                        loadPaymentRequests(_paymentRequestsContractsId);
+                    } catch (e) { alert(e.message); }
+                };
+            });
+
+            container.querySelectorAll('.btn-settle-edit').forEach(btn => {
+                btn.onclick = () => openSettlementForm(btn.dataset.type, parseInt(btn.dataset.id, 10));
+            });
+
+        } catch (e) {
+            const el = document.getElementById(containerId);
+            if (el) el.innerHTML = '<div class="alert alert-err show">' + UI.esc(e.message) + '</div>';
+        }
+    }
+
+    // ── Otevření formuláře (modal) pro nové/editace vyúčtování ──────
+    async function openSettlementForm(type, editSettlementId) {
+        const cid = _paymentRequestsContractsId;
+        if (!cid) return;
+
+        const titleEl = document.getElementById('settlement-form-title');
+        const alertEl = document.getElementById('settlement-form-alert');
+        const labelEl = document.getElementById('settlement-form-label');
+        const itemsEl = document.getElementById('settlement-form-items');
+        const actualEl = document.getElementById('settlement-form-actual');
+        const advancesEl = document.getElementById('settlement-form-advances');
+        const diffEl = document.getElementById('settlement-form-diff');
+        const reqLabelEl = document.getElementById('settlement-form-req-label');
+        const noteEl = document.getElementById('settlement-form-note');
+        const lockEl = document.getElementById('settlement-form-lock');
+        const saveBtn = document.getElementById('btn-settlement-form-save');
+
+        if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
+        if (labelEl) labelEl.value = '';
+        if (actualEl) actualEl.value = '';
+        if (reqLabelEl) reqLabelEl.value = '';
+        if (noteEl) noteEl.value = '';
+        if (lockEl) lockEl.checked = false;
+
+        const isEdit = !!editSettlementId;
+        if (titleEl) titleEl.textContent = isEdit
+            ? (type === 'energy' ? 'Upravit vyúčtování energií' : 'Upravit vyúčtování kauce')
+            : (type === 'energy' ? 'Nové vyúčtování energií' : 'Nové vyúčtování kauce');
+
+        // Načíst dostupné zálohy/požadavky
+        let availableItems = [];
+        let existingSettlement = null;
+        let existingItemIds = [];
+
+        try {
+            if (type === 'energy') {
+                const info = await settlementApi({ action: 'energy_info', contracts_id: cid });
+                availableItems = (info.items || []).map(it => ({
+                    entity_id: it.entity_id,
+                    amount: parseFloat(it.amount) || 0,
+                    label: (it.note || 'Energie') + (it.period_year && it.period_month ? ' ' + it.period_month + '/' + it.period_year : ''),
+                    paid: !!it.paid_at,
+                    in_settlement: it.in_settlement,
+                    settled_by: it.settled_by_request_id,
+                }));
+            } else {
+                const info = await settlementApi({ action: 'deposit_info', contracts_id: cid });
+                availableItems = (info.unpaid_requests || []).map(it => ({
+                    entity_id: it.entity_id,
+                    amount: Math.abs(parseFloat(it.amount) || 0),
+                    label: (TYPE_LABELS[it.type] || it.type) + (it.note ? ' – ' + it.note : '') +
+                        (it.period_year && it.period_month ? ' ' + it.period_month + '/' + it.period_year : ''),
+                    paid: false,
+                    in_settlement: it.in_settlement,
+                    settled_by: null,
+                }));
+            }
+
+            // Při editaci: načíst detail vyúčtování
+            if (isEdit) {
+                const listData = await settlementApi({ action: 'settlements_list', contracts_id: cid, type });
+                existingSettlement = (listData.settlements || []).find(s => s.entity_id === editSettlementId);
+                if (existingSettlement) {
+                    existingItemIds = (existingSettlement.items || []).map(it => parseInt(it.payment_requests_id));
+                    if (labelEl) labelEl.value = existingSettlement.label || '';
+                    if (actualEl) actualEl.value = existingSettlement.actual_amount;
+                    if (noteEl) noteEl.value = existingSettlement.note || '';
+                }
+            }
+        } catch (e) {
+            if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = e.message; }
+            UI.modalOpen('modal-settlement-form');
+            return;
+        }
+
+        // Filtrovat: zobrazit jen ty, které nejsou v jiném vyúčtování (nebo jsou v tomto)
+        const filteredItems = availableItems.filter(it => {
+            if (isEdit && existingItemIds.includes(it.entity_id)) return true;
+            return !it.in_settlement;
+        });
+
+        // Vykreslit checkboxy
+        if (itemsEl) {
+            if (!filteredItems.length) {
+                itemsEl.innerHTML = '<div class="text-muted">Žádné dostupné zálohy/požadavky.</div>';
+            } else {
+                let html = '<div style="margin-bottom:6px;font-weight:600">Zahrnuté zálohy / požadavky:</div>';
+                filteredItems.forEach(it => {
+                    const checked = isEdit ? existingItemIds.includes(it.entity_id) : true;
+                    const paidTag = it.paid ? ' <span class="badge badge-ok" style="font-size:.7rem">uhrazeno</span>' : '';
+                    html += '<label style="display:block;padding:3px 0;cursor:pointer">' +
+                        '<input type="checkbox" class="settle-item-cb" data-id="' + it.entity_id + '" data-amount="' + it.amount + '"' + (checked ? ' checked' : '') + '> ' +
+                        UI.esc(it.label) + ': <strong>' + UI.fmt(it.amount) + ' Kč</strong>' + paidTag + '</label>';
+                });
+                itemsEl.innerHTML = html;
+            }
+        }
+
+        // Funkce pro update součtů
+        const updateSums = () => {
+            let sum = 0;
+            if (itemsEl) {
+                itemsEl.querySelectorAll('.settle-item-cb:checked').forEach(cb => {
+                    sum += parseFloat(cb.dataset.amount) || 0;
+                });
+            }
+            if (advancesEl) advancesEl.value = UI.fmt(sum) + ' Kč';
+            const actual = parseFloat(actualEl?.value) || 0;
+            const diff = actual - sum;
+            if (diffEl) {
+                if (Math.abs(diff) < 0.005) {
+                    diffEl.value = 'Vyrovnáno';
+                    diffEl.style.color = '';
+                } else if (diff > 0) {
+                    diffEl.value = UI.fmt(diff) + ' Kč (nedoplatek)';
+                    diffEl.style.color = '#dc2626';
+                } else {
+                    diffEl.value = UI.fmt(Math.abs(diff)) + ' Kč (přeplatek)';
+                    diffEl.style.color = '#16a34a';
+                }
+            }
+        };
+
+        if (itemsEl) {
+            itemsEl.querySelectorAll('.settle-item-cb').forEach(cb => { cb.onchange = updateSums; });
+        }
+        if (actualEl) actualEl.oninput = updateSums;
+        updateSums();
+
+        // Save handler
+        if (saveBtn) {
+            saveBtn.onclick = async () => {
+                const actual = parseFloat(actualEl?.value);
+                if (isNaN(actual)) {
+                    if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Zadejte platnou skutečnou částku.'; }
+                    return;
+                }
+                const ids = [];
+                if (itemsEl) {
+                    itemsEl.querySelectorAll('.settle-item-cb:checked').forEach(cb => {
+                        ids.push(parseInt(cb.dataset.id, 10));
+                    });
+                }
+                if (!ids.length) {
+                    if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Vyberte alespoň jednu zálohu/požadavek.'; }
+                    return;
+                }
+
+                try {
+                    if (isEdit) {
+                        await settlementApi({
+                            action: 'settlement_update',
+                            settlement_id: editSettlementId,
+                            actual_amount: actual,
+                            request_ids: ids,
+                            label: labelEl?.value || '',
+                            request_label: reqLabelEl?.value || '',
+                            note: noteEl?.value || '',
+                            lock: lockEl?.checked || false,
+                        });
+                    } else {
+                        await settlementApi({
+                            action: 'settlement_save',
+                            contracts_id: cid,
+                            type,
+                            actual_amount: actual,
+                            request_ids: ids,
+                            label: labelEl?.value || '',
+                            request_label: reqLabelEl?.value || '',
+                            note: noteEl?.value || '',
+                            lock: lockEl?.checked || false,
+                        });
+                    }
+                    UI.modalClose('modal-settlement-form');
+                    loadSettlements(type);
+                    loadPaymentRequests(_paymentRequestsContractsId);
+                } catch (e) {
+                    if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = e.message; }
+                }
+            };
+        }
+
+        UI.modalOpen('modal-settlement-form');
+    }
+
+    // ── Zobrazit/skrýt sekce vyúčtování ─────────────────────────────
+    function showSettlementsSection(type) {
+        const wrapEl = document.getElementById('con-settlements-wrap');
+        if (wrapEl) wrapEl.style.display = '';
+        const sectionEl = document.getElementById(type === 'energy' ? 'con-energy-settlements-section' : 'con-deposit-settlements-section');
+        if (sectionEl) sectionEl.style.display = '';
+        loadSettlements(type);
+    }
+
+    function hideSettlementsSections() {
+        const wrapEl = document.getElementById('con-settlements-wrap');
+        if (wrapEl) wrapEl.style.display = 'none';
+        ['con-energy-settlements-section', 'con-deposit-settlements-section'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+    }
+
     function initSettlementHandlers() {
         if (_settlementInited) return;
         _settlementInited = true;
-        const TYPE_LABELS = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
 
-        // --- Vyúčtování energií ---
         const btnEnergy = document.getElementById('btn-energy-settlement');
         if (btnEnergy) {
-            btnEnergy.onclick = async () => {
-                const cid = _paymentRequestsContractsId;
-                if (!cid) return;
-                const alertEl = document.getElementById('energy-settle-alert');
-                const infoEl = document.getElementById('energy-settle-info');
-                const actualEl = document.getElementById('energy-settle-actual');
-                const resultEl = document.getElementById('energy-settle-result');
-                if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
-                if (resultEl) resultEl.textContent = '';
-                if (actualEl) actualEl.value = '';
-                try {
-                    const resp = await fetch('/api/settlement.php', {
-                        method: 'POST', credentials: 'include',
-                        headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': Api.getCsrf() },
-                        body: JSON.stringify({ action: 'energy_info', contracts_id: cid })
-                    });
-                    const data = await resp.json();
-                    if (!data.ok) throw new Error(data.error || 'Chyba');
-                    const d = data.data || data;
-                    const items = d.items || [];
-                    let html = '<strong>Zálohy na energie:</strong><br>';
-                    if (!items.length) {
-                        html += 'Žádné zálohové požadavky.';
-                    } else {
-                        items.forEach(it => {
-                            const paid = it.paid_at ? ' (uhrazeno)' : ' (neuhrazeno)';
-                            const due = it.due_date ? ' – splatnost ' + it.due_date.slice(0,10) : '';
-                            html += UI.esc((it.note || 'Energie') + ': ' + UI.fmt(it.amount) + ' Kč' + paid + due) + '<br>';
-                        });
-                        html += '<br>Uhrazené zálohy: <strong>' + UI.fmt(d.paid_sum) + ' Kč</strong>';
-                        html += '<br>Neuhrazené zálohy: ' + UI.fmt(d.unpaid_sum) + ' Kč';
-                    }
-                    if (infoEl) infoEl.innerHTML = html;
-                } catch (e) {
-                    if (infoEl) infoEl.textContent = 'Chyba při načítání: ' + e.message;
-                }
-                UI.modalOpen('modal-energy-settlement');
+            btnEnergy.onclick = () => {
+                showSettlementsSection('energy');
+                // Otevřít rovnou formulář pro nové vyúčtování
+                openSettlementForm('energy', null);
             };
         }
 
-        const btnEnergySave = document.getElementById('btn-energy-settle-save');
-        if (btnEnergySave) {
-            btnEnergySave.onclick = async () => {
-                const cid = _paymentRequestsContractsId;
-                const actualEl = document.getElementById('energy-settle-actual');
-                const alertEl = document.getElementById('energy-settle-alert');
-                const resultEl = document.getElementById('energy-settle-result');
-                const actual = parseFloat(actualEl?.value);
-                if (isNaN(actual) || actual < 0) {
-                    if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Zadejte platnou částku.'; }
-                    return;
-                }
-                try {
-                    const resp = await fetch('/api/settlement.php', {
-                        method: 'POST', credentials: 'include',
-                        headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': Api.getCsrf() },
-                        body: JSON.stringify({ action: 'energy_settlement', contracts_id: cid, actual_amount: actual })
-                    });
-                    const data = await resp.json();
-                    if (!data.ok) throw new Error(data.error || 'Chyba');
-                    const d = data.data || data;
-                    let msg = 'Vyúčtování provedeno. Uhrazené zálohy: ' + UI.fmt(d.paid_advances) + ' Kč.';
-                    if (d.settlement_amount > 0) msg += ' Nedoplatek: ' + UI.fmt(d.settlement_amount) + ' Kč (nový požadavek vytvořen).';
-                    else if (d.settlement_amount < 0) msg += ' Přeplatek: ' + UI.fmt(Math.abs(d.settlement_amount)) + ' Kč (nový požadavek vytvořen).';
-                    else msg += ' Vyrovnáno přesně.';
-                    if (resultEl) { resultEl.textContent = msg; resultEl.style.color = '#16a34a'; }
-                    loadPaymentRequests(_paymentRequestsContractsId);
-                    setTimeout(() => UI.modalClose('modal-energy-settlement'), 2500);
-                } catch (e) {
-                    if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = e.message; }
-                }
-            };
-        }
-
-        // --- Zúčtování kauce ---
         const btnDeposit = document.getElementById('btn-deposit-settlement');
         if (btnDeposit) {
-            btnDeposit.onclick = async () => {
-                const cid = _paymentRequestsContractsId;
-                if (!cid) return;
-                const alertEl = document.getElementById('deposit-settle-alert');
-                const infoEl = document.getElementById('deposit-settle-info');
-                const listEl = document.getElementById('deposit-settle-list');
-                const resultEl = document.getElementById('deposit-settle-result');
-                if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
-                if (resultEl) resultEl.textContent = '';
-                try {
-                    const resp = await fetch('/api/settlement.php', {
-                        method: 'POST', credentials: 'include',
-                        headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': Api.getCsrf() },
-                        body: JSON.stringify({ action: 'deposit_info', contracts_id: cid })
-                    });
-                    const data = await resp.json();
-                    if (!data.ok) throw new Error(data.error || 'Chyba');
-                    const d = data.data || data;
-                    if (infoEl) infoEl.innerHTML = '<strong>Kauce:</strong> ' + UI.fmt(d.deposit_amount) + ' Kč';
-                    const items = d.unpaid_requests || [];
-                    if (!items.length) {
-                        if (listEl) listEl.innerHTML = '<div class="text-muted">Žádné neuhrazené požadavky.</div>';
-                    } else {
-                        let html = '<div style="font-size:.85rem;margin-bottom:8px">Vyberte dluhy, které pokryje kauce:</div>';
-                        items.forEach(it => {
-                            const label = (TYPE_LABELS[it.type] || it.type) + (it.note ? ' – ' + it.note : '') +
-                                (it.period_year && it.period_month ? ' (' + it.period_month + '/' + it.period_year + ')' : '');
-                            html += '<label style="display:block;padding:4px 0;cursor:pointer">' +
-                                '<input type="checkbox" class="dep-settle-cb" data-id="' + it.entity_id + '" data-amount="' + Math.abs(parseFloat(it.amount)) + '" checked> ' +
-                                UI.esc(label) + ': <strong>' + UI.fmt(Math.abs(parseFloat(it.amount))) + ' Kč</strong></label>';
-                        });
-                        if (listEl) listEl.innerHTML = html;
-                        // Aktualizovat zbývající částku při změně zaškrtnutí
-                        const updateResult = () => {
-                            let sum = 0;
-                            listEl.querySelectorAll('.dep-settle-cb:checked').forEach(cb => { sum += parseFloat(cb.dataset.amount) || 0; });
-                            const toReturn = Math.max(0, d.deposit_amount - sum);
-                            if (resultEl) resultEl.innerHTML = 'Pokryto z kauce: <strong>' + UI.fmt(sum) + ' Kč</strong><br>K vrácení nájemci: <strong>' + UI.fmt(toReturn) + ' Kč</strong>';
-                        };
-                        listEl.querySelectorAll('.dep-settle-cb').forEach(cb => { cb.onchange = updateResult; });
-                        updateResult();
-                    }
-                } catch (e) {
-                    if (infoEl) infoEl.textContent = 'Chyba: ' + e.message;
-                }
-                UI.modalOpen('modal-deposit-settlement');
-            };
-        }
-
-        const btnDepositSave = document.getElementById('btn-deposit-settle-save');
-        if (btnDepositSave) {
-            btnDepositSave.onclick = async () => {
-                const cid = _paymentRequestsContractsId;
-                const alertEl = document.getElementById('deposit-settle-alert');
-                const resultEl = document.getElementById('deposit-settle-result');
-                const listEl = document.getElementById('deposit-settle-list');
-                const ids = [];
-                if (listEl) listEl.querySelectorAll('.dep-settle-cb:checked').forEach(cb => { ids.push(parseInt(cb.dataset.id, 10)); });
-                if (!ids.length) {
-                    if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Vyberte alespoň jeden požadavek.'; }
-                    return;
-                }
-                try {
-                    const resp = await fetch('/api/settlement.php', {
-                        method: 'POST', credentials: 'include',
-                        headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': Api.getCsrf() },
-                        body: JSON.stringify({ action: 'deposit_settlement', contracts_id: cid, request_ids: ids })
-                    });
-                    const data = await resp.json();
-                    if (!data.ok) throw new Error(data.error || 'Chyba');
-                    const d = data.data || data;
-                    let msg = 'Zúčtování provedeno. Pokryto: ' + UI.fmt(d.covered) + ' Kč.';
-                    if (d.to_return > 0) msg += ' K vrácení: ' + UI.fmt(d.to_return) + ' Kč (požadavek deposit_return vytvořen/aktualizován).';
-                    else msg += ' Celá kauce spotřebována.';
-                    if (resultEl) { resultEl.textContent = msg; resultEl.style.color = '#16a34a'; }
-                    loadPaymentRequests(_paymentRequestsContractsId);
-                    setTimeout(() => UI.modalClose('modal-deposit-settlement'), 2500);
-                } catch (e) {
-                    if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = e.message; }
-                }
+            btnDeposit.onclick = () => {
+                showSettlementsSection('deposit');
+                openSettlementForm('deposit', null);
             };
         }
     }
@@ -505,6 +679,11 @@ const ContractsView = (() => {
                 document.getElementById('con-rent-changes-wrap').style.display = 'block';
                 const settleBtns = document.getElementById('con-settlement-btns');
                 if (settleBtns) settleBtns.style.display = 'flex';
+                // Načíst existující vyúčtování
+                const settleWrap = document.getElementById('con-settlements-wrap');
+                if (settleWrap) settleWrap.style.display = '';
+                loadSettlements('energy');
+                loadSettlements('deposit');
             },
             resetForm() {
                 ['con-property','con-tenant','con-start','con-end','con-rent','con-first-month-rent','con-contract-url','con-deposit-amount','con-deposit-paid-date','con-deposit-return-date','con-note','con-default-payment-method','con-default-account']
@@ -517,6 +696,7 @@ const ContractsView = (() => {
                 if (prWrap) prWrap.style.display = 'none';
                 const settleBtns = document.getElementById('con-settlement-btns');
                 if (settleBtns) settleBtns.style.display = 'none';
+                hideSettlementsSections();
             },
             async onSaved(result, editMode) {
                 loadList();
@@ -549,7 +729,7 @@ const ContractsView = (() => {
                     const parts = [];
                     if (unpaidCount > 0) parts.push('Na smlouvě jsou nedoplatky.');
                     if (energyItemsCount > 0) parts.push('Jsou zde zálohy na energie.');
-                    alertShow('con-alert', parts.join(' ') + ' Zobrazte zúčtování kauce nebo vyúčtování energií pomocí tlačítek níže.', 'ok');
+                    alertShow('con-alert', parts.join(' ') + ' Zobrazte vyúčtování kauce nebo vyúčtování energií pomocí tlačítek níže.', 'ok');
                 }
             },
         });

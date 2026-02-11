@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=2.5.7">
+<link rel="stylesheet" href="css/style.css?v=2.6.0">
 </head>
 <body>
 
@@ -30,7 +30,7 @@
     </div>
     <div id="login-error"></div>
     <button class="btn-login" id="btn-login">Přihlásit se</button>
-    <p class="login-version">Verze <span class="footer-version">v2.5.10</span></p>
+    <p class="login-version">Verze <span class="footer-version">v2.6.0</span></p>
   </div>
 </div>
 
@@ -64,7 +64,7 @@
       <div class="sidebar-footer">
         <div class="sidebar-footer-top">
           <span class="sidebar-user" id="nav-username"></span>
-          <span class="sidebar-version">v2.5.10</span>
+          <span class="sidebar-version">v2.6.0</span>
         </div>
         <button class="btn-logout" id="btn-logout">Odhlásit se</button>
       </div>
@@ -267,7 +267,19 @@
             <div id="con-payment-requests-list"></div>
             <div id="con-settlement-btns" style="margin-top:10px;display:none">
               <button type="button" class="btn btn-ghost btn-sm" id="btn-energy-settlement">Vyúčtování energií</button>
-              <button type="button" class="btn btn-ghost btn-sm" id="btn-deposit-settlement" style="margin-left:8px">Zúčtovat kauci</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-deposit-settlement" style="margin-left:8px">Vyúčtování kauce</button>
+            </div>
+            <div id="con-settlements-wrap" style="display:none;margin-top:16px">
+              <div id="con-energy-settlements-section" style="display:none">
+                <h4 style="margin:0 0 8px">Vyúčtování energií</h4>
+                <div id="con-energy-settlements-table"></div>
+                <div id="con-energy-settlement-form" style="display:none;margin-top:12px"></div>
+              </div>
+              <div id="con-deposit-settlements-section" style="display:none;margin-top:16px">
+                <h4 style="margin:0 0 8px">Vyúčtování kauce</h4>
+                <div id="con-deposit-settlements-table"></div>
+                <div id="con-deposit-settlement-form" style="display:none;margin-top:12px"></div>
+              </div>
             </div>
           </div>
           <div class="fg"><label>Poznámka</label><textarea id="con-note" rows="2"></textarea></div>
@@ -686,44 +698,32 @@
   </div>
 </div>
 
-<!-- ═══ MODAL: Vyúčtování energií ═══ -->
-<div class="modal" id="modal-energy-settlement">
-  <div class="modal-ov" onclick="UI.modalClose('modal-energy-settlement')"></div>
-  <div class="modal-box" style="max-width:540px">
+<!-- ═══ MODAL: Nové / editace vyúčtování ═══ -->
+<div class="modal" id="modal-settlement-form">
+  <div class="modal-ov" onclick="UI.modalClose('modal-settlement-form')"></div>
+  <div class="modal-box" style="max-width:640px">
     <div class="modal-header">
-      <h3 class="modal-title">Vyúčtování energií</h3>
-      <button type="button" class="modal-close" onclick="UI.modalClose('modal-energy-settlement')" aria-label="Zavřít">×</button>
+      <h3 class="modal-title" id="settlement-form-title">Nové vyúčtování</h3>
+      <button type="button" class="modal-close" onclick="UI.modalClose('modal-settlement-form')" aria-label="Zavřít">×</button>
     </div>
     <div class="modal-body">
-      <div class="alert" id="energy-settle-alert"></div>
-      <div id="energy-settle-info" class="text-muted" style="font-size:.85rem;margin-bottom:12px"></div>
-      <div class="fg"><label>Skutečná částka energií (Kč) *</label><input type="number" id="energy-settle-actual" step="0.01" min="0" placeholder="např. 1700"></div>
-      <div id="energy-settle-result" style="margin-top:12px;font-weight:600"></div>
+      <div class="alert" id="settlement-form-alert"></div>
+      <div class="fg"><label>Název / popis</label><input type="text" id="settlement-form-label" placeholder="např. Elektřina 2024"></div>
+      <div id="settlement-form-items" style="margin:12px 0;font-size:.85rem"></div>
+      <div class="form-row">
+        <div class="fg"><label>Skutečná částka (Kč) *</label><input type="number" id="settlement-form-actual" step="0.01" min="0" placeholder="např. 1700"></div>
+        <div class="fg"><label>Součet záloh</label><input type="text" id="settlement-form-advances" readonly class="input-readonly"></div>
+        <div class="fg"><label>Rozdíl (nedoplatek/přeplatek)</label><input type="text" id="settlement-form-diff" readonly class="input-readonly"></div>
+      </div>
+      <div class="fg"><label>Název požadavku na platbu</label><input type="text" id="settlement-form-req-label" placeholder="Předvyplněno automaticky"></div>
+      <div class="fg"><label>Poznámka</label><textarea id="settlement-form-note" rows="2"></textarea></div>
+      <div class="form-row">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="settlement-form-lock"> Zamknout po uložení</label>
+      </div>
     </div>
     <div class="form-actions">
-      <button type="button" class="btn btn-success" id="btn-energy-settle-save">Provést vyúčtování</button>
-      <button type="button" class="btn btn-ghost" onclick="UI.modalClose('modal-energy-settlement')">Zrušit</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL: Zúčtování kauce ═══ -->
-<div class="modal" id="modal-deposit-settlement">
-  <div class="modal-ov" onclick="UI.modalClose('modal-deposit-settlement')"></div>
-  <div class="modal-box" style="max-width:600px">
-    <div class="modal-header">
-      <h3 class="modal-title">Zúčtování kauce</h3>
-      <button type="button" class="modal-close" onclick="UI.modalClose('modal-deposit-settlement')" aria-label="Zavřít">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="alert" id="deposit-settle-alert"></div>
-      <div id="deposit-settle-info" style="font-size:.9rem;margin-bottom:12px"></div>
-      <div id="deposit-settle-list" style="margin-bottom:12px"></div>
-      <div id="deposit-settle-result" style="font-weight:600"></div>
-    </div>
-    <div class="form-actions">
-      <button type="button" class="btn btn-success" id="btn-deposit-settle-save">Provést zúčtování</button>
-      <button type="button" class="btn btn-ghost" onclick="UI.modalClose('modal-deposit-settlement')">Zrušit</button>
+      <button type="button" class="btn btn-success" id="btn-settlement-form-save">Uložit vyúčtování</button>
+      <button type="button" class="btn btn-ghost" onclick="UI.modalClose('modal-settlement-form')">Zrušit</button>
     </div>
   </div>
 </div>
@@ -794,17 +794,17 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=2.5.7"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=2.5.7"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=2.5.7"></script>
-<script src="js/app.js?v=2.5.7"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=2.5.7"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=2.5.7"></script>
-<script src="js/views/tenants.js?v=2.5.7"></script>
-<script src="js/views/contracts.js?v=2.5.7"></script>
-<script src="js/views/payments.js?v=2.5.7"></script>
-<script src="js/views/bank_accounts.js?v=2.5.7"></script>
-<script src="js/views/payment_imports.js?v=2.5.7"></script>
-<script src="js/views/users.js?v=2.5.7"></script>
+<script src="js/api.js?v=2.6.0"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=2.6.0"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=2.6.0"></script>
+<script src="js/app.js?v=2.6.0"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=2.6.0"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=2.6.0"></script>
+<script src="js/views/tenants.js?v=2.6.0"></script>
+<script src="js/views/contracts.js?v=2.6.0"></script>
+<script src="js/views/payments.js?v=2.6.0"></script>
+<script src="js/views/bank_accounts.js?v=2.6.0"></script>
+<script src="js/views/payment_imports.js?v=2.6.0"></script>
+<script src="js/views/users.js?v=2.6.0"></script>
 </body>
 </html>
