@@ -64,7 +64,7 @@ function db(): PDO {
             'path'     => '/',
             'secure'   => $secure,
             'httponly' => true,
-            'samesite' => 'Lax',
+            'samesite' => 'Strict',
         ]);
     } else {
         session_set_cookie_params(SESSION_LIFE, '/', '', $secure, true);
