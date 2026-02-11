@@ -123,15 +123,51 @@ async function loadDashboard(year) {
                     '<span class="dash-chart-label">' + (m.label.length > 12 ? m.label.replace(/^(\w+)\s/, '$1 ') : m.label) + '</span>' +
                     '</div>';
             });
+            // Deposit account detail HTML
+            const da = es.deposit_account || { items: [], total_held: 0, total_to_return: 0, count_active: 0, count_to_return: 0 };
+            let depositDetailHtml = '';
+            if (da.items && da.items.length > 0) {
+                const statusLabels = { active: 'Aktivní', to_return: 'K vrácení', returned: 'Vrácena' };
+                const statusClasses = { active: 'dep-active', to_return: 'dep-to-return', returned: 'dep-returned' };
+                depositDetailHtml = '<table class="deposit-detail-table"><thead><tr>' +
+                    '<th>Nemovitost</th><th>Nájemník</th><th>Kauce</th><th>Přijato</th><th>Stav</th>' +
+                    '</tr></thead><tbody>';
+                da.items.forEach(function(item) {
+                    const statusLabel = statusLabels[item.status] || item.status;
+                    const statusCls = statusClasses[item.status] || '';
+                    const paidDate = item.deposit_paid_date ? UI.fmtDate(item.deposit_paid_date) : '—';
+                    let statusText = '<span class="dep-status-badge ' + statusCls + '">' + statusLabel + '</span>';
+                    if (item.status === 'returned' && item.deposit_return_date) {
+                        statusText += ' <span class="dep-return-date">' + UI.fmtDate(item.deposit_return_date) + '</span>';
+                    }
+                    depositDetailHtml += '<tr class="' + (item.status === 'to_return' ? 'dep-row-warn' : '') + '">' +
+                        '<td>' + UI.esc(item.property_name || '') + '</td>' +
+                        '<td>' + UI.esc(item.tenant_name || '') + '</td>' +
+                        '<td class="text-right">' + UI.fmt(item.deposit_amount || 0) + ' Kč</td>' +
+                        '<td>' + paidDate + '</td>' +
+                        '<td>' + statusText + '</td>' +
+                        '</tr>';
+                });
+                depositDetailHtml += '</tbody></table>';
+            } else {
+                depositDetailHtml = '<div style="padding:8px;color:var(--txt3)">Žádné kauce</div>';
+            }
             extendedWrap.innerHTML =
                 '<div class="dash-extended-stats">' +
                     '<div class="stat"><div class="stat-icon green">$</div><div class="stat-val">' + UI.fmt(es.expected_current_month || 0) + ' Kč</div><div class="stat-label">Očekávaný nájem (tento měsíc)</div></div>' +
                     '<div class="stat' + (es.total_arrears > 0 ? ' stat-warn' : '') + '"><div class="stat-icon">!</div><div class="stat-val">' + UI.fmt(es.total_arrears || 0) + ' Kč</div><div class="stat-label">Celkové nedoplatky</div></div>' +
                     '<div class="stat"><div class="stat-val">' + (es.tenants_with_arrears_count || 0) + '</div><div class="stat-label">Nájemníků s nedoplatkem</div></div>' +
                     '<div class="stat"><div class="stat-val">' + (es.contracts_ending_soon ? es.contracts_ending_soon.length : 0) + '</div><div class="stat-label">Smlouvy končící do 3 měsíců</div></div>' +
-                    '<div class="stat"><div class="stat-val">' + UI.fmt(es.deposits_total || 0) + ' Kč</div><div class="stat-label">Kauce celkem</div></div>' +
-                    '<div class="stat' + (es.deposits_to_return > 0 ? ' stat-info' : '') + '"><div class="stat-val">' + UI.fmt(es.deposits_to_return || 0) + ' Kč</div><div class="stat-label">Kauce k vrácení</div></div>' +
+                    '<div class="stat deposit-account-stat' + (da.total_to_return > 0 ? ' stat-info' : '') + '" onclick="DashboardView.toggleDepositDetail()">' +
+                        '<div class="stat-icon">🔑</div>' +
+                        '<div class="stat-val">' + UI.fmt(da.total_held || 0) + ' Kč</div>' +
+                        '<div class="stat-label">Držené kauce' +
+                            (da.count_active || da.count_to_return ? ' (' + (da.count_active ? da.count_active + ' akt.' : '') + (da.count_active && da.count_to_return ? ', ' : '') + (da.count_to_return ? da.count_to_return + ' k vrác.' : '') + ')' : '') +
+                        '</div>' +
+                        '<div class="stat-action">▾ detail</div>' +
+                    '</div>' +
                 '</div>' +
+                '<div id="deposit-account-detail" class="deposit-account-detail" style="display:none">' + depositDetailHtml + '</div>' +
                 '<div class="dash-extended-ending">' +
                     '<strong>Končící smlouvy:</strong><div class="dash-ending-list">' + endingSoonHtml + '</div>' +
                 '</div>' +
@@ -229,8 +265,19 @@ async function loadDashboard(year) {
                     } else if (isOverdue) {
                         icon = '<span class="heatmap-cell-icon cell-cross">✗</span>';
                     }
+                    // Deposit indicator: Ⓚ ikona pokud v tomto měsíci proběhla kauce/vrácení kauce
+                    let depositIcon = '';
+                    if (cell.deposit_events && cell.deposit_events.length > 0) {
+                        const depTip = cell.deposit_events.map(function(de) {
+                            const label = de.type === 'deposit' ? 'Kauce přijata' : 'Kauce vrácena';
+                            return label + ': ' + UI.fmt(de.amount) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                        }).join('\n');
+                        const hasReturn = cell.deposit_events.some(function(de) { return de.type === 'deposit_return'; });
+                        const depCls = hasReturn ? 'heatmap-deposit-icon deposit-return' : 'heatmap-deposit-icon';
+                        depositIcon = '<span class="' + depCls + '" title="' + UI.esc(depTip) + '">K</span>';
+                    }
                     content = '<div class="heatmap-cell-content">' +
-                        '<span class="heatmap-cell-amount">' + UI.fmt(prescribedTotal) + '</span>' + icon +
+                        '<span class="heatmap-cell-amount">' + UI.fmt(prescribedTotal) + '</span>' + icon + depositIcon +
                         '</div>';
                     content = '<div class="heatmap-cell-fill" style="width:' + Math.round(pctPaid) + '%"></div>' + content;
                 }
@@ -283,8 +330,15 @@ async function loadDashboard(year) {
                             tipParts.push('Oranžový okraj: neuhrazený požadavek (např. vrácení kauce).');
                         }
                     }
-                    tipParts.push('');
-                    tipParts.push('Kauce a vrácení kauce se započítávají do měsíce, kdy byly zaplaceny/vyplaceny.');
+                    // Deposit events v tooltipu: konkrétní informace o kaucích v tomto měsíci
+                    if (cell.deposit_events && cell.deposit_events.length > 0) {
+                        tipParts.push('───');
+                        cell.deposit_events.forEach(function(de) {
+                            const label = de.type === 'deposit' ? '🔑 Kauce přijata' : '🔑 Kauce vrácena';
+                            tipParts.push(label + ': ' + UI.fmt(de.amount) + ' Kč (' + UI.fmtDate(de.date) + ')');
+                        });
+                        tipParts.push('(Kauce není zahrnuta v předpisu ani v uhrazené částce.)');
+                    }
                     titleAttr = ' title="' + UI.esc(tipParts.join('\n')) + '"';
                 }
 
@@ -427,6 +481,15 @@ async function loadDashboard(year) {
             const tenantLink = tenantId ? ' onclick="DashboardView.openEdit(\'tenants\',' + tenantId + ')" class="dash-link" title="Upravit nájemníka"' : '';
             const propLink = propId ? ' onclick="DashboardView.openEdit(\'properties\',' + propId + ')" class="dash-link" title="Upravit nemovitost"' : '';
             const contractLink = contractEntityId ? ' onclick="DashboardView.openEdit(\'contracts\',' + contractEntityId + ')" class="dash-link" title="Upravit smlouvu"' : '';
+            // Deposit badge pro přehled smluv
+            let depositBadge = '';
+            if (depAmt > 0) {
+                if (d.deposit_to_return) {
+                    depositBadge = '<span class="deposit-badge deposit-badge-warn" title="Kauce k vrácení: ' + UI.fmt(depAmt) + ' Kč">K ' + UI.fmt(depAmt) + '</span>';
+                } else if (!(contractEnded && depositReturned)) {
+                    depositBadge = '<span class="deposit-badge" title="Držená kauce: ' + UI.fmt(depAmt) + ' Kč">K ' + UI.fmt(depAmt) + '</span>';
+                }
+            }
             const paymentsTitle = progTitle || 'Klikni pro platby';
             const paymentsLink = ' onclick="PaymentsView.navigateWithFilter(' + d.contracts_id + ')" class="dash-link" title="' + UI.esc(paymentsTitle) + '"';
             const progWrapTitle = progTitle || (UI.fmt(totalPaid) + ' / ' + UI.fmt(expectedTotal) + ' Kč');
@@ -454,7 +517,7 @@ async function loadDashboard(year) {
                 '<td' + propLink + '>' + UI.esc(d.property_name) + '</td>' +
                 '<td' + contractLink + rentTdTitle + '>' + rentCellContent + '</td>' +
                 '<td' + paymentsLink + '><div class="prog-wrap" title="' + UI.esc(progWrapTitle) + '"><div class="prog-bar"><div class="prog-fill ' + progClass + '" style="width:' + Math.round(pct) + '%"></div></div>' +
-                '<span class="prog-lbl" title="' + UI.esc(progWrapTitle) + '">' + UI.fmt(totalPaid) + ' / ' + UI.fmt(expectedTotal) + ' Kč</span></div></td>' +
+                '<span class="prog-lbl" title="' + UI.esc(progWrapTitle) + '">' + UI.fmt(totalPaid) + ' / ' + UI.fmt(expectedTotal) + ' Kč</span>' + depositBadge + '</div></td>' +
                 '<td class="dash-unpaid-cell">' + tagsHtml + '</td>' +
                 '<td class="dash-p-col" title="' + UI.esc(addReqTitle) + '">' + addReqBtn + '</td>'
             );
@@ -1807,6 +1870,10 @@ const DashboardView = {
     openEdit,
     openPaymentModal,
     openNewContract,
+    toggleDepositDetail() {
+        const el = document.getElementById('deposit-account-detail');
+        if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+    },
     async quickPay(contractsId, propertyId, year, month, rent, tenantName, propertyName) {
         const monthKey = year + '-' + String(month).padStart(2, '0');
         const fakeEl = document.createElement('div');

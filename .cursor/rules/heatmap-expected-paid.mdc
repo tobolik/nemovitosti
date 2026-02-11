@@ -50,6 +50,14 @@ Akce `energy_settlement` v `settlement.php` nastavuje `settled_by_request_id` **
 - **Paid (heatmap):** měsíc = `due_date` linked requestu; fallback = `period_year-period_month` nebo `payment_date`.
 - **Deposit/deposit_return (JS effectiveMonthKey):** měsíc = `payment_date`.
 
+### 9. Deposit indikátor v heatmapě
+
+Deposit eventy (přijetí/vrácení kauce) se sbírají z heatmapByPayment podle `payment_date` a zobrazují se jako ikona „K" v buňce heatmapy. **Tyto eventy NESMÍ ovlivnit čísla Expected/Paid** – jsou čistě informační. Backend pole: `deposit_events` v JSON buňky. Frontend: `cell.deposit_events`.
+
+### 10. Depozitní účet
+
+Extended stats obsahují `deposit_account` objekt s per-contract breakdown. Status se počítá z `contracts.deposit_amount`, `deposit_return_date` a `contract_end`. **Neměň logiku statusu** bez aktualizace frontend rendering kódu.
+
 ## Při úpravách
 
 1. Přečti `docs/heatmap-predpis-platby-logika.md` (kompletní popis algoritmu).

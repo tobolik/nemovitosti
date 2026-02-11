@@ -1,6 +1,6 @@
 # Heatmapa a přehledy – algoritmus výpočtu Očekáváno / Uhrazeno
 
-> **Verze dokumentu:** v2.5.0 (únor 2026)
+> **Verze dokumentu:** v2.5.4 (únor 2026)
 > **Platí pro:** `api/dashboard.php`, `js/views/dashboard.js`, `api/settlement.php`
 
 Tento dokument popisuje **kompletní logiku** výpočtu částek „Očekáváno" (Expected) a „Uhrazeno" (Paid) v heatmapě platebního kalendáře a v přehledu smluv. Je určen pro budoucí agenty/vývojáře, aby při úpravách nerozbili stávající chování.
@@ -17,7 +17,8 @@ Tento dokument popisuje **kompletní logiku** výpočtu částek „Očekáváno
 6. [Zúčtování kauce (deposit_settlement)](#6-zúčtování-kauce-deposit_settlement)
 7. [Nesplněné požadavky (unfulfilled / oranžový badge)](#7-nesplněné-požadavky-unfulfilled--oranžový-badge)
 8. [Frontend: modal breakdown a mirror logika](#8-frontend-modal-breakdown-a-mirror-logika)
-9. [Kritická pravidla – NIKDY NEROZBIJ](#9-kritická-pravidla--nikdy-nerozbij)
+9. [Deposit indikátor v heatmapě a depozitní účet](#9-deposit-indikátor-v-heatmapě-a-depozitní-účet)
+10. [Kritická pravidla – NIKDY NEROZBIJ](#10-kritická-pravidla--nikdy-nerozbij)
 
 ---
 
@@ -427,7 +428,51 @@ Backend posílá `paymentRequestsListByContractMonth` jako `month_breakdown` v J
 
 ---
 
-## 9. Kritická pravidla – NIKDY NEROZBIJ
+## 9. Deposit indikátor v heatmapě a depozitní účet
+
+### 9.1 Heatmap deposit indicator (Ⓚ ikona)
+
+Kauce a vrácení kauce **nejsou zahrnuty** v číslech heatmapy (ani v Expected, ani v Paid). Přesto je důležité, aby uživatel viděl, že v daném měsíci proběhla kauční transakce.
+
+**Backend:**
+
+1. Po hlavní alokační smyčce se iteruje `$heatmapByPayment` a sbírají se platby s `payment_type IN ('deposit', 'deposit_return')`.
+2. Pro každou se vytvoří záznam `{ type, amount, date }` v poli `$depositEventsByContract[$contractId][$monthKey]`.
+3. Pole se agreguje na úroveň nemovitosti (`$depositEventsByPropertyMonth`).
+4. V obou blocích konstrukce heatmap buněk se přidává `'deposit_events' => $depositEventsByPropertyMonth[...]`.
+
+**Frontend:**
+
+1. Pokud `cell.deposit_events` je neprázdné, zobrazí se ikona `<span class="heatmap-deposit-icon">K</span>` vedle ✓/✗.
+2. Modrý kruh = kauce přijata, oranžový (`deposit-return`) = kauce vrácena.
+3. Ikona má `title` tooltip s detailem: „Kauce přijata: 18 000 Kč (15.09.2025)".
+4. Hlavní tooltip buňky také zobrazuje deposit eventy místo generického textu.
+
+### 9.2 Depozitní účet (dashboard stat card)
+
+Dashboard rozšířené statistiky obsahují objekt `deposit_account`:
+```
+{
+    items: [ { contracts_id, tenant_name, property_name, deposit_amount, deposit_paid_date, deposit_return_date, contract_end, status, balance } ],
+    total_held: Number,      // suma držených kaucí
+    total_to_return: Number,  // suma kaucí k vrácení
+    count_active: Number,     // aktivní smlouvy s kaucí
+    count_to_return: Number   // ukončené smlouvy s nevrácenou kaucí
+}
+```
+
+**Status logika:**
+- `returned`: `deposit_return_date` je nastaven → balance = 0
+- `to_return`: smlouva ukončena (`contract_end <= today`) a `deposit_return_date` je NULL → balance = deposit_amount
+- `active`: smlouva probíhá → balance = deposit_amount
+
+**Frontend:**
+- Jedna stat karta „Držené kauce: X Kč" s rozbalovacím detailem (mini-tabulka).
+- V Přehledu smluv: deposit badge „K 18 000" (modrý = aktivní, oranžový = k vrácení).
+
+---
+
+## 10. Kritická pravidla – NIKDY NEROZBIJ
 
 Následující invarianty musí **vždy platit**. Při jakékoliv úpravě kódu v `dashboard.php`, `dashboard.js` nebo `settlement.php` ověř, že žádný z nich není porušen.
 

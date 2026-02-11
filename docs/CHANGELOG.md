@@ -4,7 +4,14 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.5.0 (aktuální)
+## v2.5.4 (aktuální)
+
+- **Heatmap deposit indicator:** v buňce heatmapy se zobrazí modré „K" v kroužku při přijetí kauce, oranžové „K" při vrácení kauce; tooltip ukazuje detail (částka, datum)
+- **Depozitní účet:** nahrazeny dvě jednoduché stat karty jednou „Držené kauce" kartou s rozbalovacím detailem per smlouva (nájemník, nemovitost, částka, datum přijetí, stav: Aktivní / K vrácení / Vrácena)
+- **Deposit badge v Přehledu smluv:** u každé smlouvy s kaucí se zobrazuje malý badge „K 18 000" (modrý = aktivní, oranžový = k vrácení)
+- **Tooltip heatmapy:** generický text o kaucích nahrazen dynamickými informacemi o konkrétních kaucích v daném měsíci
+
+## v2.5.0
 
 - **Redesign Expected/Paid:** nový sloupec `settled_by_request_id` pro vyúčtované zálohy na energie – zůstávají v DB pro historii, ale neovlivňují Očekáváno
 - **Deposit/deposit_return vyloučeny z Očekáváno:** kauce a vrácení kauce nejsou závazky nájemce; v Uhrazeno se vzájemně kompenzují

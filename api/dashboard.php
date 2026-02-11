@@ -319,8 +319,29 @@ foreach ($heatmapByPayment as $group) {
         }
     }
 }
+
+// Deposit events: sběr kaucí a vrácení kaucí podle payment_date měsíce (pro Ⓚ ikonu v heatmapě)
+$depositEventsByContract = [];
+foreach ($heatmapByPayment as $group) {
+    $pType = $group['payment_type'] ?? '';
+    if (!in_array($pType, ['deposit', 'deposit_return'])) continue;
+    if (empty($group['payment_date'])) continue;
+    $eid = (int)$group['contracts_id'];
+    $monthKey = date('Y-m', strtotime($group['payment_date']));
+    $amt = (float)$group['amount'];
+    if ($pType === 'deposit_return' && $amt > 0) $amt = -$amt;
+    if (!isset($depositEventsByContract[$eid])) $depositEventsByContract[$eid] = [];
+    if (!isset($depositEventsByContract[$eid][$monthKey])) $depositEventsByContract[$eid][$monthKey] = [];
+    $depositEventsByContract[$eid][$monthKey][] = [
+        'type' => $pType,
+        'amount' => $amt,
+        'date' => $group['payment_date'],
+    ];
+}
+
 $heatmapPaymentsByPropertyMonth = [];
 $heatmapPaymentsListByPropertyMonth = [];
+$depositEventsByPropertyMonth = [];
 foreach ($contracts as $c) {
     $eid = (int)($c['contracts_id'] ?? $c['id']);
     $pid = (int)$c['properties_id'];
@@ -341,6 +362,14 @@ foreach ($contracts as $c) {
         $heatmapPaymentsListByPropertyMonth[$pid][$monthKey] = array_merge(
             $heatmapPaymentsListByPropertyMonth[$pid][$monthKey],
             $heatmapPaymentsListByContract[$eid][$monthKey] ?? []
+        );
+    }
+    // Deposit events: agregace z kontraktu na nemovitost
+    foreach ($depositEventsByContract[$eid] ?? [] as $monthKey => $events) {
+        if (!isset($depositEventsByPropertyMonth[$pid])) $depositEventsByPropertyMonth[$pid] = [];
+        if (!isset($depositEventsByPropertyMonth[$pid][$monthKey])) $depositEventsByPropertyMonth[$pid][$monthKey] = [];
+        $depositEventsByPropertyMonth[$pid][$monthKey] = array_merge(
+            $depositEventsByPropertyMonth[$pid][$monthKey], $events
         );
     }
 }
@@ -577,6 +606,8 @@ foreach ($contractsForView as $c) {
         'status_type'    => $statusType,
         'unpaid_months'  => $unpaid,
         'deposit_amount' => $depositAmt,
+        'deposit_paid_date' => $c['deposit_paid_date'] ?? null,
+        'deposit_return_date' => $c['deposit_return_date'] ?? null,
         'deposit_to_return' => $depositToReturn,
     ];
 }
@@ -719,6 +750,7 @@ foreach ($properties as $p) {
                     'remaining'            => max(0, $expectedTotalOnly - $paidTotalOnly),
                     'payment_details'      => $paymentDetailsOnly,
                     'month_breakdown'      => $monthBreakdownOnly,
+                    'deposit_events'       => $depositEventsByPropertyMonth[$propEntityId][$monthKey] ?? [],
                 ];
             } else {
                 $heatmap[$propId . '_' . $monthKey] = ['type' => 'empty', 'monthKey' => $monthKey];
@@ -838,6 +870,7 @@ foreach ($properties as $p) {
                 'remaining'            => max(0, $expectedTotal - $paidTotal),
                 'payment_details'      => $paymentDetails,
                 'month_breakdown'      => $monthBreakdown,
+                'deposit_events'       => $depositEventsByPropertyMonth[$propEntityId][$monthKey] ?? [],
             ];
         }
     }
@@ -985,9 +1018,13 @@ if ($extended) {
 
     $totalArrears = 0;
     $tenantsWithArrearsCount = 0;
-    $depositsTotal = 0;
-    $depositsToReturn = 0;
     $contractsEndingSoon = [];
+    // Depozitní účet: detailní přehled kaucí per smlouva
+    $depositAccountItems = [];
+    $depositTotalHeld = 0;
+    $depositTotalToReturn = 0;
+    $depositCountActive = 0;
+    $depositCountToReturn = 0;
     foreach ($out as $row) {
         if ($row['balance'] > 0) {
             $totalArrears += $row['balance'];
@@ -1002,11 +1039,38 @@ if ($extended) {
                 'contract_end' => $contractEnd,
             ];
         }
-        if (!$contractEnd || $contractEnd >= $today) {
-            $depositsTotal += (float)($row['deposit_amount'] ?? 0);
-        }
-        if (!empty($row['deposit_to_return'])) {
-            $depositsToReturn += (float)($row['deposit_amount'] ?? 0);
+        // Deposit account item
+        $depAmt = (float)($row['deposit_amount'] ?? 0);
+        if ($depAmt > 0) {
+            $depRetDate = $row['deposit_return_date'] ?? null;
+            $depPaidDate = $row['deposit_paid_date'] ?? null;
+            $cEnded = !empty($contractEnd) && $contractEnd <= $today;
+            if ($depRetDate) {
+                $depStatus = 'returned';
+                $depBalance = 0;
+            } elseif ($cEnded) {
+                $depStatus = 'to_return';
+                $depBalance = $depAmt;
+                $depositTotalToReturn += $depAmt;
+                $depositTotalHeld += $depAmt;
+                $depositCountToReturn++;
+            } else {
+                $depStatus = 'active';
+                $depBalance = $depAmt;
+                $depositTotalHeld += $depAmt;
+                $depositCountActive++;
+            }
+            $depositAccountItems[] = [
+                'contracts_id' => $row['contracts_id'],
+                'tenant_name' => $row['tenant_name'],
+                'property_name' => $row['property_name'],
+                'deposit_amount' => $depAmt,
+                'deposit_paid_date' => $depPaidDate,
+                'deposit_return_date' => $depRetDate,
+                'contract_end' => $contractEnd,
+                'status' => $depStatus,
+                'balance' => $depBalance,
+            ];
         }
     }
 
@@ -1015,8 +1079,16 @@ if ($extended) {
         'total_arrears' => round($totalArrears, 2),
         'tenants_with_arrears_count' => $tenantsWithArrearsCount,
         'contracts_ending_soon' => $contractsEndingSoon,
-        'deposits_total' => round($depositsTotal, 2),
-        'deposits_to_return' => round($depositsToReturn, 2),
+        // Zpětná kompatibilita: zachováme staré klíče + nový deposit_account
+        'deposits_total' => round($depositTotalHeld, 2),
+        'deposits_to_return' => round($depositTotalToReturn, 2),
+        'deposit_account' => [
+            'items' => $depositAccountItems,
+            'total_held' => round($depositTotalHeld, 2),
+            'total_to_return' => round($depositTotalToReturn, 2),
+            'count_active' => $depositCountActive,
+            'count_to_return' => $depositCountToReturn,
+        ],
     ];
 
     // Graf: posledních 12 měsíců – očekávaný vs. skutečný nájem

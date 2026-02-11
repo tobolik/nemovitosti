@@ -806,6 +806,72 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .dash-extended-stats .stat { min-width: 0; }
 .dash-extended-stats .stat-warn .stat-val { color: var(--red-600); }
 .dash-extended-stats .stat-info .stat-val { color: var(--orange-500); }
+/* Deposit account stat card */
+.deposit-account-stat { cursor: pointer; position: relative; }
+.deposit-account-stat .stat-action { font-size: .7rem; color: var(--txt3); margin-top: 4px; }
+.deposit-account-stat:hover .stat-action { color: var(--accent); }
+
+/* Deposit account detail panel */
+.deposit-account-detail {
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: var(--bg2);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r);
+}
+.deposit-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+}
+.deposit-detail-table th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--txt2);
+    padding: 6px 10px;
+    border-bottom: 2px solid var(--glass-border);
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+.deposit-detail-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--txt);
+}
+.deposit-detail-table .text-right { text-align: right; }
+.deposit-detail-table .dep-row-warn { background: rgba(234, 88, 12, .08); }
+.dep-status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+.dep-status-badge.dep-active { background: rgba(59, 130, 246, .18); color: #60a5fa; }
+.dep-status-badge.dep-to-return { background: rgba(234, 88, 12, .18); color: #fb923c; }
+.dep-status-badge.dep-returned { background: rgba(156, 163, 175, .18); color: var(--txt3); }
+.dep-return-date { font-size: .75rem; color: var(--txt3); margin-left: 4px; }
+
+/* Deposit badge in contracts overview */
+.deposit-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: .72rem;
+    font-weight: 600;
+    background: rgba(59, 130, 246, .16);
+    color: #60a5fa;
+    margin-left: 6px;
+    vertical-align: middle;
+    line-height: 1.5;
+}
+.deposit-badge-warn {
+    background: rgba(234, 88, 12, .18);
+    color: #fb923c;
+}
+
 .dash-extended-ending { margin-bottom: 20px; font-size: .9rem; }
 .dash-ending-list { margin-top: 8px; line-height: 1.6; }
 .dash-ending-list .dash-link { display: inline-block; margin-bottom: 4px; }
@@ -909,6 +975,29 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .heatmap-cell.exact .cell-check, .heatmap-cell.overpaid .cell-check, .heatmap-cell.paid-advance .cell-check { color: #fff; }
 .heatmap-cell.unpaid .cell-cross,
 .heatmap-cell.overdue .cell-cross { color: #fff; }
+
+/* Heatmap deposit indicator (K icon) */
+.heatmap-deposit-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #1976d2;
+    color: #fff;
+    font-size: 8px;
+    font-weight: 700;
+    margin-left: 1px;
+    cursor: help;
+    vertical-align: middle;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.heatmap-deposit-icon.deposit-return {
+    background: #e65100;
+}
+
 .heatmap-total-cell { text-align: center; font-size: .82rem; font-weight: 600; color: var(--txt2); padding: 4px 4px; white-space: normal; word-wrap: break-word; max-width: 100%; }
 .heatmap-sum-row { background: var(--bg2); border-top: 2px solid var(--glass-border); }
 .heatmap-sum-row td { padding: 8px 4px; }
