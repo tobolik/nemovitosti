@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.5.8 (aktuální)
+## v2.5.9 (aktuální)
+
+- **Tooltip kaucí: jméno nájemníka:** v tooltipu K ikony i v tooltipu buňky se zobrazuje jméno nájemníka (od koho kauce přijata / komu vrácena)
+
+## v2.5.8
 
 - **Fix: K ikony podle znaménka částky:** rozlišení přijetí/vrácení kauce se řídí znaménkem částky (kladná = přijata, záporná = vrácena), ne typem platby – opravuje případ, kdy záporná kauce měla `payment_type=deposit` místo `deposit_return`
 - **Fix: tooltip kauce:** správně zobrazuje „Kauce přijata" vs „Kauce vrácena" podle znaménka a ukazuje absolutní hodnotu u vrácení

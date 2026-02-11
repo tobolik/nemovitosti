@@ -274,13 +274,17 @@ async function loadDashboard(year) {
                         const returnEvents = cell.deposit_events.filter(function(de) { return de.amount < 0; });
                         if (depositEvents.length > 0) {
                             const depTip = depositEvents.map(function(de) {
-                                return 'Kauce přijata: ' + UI.fmt(de.amount) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                                var line = 'Kauce přijata: ' + UI.fmt(de.amount) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                                if (de.tenant) line += ' – ' + de.tenant;
+                                return line;
                             }).join('\n');
                             depositIcons += '<span class="heatmap-deposit-icon" title="' + UI.esc(depTip) + '">K</span>';
                         }
                         if (returnEvents.length > 0) {
                             const retTip = returnEvents.map(function(de) {
-                                return 'Kauce vrácena: ' + UI.fmt(Math.abs(de.amount)) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                                var line = 'Kauce vrácena: ' + UI.fmt(Math.abs(de.amount)) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                                if (de.tenant) line += ' – ' + de.tenant;
+                                return line;
                             }).join('\n');
                             depositIcons += '<span class="heatmap-deposit-icon deposit-return" title="' + UI.esc(retTip) + '">K</span>';
                         }
@@ -347,7 +351,9 @@ async function loadDashboard(year) {
                         cell.deposit_events.forEach(function(de) {
                             const label = de.amount < 0 ? '🔑 Kauce vrácena' : '🔑 Kauce přijata';
                             const displayAmt = de.amount < 0 ? Math.abs(de.amount) : de.amount;
-                            tipParts.push(label + ': ' + UI.fmt(displayAmt) + ' Kč (' + UI.fmtDate(de.date) + ')');
+                            var line = label + ': ' + UI.fmt(displayAmt) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                            if (de.tenant) line += ' – ' + de.tenant;
+                            tipParts.push(line);
                         });
                         tipParts.push('(Kauce není zahrnuta v předpisu ani v uhrazené částce.)');
                     }

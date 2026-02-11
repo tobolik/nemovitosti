@@ -321,6 +321,11 @@ foreach ($heatmapByPayment as $group) {
 }
 
 // Deposit events: sběr kaucí a vrácení kaucí podle payment_date měsíce (pro Ⓚ ikonu v heatmapě)
+// Mapa contracts_id => tenant_name pro tooltip
+$tenantByContract = [];
+foreach ($contracts as $c) {
+    $tenantByContract[(int)($c['contracts_id'] ?? $c['id'])] = $c['tenant_name'] ?? '';
+}
 $depositEventsByContract = [];
 foreach ($heatmapByPayment as $group) {
     $pType = $group['payment_type'] ?? '';
@@ -338,6 +343,7 @@ foreach ($heatmapByPayment as $group) {
         'type' => $effectiveType,
         'amount' => $amt,
         'date' => $group['payment_date'],
+        'tenant' => $tenantByContract[$eid] ?? '',
     ];
 }
 
