@@ -296,7 +296,7 @@ foreach ($heatmapByPayment as $group) {
     }
     // Remainder: pro deposit/deposit_return platby zahodit (kauce remainder se kompenzuje s deposit_return)
     $remainder = round($payAmt - $allocated, 2);
-    if (!$isDepositPayment && $remainder > 0) {
+    if (!$isDepositPayment && $remainder != 0) {
         $monthKey = $periodKey ?: $fallbackMonthKey;
         if ($monthKey) {
             if (!isset($heatmapPaymentsByContract[$eid][$monthKey])) {

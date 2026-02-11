@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.10 (aktuální)
+## v2.6.11 (aktuální)
+
+- **Fix:** Heatmapa – zbytek platby (remainder) po alokaci se přidává do měsíce i když je záporný (např. refund); podmínka změněna z `$remainder > 0` na `$remainder != 0` v PHP i v JS (amountContributingToMonth a zobrazení breakdown)
+
+## v2.6.10
 
 - **Fix:** Migrace 062 (rent požadavky) propojuje pouze platby s vyplněným `payments_id` (entity_id); do `payment_requests.payments_id` se ukládá jen logické ID, ne fyzické `id` při NULL
 

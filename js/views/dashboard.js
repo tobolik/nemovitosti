@@ -1128,8 +1128,8 @@ async function openPaymentModal(el) {
             const reqMonthKey = r.due_date ? String(r.due_date).slice(0, 7) : '';
             if (reqMonthKey === monthKey) sum += rAmt;
         });
-        // Positive remainder goes to payment's period month – but DROP for deposit payments
-        if (!isDepositPayment && budget > 0 && paymentMonthKey === monthKey) sum += budget;
+        // Remainder (positive or negative) goes to payment's period month – but DROP for deposit payments
+        if (!isDepositPayment && budget !== 0 && paymentMonthKey === monthKey) sum += budget;
         return sum;
     }
     const sumForMonth = forMonth.reduce((s, p) => s + amountContributingToMonth(p), 0);
@@ -1311,9 +1311,9 @@ async function openPaymentModal(el) {
                 cappedLinked.push({ req: r, cappedAmt: rAmt });
             });
             // Remainder: drop for deposit payments (kauce remainder se kompenzuje s deposit_return)
-            const remainder = isDepositPt ? 0 : Math.max(0, Math.round(breakdownBudget * 100) / 100);
+            const remainder = isDepositPt ? 0 : Math.round(breakdownBudget * 100) / 100;
             const partsWithMonth = [];
-            if (remainder > 0 && periodLabel) partsWithMonth.push({ label: 'Nájem', dateLabel: periodLabelLower, amount: UI.fmt(remainder) + ' Kč', partMonthKey: paymentMonthKey });
+            if (remainder !== 0 && periodLabel) partsWithMonth.push({ label: 'Nájem', dateLabel: periodLabelLower, amount: UI.fmt(remainder) + ' Kč', partMonthKey: paymentMonthKey });
             cappedLinked.forEach(({ req: r, cappedAmt }) => {
                 const reqLabel = requestTypeLabelsShort[r.type] || 'Požadavek';
                 const reqDate = r.due_date ? UI.fmtDate(r.due_date) : '';
