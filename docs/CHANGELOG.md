@@ -4,7 +4,12 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.7 (aktuální)
+## v2.6.8 (aktuální)
+
+- **Fix:** Jednotná verze v celém index.html – sidebar footer zobrazoval v2.6.6, nyní v souladu s login a cache busting
+- **Fix:** Při automatickém vytvoření platby za vrácení kauce (vyplnění data vrácení kauce na smlouvě) se ukládá `payment_type = 'deposit_return'` místo `'deposit'`; kontrola existence platby a heatmapa tak správně rozlišují příjem vs. vrácení kauce
+
+## v2.6.7
 
 - **Fix:** Při načtení požadavku na platbu typu „nájem“ (rent) do modalu pro úpravu se typ správně zobrazí a nezmění na „energie“
 

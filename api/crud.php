@@ -1019,7 +1019,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $periodYear = $ym['year'] ?? (int)date('Y');
                 $periodMonth = $ym['month'] ?? (int)date('n');
                 if ($periodMonth < 1 || $periodMonth > 12) $periodMonth = (int)date('n');
-                $st = db()->prepare("SELECT id FROM payments WHERE contracts_id = ? AND payment_type = 'deposit' AND amount < 0 AND payment_date = ? AND valid_to IS NULL");
+                $st = db()->prepare("SELECT id FROM payments WHERE contracts_id = ? AND payment_type = 'deposit_return' AND amount < 0 AND payment_date = ? AND valid_to IS NULL");
                 $st->execute([$entityId, $depositReturnDate]);
                 if ($st->fetch() === false) {
                     $payId = softInsert('payments', [
@@ -1028,7 +1028,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'period_month'   => $periodMonth,
                         'amount'         => -$depositAmount,
                         'payment_date'   => $depositReturnDate,
-                        'payment_type'   => 'deposit',
+                        'payment_type'   => 'deposit_return',
                         'note'           => 'Vrácení kauce',
                         'payment_method' => null,
                         'bank_accounts_id' => null,
