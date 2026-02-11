@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.6 (aktuální)
+## v2.6.7 (aktuální)
+
+- **Fix:** Při načtení požadavku na platbu typu „nájem“ (rent) do modalu pro úpravu se typ správně zobrazí a nezmění na „energie“
+
+## v2.6.6
 
 - **Fix:** Neuhrazený nájem se zobrazuje v nevyřízených požadavcích (oranžový okraj heatmapy a tooltip)
 - **Fix:** Depozitní statistiky – u ukončených smluv se kauce započítá jen do „K vrácení“, ne do „Držené“ (odstraněno dvojí započtení)

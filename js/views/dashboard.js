@@ -832,7 +832,7 @@ async function openPaymentRequestEdit(paymentRequestId, onSaved) {
         if (btnDelete) btnDelete.style.display = '';
         contractSel.value = pr.contracts_id ?? '';
         amountEl.value = pr.amount ?? '';
-        typeEl.value = ['energy', 'settlement', 'other', 'deposit', 'deposit_return'].includes(pr.type) ? pr.type : 'energy';
+        typeEl.value = ['rent', 'energy', 'settlement', 'other', 'deposit', 'deposit_return'].includes(pr.type) ? pr.type : 'energy';
         noteEl.value = pr.note ?? '';
         if (dueDateEl) dueDateEl.value = (pr.due_date || '').toString().slice(0, 10);
         if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
