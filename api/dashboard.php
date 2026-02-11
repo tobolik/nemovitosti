@@ -140,26 +140,21 @@ $contractsForView = $showEnded ? $contracts : array_values(array_filter($contrac
     return empty($c['contract_end']) || $c['contract_end'] >= $today;
 }));
 
-// Smlouvy, které mají alespoň jeden požadavek typu 'settlement' (vyúčtování energií provedeno).
-// Pro tyto smlouvy se nezaplacené zálohy (type='energy') nebudou počítat do očekávaných částek,
-// protože jsou nahrazeny požadavkem na vyúčtování a jejich započítání by vedlo k dvojímu započítání.
-$contractsWithSettlement = [];
-$stmtSettlement = db()->query("SELECT DISTINCT contracts_id FROM payment_requests WHERE type = 'settlement' AND valid_to IS NULL");
-foreach ($stmtSettlement->fetchAll() as $row) {
-    $contractsWithSettlement[(int)$row['contracts_id']] = true;
-}
-
-// Očekáváno = nájem + všechny předpisy (požadavky), stejně jako v heatmapě. Jednotná logika: předpis = očekávání, platba = uhrazeno.
+// Očekáváno = nájem + předpisy (požadavky), BEZ deposit/deposit_return a BEZ settled záloh.
+// settled_by_request_id: zálohy pokryté vyúčtováním energií – zůstávají v DB pro historii, ale neovlivňují Expected.
+// deposit/deposit_return: kauce a vrácení kauce – nejsou závazky nájemce, vyloučeny z Expected (v Paid se vzájemně kompenzují).
 $paymentRequestsSumByContract = [];
 $allRequestsStmt = db()->query("
-    SELECT contracts_id, type, amount, paid_at FROM payment_requests
+    SELECT contracts_id, type, amount, paid_at, settled_by_request_id FROM payment_requests
     WHERE valid_to IS NULL AND type != 'rent'
 ");
 foreach ($allRequestsStmt->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
     $type = $pr['type'] ?? '';
-    // Po vyúčtování: nezaplacené energy zálohy se nepočítají (nahrazeny settlement požadavkem)
-    if ($type === 'energy' && empty($pr['paid_at']) && isset($contractsWithSettlement[$cid])) continue;
+    // Vyloučit settled zálohy (pokryté vyúčtováním)
+    if (!empty($pr['settled_by_request_id'])) continue;
+    // Vyloučit deposit a deposit_return z Expected
+    if (in_array($type, ['deposit', 'deposit_return'])) continue;
     $amt = (float)$pr['amount'];
     // Zpětná kompatibilita: staré deposit_return měly kladnou částku, v novém modelu je výdej záporný
     if ($type === 'deposit_return' && $amt > 0) $amt = -$amt;
@@ -218,7 +213,8 @@ foreach ($contracts as $c) {
 $heatmapPaymentsByContract = [];
 $heatmapPaymentsListByContract = [];
 $heatmapStmt = db()->query("
-    SELECT p.payments_id, p.contracts_id, p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type, p.bank_transaction_id, pr.due_date, pr.amount AS pr_amount
+    SELECT p.payments_id, p.contracts_id, p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type, p.bank_transaction_id,
+           pr.due_date, pr.amount AS pr_amount, pr.type AS pr_type, pr.settled_by_request_id AS pr_settled_by
     FROM payments p
     JOIN contracts c ON c.contracts_id = p.contracts_id AND c.valid_to IS NULL
     LEFT JOIN payment_requests pr ON pr.payments_id = p.payments_id AND pr.valid_to IS NULL
@@ -243,7 +239,12 @@ foreach ($heatmapStmt->fetchAll() as $row) {
         ];
     }
     if (!empty($row['due_date']) && isset($row['pr_amount'])) {
-        $heatmapByPayment[$key]['linked'][] = ['due_date' => $row['due_date'], 'amount' => (float)$row['pr_amount']];
+        $heatmapByPayment[$key]['linked'][] = [
+            'due_date' => $row['due_date'],
+            'amount' => (float)$row['pr_amount'],
+            'type' => $row['pr_type'] ?? '',
+            'settled_by_request_id' => $row['pr_settled_by'] ?? null,
+        ];
     }
 }
 foreach ($heatmapByPayment as $group) {
@@ -261,11 +262,18 @@ foreach ($heatmapByPayment as $group) {
         $heatmapPaymentsListByContract[$eid] = [];
     }
     $allocated = 0.0;
+    $isDepositPayment = in_array($group['payment_type'] ?? '', ['deposit', 'deposit_return']);
     foreach ($group['linked'] as $pr) {
+        $prType = $pr['type'] ?? '';
+        // Skip deposit/deposit_return a settled linked requests z alokace
+        // (kauce se alokuje na pokryté položky: nájem, settlement; ne na deposit request samotný)
+        if (in_array($prType, ['deposit', 'deposit_return'])) continue;
+        if (!empty($pr['settled_by_request_id'])) continue;
+
         $monthKey = date('Y-m', strtotime($pr['due_date']));
         $amt = (float)$pr['amount'];
         // Cap: don't allocate more than the actual payment amount (skip for deposit/deposit_return – settlement can exceed)
-        $shouldCap = !in_array($group['payment_type'] ?? '', ['deposit', 'deposit_return']);
+        $shouldCap = !$isDepositPayment;
         if ($shouldCap && $payAmt >= 0 && $amt > 0) {
             $amt = min($amt, max(0, round($payAmt - $allocated, 2)));
         } elseif ($shouldCap && $payAmt < 0 && $amt < 0) {
@@ -288,8 +296,9 @@ foreach ($heatmapByPayment as $group) {
             'bank_transaction_id' => $group['bank_transaction_id'],
         ];
     }
+    // Remainder: pro deposit/deposit_return platby zahodit (kauce remainder se kompenzuje s deposit_return)
     $remainder = round($payAmt - $allocated, 2);
-    if ($remainder > 0) {
+    if (!$isDepositPayment && $remainder > 0) {
         $monthKey = $periodKey ?: $fallbackMonthKey;
         if ($monthKey) {
             if (!isset($heatmapPaymentsByContract[$eid][$monthKey])) {
@@ -341,14 +350,16 @@ $paymentRequestsListByContractMonth = [];
 $hasUnfulfilledByContractMonth = [];
 $unfulfilledListByContractMonth = []; // [contractId][monthKey] => [ ['label'=>..., 'amount'=>...], ... ]
 $stmtUnfulfilled = db()->query("
-    SELECT contracts_id, due_date, amount, type, note FROM payment_requests
+    SELECT contracts_id, due_date, amount, type, note, settled_by_request_id FROM payment_requests
     WHERE valid_to IS NULL AND due_date IS NOT NULL AND paid_at IS NULL AND type != 'rent'
+    ORDER BY due_date ASC
 ");
 foreach ($stmtUnfulfilled->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
     $type = $pr['type'] ?? '';
-    // Po vyúčtování: nezaplacené energy zálohy se nezobrazují jako neuhrazené (nahrazeny settlement)
-    if ($type === 'energy' && isset($contractsWithSettlement[$cid])) continue;
+    // Vyloučit settled zálohy a deposit/deposit_return z neuhrazených
+    if (!empty($pr['settled_by_request_id'])) continue;
+    if (in_array($type, ['deposit', 'deposit_return'])) continue;
     $monthKey = date('Y-m', strtotime($pr['due_date']));
     if (!isset($hasUnfulfilledByContractMonth[$cid])) {
         $hasUnfulfilledByContractMonth[$cid] = [];
@@ -402,19 +413,19 @@ foreach ($contracts as $c) {
 }
 
 $stmtPrMonth = db()->query("
-    SELECT id, payment_requests_id, contracts_id, due_date, amount, type, note, paid_at
+    SELECT id, payment_requests_id, contracts_id, due_date, amount, type, note, paid_at, settled_by_request_id
     FROM payment_requests
     WHERE valid_to IS NULL AND due_date IS NOT NULL AND type != 'rent'
 ");
 foreach ($stmtPrMonth->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
     $type = $pr['type'] ?? '';
-    // Po vyúčtování: nezaplacené energy zálohy se nepočítají do expected per-month (nahrazeny settlement)
-    if ($type === 'energy' && empty($pr['paid_at']) && isset($contractsWithSettlement[$cid])) continue;
     $monthKey = date('Y-m', strtotime($pr['due_date']));
     $amt = (float)$pr['amount'];
     if ($type === 'deposit_return' && $amt > 0) $amt = -$amt;
     $prId = (int)($pr['payment_requests_id'] ?? $pr['id']);
+
+    // Vždy přidat do display listu (pro modal breakdown) – i settled a deposit položky
     if (!isset($paymentRequestsListByContractMonth[$cid])) {
         $paymentRequestsListByContractMonth[$cid] = [];
     }
@@ -426,7 +437,13 @@ foreach ($stmtPrMonth->fetchAll() as $pr) {
         'amount' => $amt,
         'type' => $pr['type'] ?? 'energy',
         'note' => $pr['note'] ?? '',
+        'settled_by_request_id' => $pr['settled_by_request_id'] ?? null,
     ];
+
+    // Do Expected sum přidat JEN pokud není settled a není deposit/deposit_return
+    $skipFromExpected = !empty($pr['settled_by_request_id']) || in_array($type, ['deposit', 'deposit_return']);
+    if ($skipFromExpected) continue;
+
     if (!isset($paymentRequestsByContractMonth[$cid])) {
         $paymentRequestsByContractMonth[$cid] = [];
     }

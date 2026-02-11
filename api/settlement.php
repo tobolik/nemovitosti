@@ -57,6 +57,14 @@ if ($action === 'energy_settlement') {
             'period_month' => $settlementPeriodMonth,
         ]);
         $settlementId = $newId;
+
+        // Mark unpaid/unlinked energy advances as settled by this settlement
+        $stUpd = db()->prepare("
+            UPDATE payment_requests
+            SET settled_by_request_id = ?
+            WHERE contracts_id = ? AND type = 'energy' AND paid_at IS NULL AND payments_id IS NULL AND valid_to IS NULL
+        ");
+        $stUpd->execute([$newId, $contractsId]);
     }
 
     jsonOk([

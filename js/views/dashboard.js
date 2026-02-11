@@ -1010,16 +1010,22 @@ async function openPaymentModal(el) {
         const payAmt = parseFloat(p.amount) || 0;
         const paymentMonthKey = (p.period_year != null && p.period_month != null) ? (String(p.period_year) + '-' + String(p.period_month).padStart(2, '0')) : '';
         const hasBreakdown = linkedIds.length > 0 && linkedReqs.length > 0;
+        const ptCap = p.payment_type || 'rent';
+        const isDepositPayment = (ptCap === 'deposit' || ptCap === 'deposit_return');
         if (!hasBreakdown) {
             return (effectiveMonthKey(p) === monthKey) ? payAmt : 0;
         }
         // Budget-based allocation: cap linked request amounts so total doesn't exceed payment
         // Skip cap for deposit/deposit_return – settlement can legitimately exceed payment
-        const ptCap = p.payment_type || 'rent';
-        const shouldCap = (ptCap !== 'deposit' && ptCap !== 'deposit_return');
+        const shouldCap = !isDepositPayment;
         let sum = 0;
         let budget = payAmt;
         linkedReqs.forEach(r => {
+            const rType = r.type || '';
+            // Skip deposit/deposit_return a settled linked requests z alokace (mirror PHP)
+            if (rType === 'deposit' || rType === 'deposit_return') return;
+            if (r.settled_by_request_id) return;
+
             let rAmt = parseFloat(r.amount) || 0;
             // Cap: don't allocate more than remaining budget (only for non-deposit)
             if (shouldCap && payAmt >= 0 && rAmt > 0) {
@@ -1031,8 +1037,8 @@ async function openPaymentModal(el) {
             const reqMonthKey = r.due_date ? String(r.due_date).slice(0, 7) : '';
             if (reqMonthKey === monthKey) sum += rAmt;
         });
-        // Positive remainder goes to payment's period month
-        if (budget > 0 && paymentMonthKey === monthKey) sum += budget;
+        // Positive remainder goes to payment's period month – but DROP for deposit payments
+        if (!isDepositPayment && budget > 0 && paymentMonthKey === monthKey) sum += budget;
         return sum;
     }
     const sumForMonth = forMonth.reduce((s, p) => s + amountContributingToMonth(p), 0);
@@ -1194,9 +1200,15 @@ async function openPaymentModal(el) {
             const paymentMonthKey = (p.period_year != null && p.period_month != null) ? (String(p.period_year) + '-' + String(p.period_month).padStart(2, '0')) : '';
             // Budget-based capping for breakdown rows (same logic as amountContributingToMonth)
             // Skip cap for deposit/deposit_return – settlement can legitimately exceed payment
-            const shouldCapBreakdown = (pt !== 'deposit' && pt !== 'deposit_return');
+            const isDepositPt = (pt === 'deposit' || pt === 'deposit_return');
+            const shouldCapBreakdown = !isDepositPt;
             let breakdownBudget = payAmtRaw;
-            const cappedLinked = linkedReqs.map(r => {
+            const cappedLinked = [];
+            linkedReqs.forEach(r => {
+                const rType = r.type || '';
+                // Skip deposit/deposit_return a settled linked requests z alokace (mirror PHP)
+                if (rType === 'deposit' || rType === 'deposit_return') return;
+                if (r.settled_by_request_id) return;
                 let rAmt = parseFloat(r.amount) || 0;
                 if (shouldCapBreakdown && payAmtRaw >= 0 && rAmt > 0) {
                     rAmt = Math.min(rAmt, Math.max(0, Math.round(breakdownBudget * 100) / 100));
@@ -1204,9 +1216,10 @@ async function openPaymentModal(el) {
                     rAmt = Math.max(rAmt, Math.min(0, Math.round(breakdownBudget * 100) / 100));
                 }
                 breakdownBudget = Math.round((breakdownBudget - rAmt) * 100) / 100;
-                return { req: r, cappedAmt: rAmt };
+                cappedLinked.push({ req: r, cappedAmt: rAmt });
             });
-            const remainder = Math.max(0, Math.round(breakdownBudget * 100) / 100);
+            // Remainder: drop for deposit payments (kauce remainder se kompenzuje s deposit_return)
+            const remainder = isDepositPt ? 0 : Math.max(0, Math.round(breakdownBudget * 100) / 100);
             const partsWithMonth = [];
             if (remainder > 0 && periodLabel) partsWithMonth.push({ label: 'Nájem', dateLabel: periodLabelLower, amount: UI.fmt(remainder) + ' Kč', partMonthKey: paymentMonthKey });
             cappedLinked.forEach(({ req: r, cappedAmt }) => {
