@@ -357,9 +357,8 @@ $stmtUnfulfilled = db()->query("
 foreach ($stmtUnfulfilled->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
     $type = $pr['type'] ?? '';
-    // Vyloučit settled zálohy a deposit_return z neuhrazených (deposit se zobrazí jako oranžový badge dokud není zaplacen)
+    // Vyloučit settled zálohy z neuhrazených (deposit i deposit_return se zobrazí jako oranžový badge dokud nejsou zaplaceny)
     if (!empty($pr['settled_by_request_id'])) continue;
-    if ($type === 'deposit_return') continue;
     $monthKey = date('Y-m', strtotime($pr['due_date']));
     if (!isset($hasUnfulfilledByContractMonth[$cid])) {
         $hasUnfulfilledByContractMonth[$cid] = [];

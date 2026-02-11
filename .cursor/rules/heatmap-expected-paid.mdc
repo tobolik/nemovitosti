@@ -16,7 +16,7 @@ Požadavky typu `deposit` a `deposit_return` jsou VŽDY vyloučeny z:
 - `paymentRequestsSumByContract` (celkový Expected)
 - `paymentRequestsByContractMonth` (měsíční Expected)
 
-**Ale:** Neuhrazený `deposit` (paid_at IS NULL) se ZOBRAZUJE v nesplněných požadavcích (oranžový badge). Po zaplacení zmizí. `deposit_return` je vyloučen i z nesplněných.
+**Ale:** Neuhrazený `deposit` i `deposit_return` (paid_at IS NULL) se ZOBRAZUJÍ v nesplněných požadavcích (oranžový badge). Po zaplacení/uhrazení zmizí.
 
 Kauce není závazek nájemce pro Expected. Kdybys ji počítal do Expected, zkreslí se bilance.
 
