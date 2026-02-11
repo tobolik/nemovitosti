@@ -67,6 +67,7 @@ foreach ($ids as $rawId) {
         ? strtoupper(substr(trim($imp['currency']), 0, 3)) : 'CZK';
     $uid = $_SESSION['uid'] ?? null;
     $firstPaymentEntityId = null;
+    $paymentEntityIdByMonth = []; // [$y_$m] => entity_id
     foreach ($months as [$y, $m]) {
         $payData = [
             'contracts_id'        => $cid,
@@ -84,9 +85,11 @@ foreach ($ids as $rawId) {
             'approved_at'         => date('Y-m-d H:i:s'),
         ];
         $newId = softInsert('payments', $payData);
+        $payRow = findActive('payments', $newId);
+        $payEid = (int)($payRow['payments_id'] ?? $payRow['id']);
+        $paymentEntityIdByMonth[$y . '_' . $m] = $payEid;
         if ($firstPaymentEntityId === null) {
-            $firstPay = findActive('payments', $newId);
-            $firstPaymentEntityId = (int)($firstPay['payments_id'] ?? $firstPay['id']);
+            $firstPaymentEntityId = $payEid;
         }
         $created++;
     }
@@ -106,8 +109,7 @@ foreach ($ids as $rawId) {
             $stAutoLink->execute([$cid, $yLink, $mLink]);
             $prAutoLink = $stAutoLink->fetch(PDO::FETCH_ASSOC);
             if ($prAutoLink) {
-                $payRow = findActive('payments', db()->lastInsertId() ?: 0);
-                $payEid = $payRow ? (int)($payRow['payments_id'] ?? $payRow['id']) : $firstPaymentEntityId;
+                $payEid = $paymentEntityIdByMonth[$yLink . '_' . $mLink] ?? $firstPaymentEntityId;
                 softUpdate('payment_requests', (int)$prAutoLink['id'], ['payments_id' => $payEid, 'paid_at' => $paymentDate ?: date('Y-m-d')]);
             }
         }
