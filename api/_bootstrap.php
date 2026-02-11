@@ -70,7 +70,16 @@ function db(): PDO {
         session_set_cookie_params(SESSION_LIFE, '/', '', $secure, true);
     }
     session_name(SESSION_NAME);
+    $useDbSessions = false;
     if (defined('SESSION_USE_DB') && SESSION_USE_DB) {
+        try {
+            $r = db()->query("SHOW TABLES LIKE '_sessions'");
+            $useDbSessions = $r && $r->rowCount() > 0;
+        } catch (Throwable $e) {
+            error_log('[session] _sessions table check failed: ' . $e->getMessage());
+        }
+    }
+    if ($useDbSessions) {
         $handler = new class implements \SessionHandlerInterface {
             public function open(string $path, string $name): bool { return true; }
             public function close(): bool { return true; }

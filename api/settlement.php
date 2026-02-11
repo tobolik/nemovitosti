@@ -429,7 +429,8 @@ if ($action === 'energy_settlement') {
 
     $paidSum = 0.0;
     foreach ($energyRequests as $er) {
-        if (!empty($er['paid_at'])) {
+        // Uhrazeno = má paid_at nebo je propojeno s platbou (payments_id)
+        if (!empty($er['paid_at']) || !empty($er['payments_id'])) {
             $paidSum += (float)$er['amount'];
         }
     }
@@ -458,7 +459,8 @@ if ($action === 'energy_settlement') {
         $settlementRequestEntityId = (int)($newPrRow['payment_requests_id'] ?? $newId);
         $settlementId = $settlementRequestEntityId;
 
-        $stEnergy = db()->prepare("SELECT id FROM payment_requests WHERE contracts_id = ? AND type = 'energy' AND paid_at IS NULL AND payments_id IS NULL AND valid_to IS NULL");
+        // Označit jako settled pouze neuhrazené zálohy (bez platby i bez paid_at)
+        $stEnergy = db()->prepare("SELECT id FROM payment_requests WHERE contracts_id = ? AND type = 'energy' AND (paid_at IS NULL AND payments_id IS NULL) AND valid_to IS NULL");
         $stEnergy->execute([$contractsId]);
         foreach ($stEnergy->fetchAll(PDO::FETCH_ASSOC) as $row) {
             softUpdate('payment_requests', (int)$row['id'], ['settled_by_request_id' => $settlementRequestEntityId]);
