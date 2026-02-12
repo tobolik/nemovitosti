@@ -4,7 +4,7 @@
 #
 # Secrets (Settings → Secrets and variables → Actions):
 #   RAILWAY_URL  - URL Railway aplikace (např. https://xxx.up.railway.app) – bez koncového lomítka
-#   MIGRATE_KEY - stejný klíč jako v config / Variables na Railway
+#   MIGRATE_KEY  - stejný klíč jako v config / Variables na Railway
 #
 # Uprav branch v 'on.push.branches' podle větve, ze které Railway deployuje.
 
