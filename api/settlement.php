@@ -32,7 +32,7 @@ if ($action === 'settlements_list') {
     $st->execute($params);
     $settlements = $st->fetchAll(PDO::FETCH_ASSOC);
 
-    // Přidat items ke každému settlement
+    // Přidat items a settlement_request info ke každému settlement
     $stItems = db()->prepare("
         SELECT si.payment_requests_id, pr.amount, pr.type AS pr_type, pr.note AS pr_note, pr.due_date, pr.paid_at, pr.period_year, pr.period_month
         FROM settlement_items si
@@ -43,6 +43,19 @@ if ($action === 'settlements_list') {
         $s['entity_id'] = (int)($s['settlements_id'] ?? $s['id']);
         $stItems->execute([$s['entity_id']]);
         $s['items'] = $stItems->fetchAll(PDO::FETCH_ASSOC);
+        $sprId = (int)($s['settlement_request_id'] ?? 0);
+        $s['settlement_request'] = null;
+        if ($sprId) {
+            $spr = findActiveByEntityId('payment_requests', $sprId);
+            if ($spr) {
+                $s['settlement_request'] = [
+                    'entity_id' => (int)($spr['payment_requests_id'] ?? $sprId),
+                    'amount'    => (float)$spr['amount'],
+                    'paid_at'   => $spr['paid_at'] ?? null,
+                    'note'      => $spr['note'] ?? null,
+                ];
+            }
+        }
     }
     unset($s);
 
@@ -75,6 +88,7 @@ if ($action === 'settlement_save') {
 
     // ── Načíst vybrané požadavky a spočítat součet záloh ──
     $advancesSum = 0.0;
+    $paidSum = 0.0;
     $selectedRequests = [];
     foreach ($requestIds as $reqEntityId) {
         $pr = findActiveByEntityId('payment_requests', $reqEntityId);
@@ -88,11 +102,17 @@ if ($action === 'settlement_save') {
 
         $selectedRequests[] = $pr;
         $advancesSum += (float)$pr['amount'];
+        if ($type === 'energy' && (!empty($pr['paid_at']) || !empty($pr['payments_id']))) {
+            $paidSum += (float)$pr['amount'];
+        }
     }
     $advancesSum = round($advancesSum, 2);
+    $paidSum = round($paidSum, 2);
 
     // ── Výpočet rozdílu ──
-    $settlementAmount = round($actualAmount - $advancesSum, 2);
+    $settlementAmount = ($type === 'energy')
+        ? round($actualAmount - $paidSum, 2)
+        : round($actualAmount - $advancesSum, 2);
     // energy: kladný = nedoplatek, záporný = přeplatek
     // deposit: actual_amount = kolik z kauce pokrýt (advancesSum = součet dluhů) → záporný rest = vrátit
 
@@ -119,9 +139,9 @@ if ($action === 'settlement_save') {
 
         $prType = $type === 'deposit' ? 'deposit_return' : 'settlement';
         $prAmount = $type === 'deposit' ? -abs($settlementAmount) : $settlementAmount;
-
-        $prNote = $requestLabel . ' (skutečnost ' . number_format($actualAmount, 0, ',', ' ')
-            . ' – zálohy ' . number_format($advancesSum, 0, ',', ' ') . ')';
+        $prNote = $type === 'energy'
+            ? $requestLabel . ' (skutečnost ' . number_format($actualAmount, 0, ',', ' ') . ' – uhrazené zálohy ' . number_format($paidSum, 0, ',', ' ') . ')'
+            : $requestLabel . ' (skutečnost ' . number_format($actualAmount, 0, ',', ' ') . ' – zálohy ' . number_format($advancesSum, 0, ',', ' ') . ')';
 
         $newPrId = softInsert('payment_requests', [
             'contracts_id' => $contractsId,
@@ -232,6 +252,7 @@ if ($action === 'settlement_update') {
     }
 
     // ── Načíst nové/stávající požadavky ──
+    $paidSum = 0.0;
     if ($requestIds !== null) {
         $advancesSum = 0.0;
         $selectedRequests = [];
@@ -247,14 +268,24 @@ if ($action === 'settlement_update') {
 
             $selectedRequests[] = $pr;
             $advancesSum += (float)$pr['amount'];
+            if ($type === 'energy' && (!empty($pr['paid_at']) || !empty($pr['payments_id']))) {
+                $paidSum += (float)$pr['amount'];
+            }
         }
         $advancesSum = round($advancesSum, 2);
+        $paidSum = round($paidSum, 2);
     } else {
         $advancesSum = (float)$settlement['advances_sum'];
         $selectedRequests = [];
+        // Při editaci bez změny request_ids: paidSum = actual - settlement (ze stávajícího)
+        if ($type === 'energy') {
+            $paidSum = round((float)$settlement['actual_amount'] - (float)$settlement['settlement_amount'], 2);
+        }
     }
 
-    $settlementAmount = round($actualAmount - $advancesSum, 2);
+    $settlementAmount = ($type === 'energy')
+        ? round($actualAmount - $paidSum, 2)
+        : round($actualAmount - $advancesSum, 2);
 
     // ── Smazat/aktualizovat starý payment_request ──
     if ($oldRequestId) {
@@ -286,8 +317,9 @@ if ($action === 'settlement_update') {
 
         $prType = $type === 'deposit' ? 'deposit_return' : 'settlement';
         $prAmount = $type === 'deposit' ? -abs($settlementAmount) : $settlementAmount;
-        $prNote = $requestLabel . ' (skutečnost ' . number_format($actualAmount, 0, ',', ' ')
-            . ' – zálohy ' . number_format($advancesSum, 0, ',', ' ') . ')';
+        $prNote = $type === 'energy'
+            ? $requestLabel . ' (skutečnost ' . number_format($actualAmount, 0, ',', ' ') . ' – uhrazené zálohy ' . number_format($paidSum, 0, ',', ' ') . ')'
+            : $requestLabel . ' (skutečnost ' . number_format($actualAmount, 0, ',', ' ') . ' – zálohy ' . number_format($advancesSum, 0, ',', ' ') . ')';
 
         $newPrId = softInsert('payment_requests', [
             'contracts_id' => $contractsId,

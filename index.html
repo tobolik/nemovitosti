@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=2.6.13">
+<link rel="stylesheet" href="css/style.css?v=2.6.15">
 </head>
 <body>
 
@@ -30,7 +30,7 @@
     </div>
     <div id="login-error"></div>
     <button class="btn-login" id="btn-login">Přihlásit se</button>
-    <p class="login-version">Verze <span class="footer-version">v2.6.13</span></p>
+    <p class="login-version">Verze <span class="footer-version">v2.6.15</span></p>
   </div>
 </div>
 
@@ -64,7 +64,7 @@
       <div class="sidebar-footer">
         <div class="sidebar-footer-top">
           <span class="sidebar-user" id="nav-username"></span>
-          <span class="sidebar-version">v2.6.13</span>
+          <span class="sidebar-version">v2.6.15</span>
         </div>
         <button class="btn-logout" id="btn-logout">Odhlásit se</button>
       </div>
@@ -713,7 +713,7 @@
       <div class="form-row">
         <div class="fg"><label>Skutečná částka (Kč) *</label><input type="number" id="settlement-form-actual" step="0.01" min="0" placeholder="např. 1700"></div>
         <div class="fg"><label>Součet záloh</label><input type="text" id="settlement-form-advances" readonly class="input-readonly"></div>
-        <div class="fg"><label>Rozdíl (nedoplatek/přeplatek)</label><input type="text" id="settlement-form-diff" readonly class="input-readonly"></div>
+        <div class="fg"><label>Rozdíl (nedoplatek/přeplatek)</label><input type="text" id="settlement-form-diff" readonly class="input-readonly"><div id="settlement-form-diff-info" class="text-muted" style="font-size:.8rem;margin-top:4px"></div></div>
       </div>
       <div class="fg"><label>Název požadavku na platbu</label><input type="text" id="settlement-form-req-label" placeholder="Předvyplněno automaticky"></div>
       <div class="fg"><label>Poznámka</label><textarea id="settlement-form-note" rows="2"></textarea></div>
@@ -794,17 +794,17 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=2.6.13"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=2.6.13"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=2.6.13"></script>
-<script src="js/app.js?v=2.6.13"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=2.6.13"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=2.6.13"></script>
-<script src="js/views/tenants.js?v=2.6.13"></script>
-<script src="js/views/contracts.js?v=2.6.13"></script>
-<script src="js/views/payments.js?v=2.6.13"></script>
-<script src="js/views/bank_accounts.js?v=2.6.13"></script>
-<script src="js/views/payment_imports.js?v=2.6.13"></script>
-<script src="js/views/users.js?v=2.6.13"></script>
+<script src="js/api.js?v=2.6.15"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=2.6.15"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=2.6.15"></script>
+<script src="js/app.js?v=2.6.15"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=2.6.15"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=2.6.15"></script>
+<script src="js/views/tenants.js?v=2.6.15"></script>
+<script src="js/views/contracts.js?v=2.6.15"></script>
+<script src="js/views/payments.js?v=2.6.15"></script>
+<script src="js/views/bank_accounts.js?v=2.6.15"></script>
+<script src="js/views/payment_imports.js?v=2.6.15"></script>
+<script src="js/views/users.js?v=2.6.15"></script>
 </body>
 </html>

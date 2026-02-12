@@ -4,7 +4,16 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.13 (aktuální)
+## v2.6.15 (aktuální)
+
+- **Fix vyúčtování energií:** ROZDÍL (nedoplatek/přeplatek) se počítá z uhrazených záloh, ne ze součtu všech záloh; badge „Uhrazeno“ zobrazuje datum úhrady; při editaci info „Zaevidováno v požadavcích, uhrazeno dd.mm.yyyy“
+- **Migrace:** Logika 062 a 065 přesunuta přímo do souborů migrací (odebrána z _bootstrap.php); migrace 066 odstraněna (data uživatel opraví sám)
+
+## v2.6.14
+
+- **Fix migrace 065:** Správný výpočet `actual_amount` = uhrazené zálohy + doplatek; migrace přeskočí settlements bez záloh
+
+## v2.6.13
 
 - **Migrace:** `migrate.php` zpracovává všechny .sql i .php z migrations/ – jednotný systém, každá migrace jen jednou (_migrations); odstraněny speciální endpointy migrate-062.php a migrate-065.php
 

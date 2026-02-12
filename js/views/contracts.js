@@ -411,6 +411,7 @@ const ContractsView = (() => {
                     amount: parseFloat(it.amount) || 0,
                     label: (it.note || 'Energie') + (it.period_year && it.period_month ? ' ' + it.period_month + '/' + it.period_year : ''),
                     paid: !!it.paid_at,
+                    paid_at: it.paid_at || null,
                     in_settlement: it.in_settlement,
                     settled_by: it.settled_by_request_id,
                 }));
@@ -458,7 +459,7 @@ const ContractsView = (() => {
                 let html = '<div style="margin-bottom:6px;font-weight:600">Zahrnuté zálohy / požadavky:</div>';
                 filteredItems.forEach(it => {
                     const checked = isEdit ? existingItemIds.includes(it.entity_id) : true;
-                    const paidTag = it.paid ? ' <span class="badge badge-ok" style="font-size:.7rem">uhrazeno</span>' : '';
+                    const paidTag = it.paid ? ' <span class="badge badge-ok" style="font-size:.7rem">Uhrazeno' + (it.paid_at ? ' (' + UI.fmtDate(it.paid_at) + ')' : '') + '</span>' : '';
                     html += '<label style="display:block;padding:3px 0;cursor:pointer">' +
                         '<input type="checkbox" class="settle-item-cb" data-id="' + it.entity_id + '" data-amount="' + it.amount + '"' + (checked ? ' checked' : '') + '> ' +
                         UI.esc(it.label) + ': <strong>' + UI.fmt(it.amount) + ' Kč</strong>' + paidTag + '</label>';
@@ -468,16 +469,24 @@ const ContractsView = (() => {
         }
 
         // Funkce pro update součtů
+        const diffInfoEl = document.getElementById('settlement-form-diff-info');
         const updateSums = () => {
             let sum = 0;
+            let paidSum = 0;
             if (itemsEl) {
                 itemsEl.querySelectorAll('.settle-item-cb:checked').forEach(cb => {
-                    sum += parseFloat(cb.dataset.amount) || 0;
+                    const amt = parseFloat(cb.dataset.amount) || 0;
+                    const id = parseInt(cb.dataset.id, 10);
+                    sum += amt;
+                    if (type === 'energy') {
+                        const item = filteredItems.find(it => it.entity_id === id);
+                        if (item?.paid) paidSum += amt;
+                    }
                 });
             }
             if (advancesEl) advancesEl.value = UI.fmt(sum) + ' Kč';
             const actual = parseFloat(actualEl?.value) || 0;
-            const diff = actual - sum;
+            const diff = (type === 'energy') ? (actual - paidSum) : (actual - sum);
             if (diffEl) {
                 if (Math.abs(diff) < 0.005) {
                     diffEl.value = 'Vyrovnáno';
@@ -488,6 +497,16 @@ const ContractsView = (() => {
                 } else {
                     diffEl.value = UI.fmt(Math.abs(diff)) + ' Kč (přeplatek)';
                     diffEl.style.color = '#16a34a';
+                }
+            }
+            if (diffInfoEl) {
+                if (isEdit && existingSettlement?.settlement_request) {
+                    const sr = existingSettlement.settlement_request;
+                    const parts = ['Zaevidováno v požadavcích'];
+                    if (sr.paid_at) parts.push('uhrazeno ' + UI.fmtDate(sr.paid_at));
+                    diffInfoEl.textContent = parts.join(', ');
+                } else {
+                    diffInfoEl.textContent = '';
                 }
             }
         };
