@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=2.6.15">
+<link rel="stylesheet" href="css/style.css?v=2.6.16">
 </head>
 <body>
 
@@ -30,7 +30,7 @@
     </div>
     <div id="login-error"></div>
     <button class="btn-login" id="btn-login">Přihlásit se</button>
-    <p class="login-version">Verze <span class="footer-version">v2.6.15</span></p>
+    <p class="login-version">Verze <span class="footer-version">v2.6.16</span></p>
   </div>
 </div>
 
@@ -64,7 +64,7 @@
       <div class="sidebar-footer">
         <div class="sidebar-footer-top">
           <span class="sidebar-user" id="nav-username"></span>
-          <span class="sidebar-version">v2.6.15</span>
+          <span class="sidebar-version">v2.6.16</span>
         </div>
         <button class="btn-logout" id="btn-logout">Odhlásit se</button>
       </div>
@@ -672,6 +672,10 @@
     <div class="fg"><label>Částka (Kč) *</label><input type="number" id="pay-req-amount" step="0.01" placeholder="kladná = příjem, záporná = výdej"></div>
     <div class="fg"><label>Typ</label><select id="pay-req-type"><option value="rent">Nájem</option><option value="energy">Energie</option><option value="settlement">Vyúčtování</option><option value="deposit">Kauce</option><option value="deposit_return">Vrácení kauce</option><option value="other">Jiné</option></select></div>
     <div class="fg"><label>Splatnost (volitelně)</label><input type="date" id="pay-req-due-date"></div>
+    <div class="fg" id="pay-req-paid-at-wrap" style="display:none">
+      <label>Datum úhrady</label>
+      <input type="date" id="pay-req-paid-at" title="Skutečné datum, kdy byl požadavek uhrazen">
+    </div>
     <div class="fg"><label>Poznámka</label><input type="text" id="pay-req-note" placeholder="např. Vyúčtování 2025"></div>
     <div class="fg" id="pay-req-link-wrap" style="display:none">
       <label>Propojená platba</label>
@@ -794,17 +798,17 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=2.6.15"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=2.6.15"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=2.6.15"></script>
-<script src="js/app.js?v=2.6.15"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=2.6.15"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=2.6.15"></script>
-<script src="js/views/tenants.js?v=2.6.15"></script>
-<script src="js/views/contracts.js?v=2.6.15"></script>
-<script src="js/views/payments.js?v=2.6.15"></script>
-<script src="js/views/bank_accounts.js?v=2.6.15"></script>
-<script src="js/views/payment_imports.js?v=2.6.15"></script>
-<script src="js/views/users.js?v=2.6.15"></script>
+<script src="js/api.js?v=2.6.16"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=2.6.16"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=2.6.16"></script>
+<script src="js/app.js?v=2.6.16"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=2.6.16"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=2.6.16"></script>
+<script src="js/views/tenants.js?v=2.6.16"></script>
+<script src="js/views/contracts.js?v=2.6.16"></script>
+<script src="js/views/payments.js?v=2.6.16"></script>
+<script src="js/views/bank_accounts.js?v=2.6.16"></script>
+<script src="js/views/payment_imports.js?v=2.6.16"></script>
+<script src="js/views/users.js?v=2.6.16"></script>
 </body>
 </html>

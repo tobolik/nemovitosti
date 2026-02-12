@@ -18,7 +18,7 @@ $FIELDS = [
     'payments'   => ['contracts_id','period_year','period_month','amount','currency','payment_date','note','counterpart_account','bank_transaction_id','payment_batch_id','payment_method','bank_accounts_id','payment_type','approved_at'],
     'bank_accounts' => ['name','account_number','currency','is_primary','sort_order','fio_token'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
-    'payment_requests' => ['contracts_id','amount','type','note','due_date','period_year','period_month'],
+    'payment_requests' => ['contracts_id','amount','type','note','due_date','period_year','period_month','paid_at'],
     'payment_imports' => ['bank_accounts_id','payment_date','amount','currency','counterpart_account','note','fio_transaction_id','contracts_id','period_year','period_month','period_year_to','period_month_to','payment_type','payment_request_id'],
 ];
 
@@ -44,7 +44,7 @@ $FIELD_LABELS = [
     'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','currency'=>'Měna','payment_date'=>'Datum platby','note'=>'Poznámka','counterpart_account'=>'Číslo protiúčtu','payment_method'=>'Způsob platby','bank_accounts_id'=>'Bankovní účet','payment_type'=>'Typ platby','approved_at'=>'Schváleno'],
     'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu','currency'=>'Měna','fio_token'=>'FIO API token'],
     'contract_rent_changes' => ['contracts_id'=>'Smlouva','amount'=>'Částka','effective_from'=>'Platné od'],
-    'payment_requests' => ['contracts_id'=>'Smlouva','amount'=>'Částka','type'=>'Typ','note'=>'Poznámka','due_date'=>'Splatnost','period_year'=>'Rok období','period_month'=>'Měsíc období'],
+    'payment_requests' => ['contracts_id'=>'Smlouva','amount'=>'Částka','type'=>'Typ','note'=>'Poznámka','due_date'=>'Splatnost','period_year'=>'Rok období','period_month'=>'Měsíc období','paid_at'=>'Datum úhrady'],
     'payment_imports' => ['contracts_id'=>'Smlouva','period_year'=>'Rok od','period_month'=>'Měsíc od','period_year_to'=>'Rok do','period_month_to'=>'Měsíc do','currency'=>'Měna','payment_type'=>'Typ platby','payment_request_id'=>'Požadavek na platbu'],
 ];
 
@@ -703,6 +703,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (isset($data['due_date']) && $data['due_date'] === '') $data['due_date'] = null;
         if (isset($data['due_date']) && $data['due_date'] !== null) {
             $e = validateDateField($data['due_date'], 'Splatnost');
+            if ($e) jsonErr($e);
+        }
+        if (isset($data['paid_at']) && $data['paid_at'] === '') $data['paid_at'] = null;
+        if (isset($data['paid_at']) && $data['paid_at'] !== null) {
+            $e = validateDateField($data['paid_at'], 'Datum úhrady');
             if ($e) jsonErr($e);
         }
     }

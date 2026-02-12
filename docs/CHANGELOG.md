@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.15 (aktuální)
+## v2.6.16 (aktuální)
+
+- **Požadavky na platbu:** Přidáno pole „Datum úhrady“ v editaci uhrazeného požadavku – umožňuje opravit datum (např. u nedoplatku uhrazeného z kauce, kde se jinak zobrazovalo datum uložení)
+
+## v2.6.15
 
 - **Fix vyúčtování energií:** ROZDÍL (nedoplatek/přeplatek) se počítá z uhrazených záloh, ne ze součtu všech záloh; badge „Uhrazeno“ zobrazuje datum úhrady; při editaci info „Zaevidováno v požadavcích, uhrazeno dd.mm.yyyy“
 - **Migrace:** Logika 062 a 065 přesunuta přímo do souborů migrací (odebrána z _bootstrap.php); migrace 066 odstraněna (data uživatel opraví sám)

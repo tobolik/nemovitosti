@@ -651,6 +651,11 @@ function initPaymentRequestModal() {
                 note: (noteEl.value || '').trim() || null,
                 due_date: dueDate,
             };
+            const paidAtWrap = document.getElementById('pay-req-paid-at-wrap');
+            const paidAtEl = document.getElementById('pay-req-paid-at');
+            if (editId && paidAtWrap && paidAtWrap.style.display !== 'none') {
+                payload.paid_at = (paidAtEl && paidAtEl.value) ? paidAtEl.value.trim() : null;
+            }
             btnSave.disabled = true;
             try {
                 if (editId) {
@@ -784,6 +789,10 @@ async function openAddPaymentRequestModal(contractId) {
         editIdEl.value = '';
         const linkWrapAdd = document.getElementById('pay-req-link-wrap');
         if (linkWrapAdd) linkWrapAdd.style.display = 'none';
+        const paidAtWrapAdd = document.getElementById('pay-req-paid-at-wrap');
+        if (paidAtWrapAdd) paidAtWrapAdd.style.display = 'none';
+        const paidAtElAdd = document.getElementById('pay-req-paid-at');
+        if (paidAtElAdd) paidAtElAdd.value = '';
         const closeWithoutWrapAdd = document.getElementById('pay-req-close-without-wrap');
         if (closeWithoutWrapAdd) closeWithoutWrapAdd.style.display = 'none';
         const btnDeleteAdd2 = document.getElementById('btn-pay-req-delete');
@@ -836,6 +845,12 @@ async function openPaymentRequestEdit(paymentRequestId, onSaved) {
         noteEl.value = pr.note ?? '';
         if (dueDateEl) dueDateEl.value = (pr.due_date || '').toString().slice(0, 10);
         if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
+
+        // Datum úhrady – jen u uhrazeného požadavku
+        const paidAtWrap = document.getElementById('pay-req-paid-at-wrap');
+        const paidAtEl = document.getElementById('pay-req-paid-at');
+        if (paidAtWrap) paidAtWrap.style.display = pr.paid_at ? '' : 'none';
+        if (paidAtEl) paidAtEl.value = pr.paid_at ? (pr.paid_at || '').toString().slice(0, 10) : '';
 
         // Sekce „Propojená platba“ – jen v režimu úpravy, platby této smlouvy
         if (linkWrap) linkWrap.style.display = '';
