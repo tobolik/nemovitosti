@@ -5,8 +5,8 @@
 #   FTP_PASSWORD  - FTP heslo
 #   FTP_SERVER_DIR - cílový adresář (např. public_html/) - nutné končit lomítkem
 #   SITE_URL      - URL aplikace (např. https://nemovitosti.tobolik.cz) – pro migraci
-#   MIGRATE_KEY   - tajný klíč pro api/migrate.php a api/migrate-062.php (stejný jako v config.php)
-# Po deployi: 1) migrate.php (všechny .sql v pořadí), 2) migrate-062.php (datová migrace rent požadavků).
+#   MIGRATE_KEY   - tajný klíč pro api/migrate.php (stejný jako v config.php)
+# migrate.php zpracuje všechny .sql i .php z migrations/ – každá migrace jen jednou (_migrations)
 
 name: Deploy na FTP
 
@@ -37,7 +37,7 @@ jobs:
             **/README.md
             **/.gitignore
 
-      - name: Spustit SQL migraci
+      - name: Spustit migrace (SQL + PHP, jednou dle _migrations)
         if: success()
         run: |
           URL="${{ secrets.SITE_URL }}/api/migrate.php?key=${{ secrets.MIGRATE_KEY }}"
@@ -50,19 +50,4 @@ jobs:
             echo "::error::Migrace selhala (HTTP $CODE)"
             exit 1
           fi
-          echo "Migrace OK – nové SQL soubory z migrations/ byly aplikovány."
-
-      - name: Spustit datovou migraci 062 (rent požadavky)
-        if: success()
-        run: |
-          URL="${{ secrets.SITE_URL }}/api/migrate-062.php?key=${{ secrets.MIGRATE_KEY }}"
-          echo "Spouštím migraci 062: $URL"
-          RESP=$(curl -s -w "\n%{http_code}" "$URL")
-          BODY=$(echo "$RESP" | head -n -1)
-          CODE=$(echo "$RESP" | tail -n 1)
-          echo "Response ($CODE): $BODY"
-          if [ "$CODE" != "200" ]; then
-            echo "::error::Migrace 062 selhala (HTTP $CODE)"
-            exit 1
-          fi
-          echo "Migrace 062 OK."
+          echo "Migrace OK."

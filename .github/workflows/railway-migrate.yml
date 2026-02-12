@@ -5,6 +5,7 @@
 # Secrets (Settings → Secrets and variables → Actions):
 #   RAILWAY_URL  - URL Railway aplikace (např. https://xxx.up.railway.app) – bez koncového lomítka
 #   MIGRATE_KEY  - stejný klíč jako v config / Variables na Railway
+# migrate.php zpracuje všechny .sql i .php z migrations/ – každá migrace jen jednou (_migrations)
 #
 # Uprav branch v 'on.push.branches' podle větve, ze které Railway deployuje.
 
@@ -22,7 +23,7 @@ jobs:
       - name: Počkat na dokončení Railway deploye
         run: sleep 90
 
-      - name: Spustit SQL migraci na Railway
+      - name: Spustit migrace na Railway (SQL + PHP, jednou dle _migrations)
         run: |
           URL="${{ secrets.RAILWAY_URL }}/api/migrate.php?key=${{ secrets.MIGRATE_KEY }}"
           echo "Spouštím migraci: $URL"
@@ -35,17 +36,3 @@ jobs:
             exit 1
           fi
           echo "Migrace OK."
-
-      - name: Spustit datovou migraci 062
-        run: |
-          URL="${{ secrets.RAILWAY_URL }}/api/migrate-062.php?key=${{ secrets.MIGRATE_KEY }}"
-          echo "Spouštím migraci 062: $URL"
-          RESP=$(curl -s -w "\n%{http_code}" "$URL")
-          BODY=$(echo "$RESP" | head -n -1)
-          CODE=$(echo "$RESP" | tail -n 1)
-          echo "Response ($CODE): $BODY"
-          if [ "$CODE" != "200" ]; then
-            echo "::error::Migrace 062 selhala (HTTP $CODE)"
-            exit 1
-          fi
-          echo "Migrace 062 OK."

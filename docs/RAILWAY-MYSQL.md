@@ -91,6 +91,10 @@ Workflow `.github/workflows/railway-migrate.yml` spouští migrace po pushu do v
 Pokud Railway deployuje z jiné větve než `feature/rent-as-payment-requests`, uprav v souboru `on.push.branches`.  
 Workflow lze také spustit ručně: **Actions** → **Railway migrations** → **Run workflow**.
 
+**migrate.php:** zpracuje všechny .sql i .php z migrations/ – každá migrace jen jednou (záznam v tabulce `_migrations`).
+
+**Jak ověřit:** tabulka `_migrations` – sloupec `name` obsahuje např. `064_settlements_table.sql`, `062_generate_rent_requests.php`, `065_migrate_existing_settlements.php`.
+
 ---
 
 ## Shrnutí

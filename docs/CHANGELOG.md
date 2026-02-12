@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.12 (aktuální)
+## v2.6.13 (aktuální)
+
+- **Migrace:** `migrate.php` zpracovává všechny .sql i .php z migrations/ – jednotný systém, každá migrace jen jednou (_migrations); odstraněny speciální endpointy migrate-062.php a migrate-065.php
+
+## v2.6.12
 
 - **Railway:** Nový workflow `railway-migrate.yml` – automaticky spouští SQL migrace po pushu do větve (např. feature/rent-as-payment-requests); vyžaduje Secrets `RAILWAY_URL` a `MIGRATE_KEY` v GitHubu
 

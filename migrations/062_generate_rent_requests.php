@@ -4,17 +4,18 @@
  * a propojit existující rent platby s odpovídajícím rent požadavkem.
  *
  * Spuštění:
+ *   - Web: migrate.php zpracuje všechny .php v migrations/ (jednou, dle _migrations)
  *   - CLI: php migrations/062_generate_rent_requests.php
- *   - Web (Railway): GET api/migrate-062.php?key=MIGRATE_KEY
  * Bezpečné pro opakované spuštění (syncRentPaymentRequests je idempotentní).
  */
 declare(strict_types=1);
 
-if (php_sapi_name() !== 'cli') {
-    die("Tento skript lze spustit pouze z příkazové řádky. Na serveru použijte api/migrate-062.php?key=...\n");
+if (!defined('MIGRATE_RUNNING')) {
+    if (php_sapi_name() !== 'cli') {
+        die("Tento skript lze spustit pouze z příkazové řádky. Na serveru použijte api/migrate.php?key=...\n");
+    }
+    require __DIR__ . '/../api/_bootstrap.php';
 }
-
-require __DIR__ . '/../api/_bootstrap.php';
 $_SESSION['uid'] = $_SESSION['uid'] ?? null;
 
 $result = runMigration062();

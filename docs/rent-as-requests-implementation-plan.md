@@ -89,10 +89,10 @@ Plán zásadní předělávky: nájem = požadavky typu `rent` s obdobím, propo
 ### Fáze 4: Migrace dat (jen na kopii DB)
 
 - [x] PHP skript `migrations/062_generate_rent_requests.php` – volá syncRentPaymentRequests + propojuje platby.
-- [x] Web endpoint `api/migrate-062.php?key=MIGRATE_KEY` pro spuštění 062 na Railway (kde není CLI).
+- [x] migrate.php zpracovává i .php migrace (062, 065) – jednotný systém, každá migrace jen jednou.
 - [ ] Spustit na kopii DB. Kontrola heatmapy před a po.
 
-**Jak spustit na Railway dev:** (1) Nejdřív spusť SQL migrace: `GET api/migrate.php?key=MIGRATE_KEY`. (2) Pak spusť 062: `GET api/migrate-062.php?key=MIGRATE_KEY`. Bez provedené migrace 060 sloupce `period_year`/`period_month` v `payment_requests` chybí a 062 i Zúčtování kauce selžou.
+**Jak spustit na Railway dev:** `GET api/migrate.php?key=MIGRATE_KEY` – zpracuje všechny .sql i .php migrace (062, 065) v pořadí, každou jen jednou.
 
 ### Fáze 5: Backend – auto-propojení platby s rent požadavkem
 

@@ -401,6 +401,87 @@ function runMigration062(): array {
     return ['contracts' => count($contracts), 'generated' => $generated, 'linked' => $linked, 'already_linked' => $alreadyLinked, 'no_match' => $noMatch];
 }
 
+/**
+ * Migrace 065: migrovat existující vyúčtování (payment_requests type=settlement) do tabulky settlements.
+ * Idempotentní – přeskočí, pokud settlement pro daný požadavek již existuje.
+ * Vrací pole s počty pro API nebo CLI.
+ */
+function runMigration065(): array {
+    $stSettlements = db()->query("
+        SELECT pr.payment_requests_id, pr.contracts_id, pr.amount, pr.note, pr.due_date,
+               pr.period_year, pr.period_month, pr.valid_from
+        FROM payment_requests pr
+        WHERE pr.type = 'settlement' AND pr.valid_to IS NULL
+        ORDER BY pr.contracts_id, pr.id ASC
+    ");
+    $settlementPRs = $stSettlements->fetchAll(PDO::FETCH_ASSOC);
+    if (empty($settlementPRs)) {
+        return ['created' => 0, 'skipped' => 0, 'total' => 0];
+    }
+    $created = 0;
+    $skipped = 0;
+    foreach ($settlementPRs as $spr) {
+        $contractsId = (int)$spr['contracts_id'];
+        $sprEntityId = (int)$spr['payment_requests_id'];
+        $stCheck = db()->prepare("SELECT id FROM settlements WHERE settlement_request_id = ? AND valid_to IS NULL LIMIT 1");
+        $stCheck->execute([$sprEntityId]);
+        if ($stCheck->fetch()) {
+            $skipped++;
+            continue;
+        }
+        $stAdv = db()->prepare("
+            SELECT payment_requests_id, amount
+            FROM payment_requests
+            WHERE settled_by_request_id = ? AND valid_to IS NULL
+            ORDER BY id ASC
+        ");
+        $stAdv->execute([$sprEntityId]);
+        $advances = $stAdv->fetchAll(PDO::FETCH_ASSOC);
+        $stPaid = db()->prepare("
+            SELECT payment_requests_id, amount
+            FROM payment_requests
+            WHERE contracts_id = ? AND type = 'energy' AND paid_at IS NOT NULL
+                  AND settled_by_request_id IS NULL AND valid_to IS NULL
+                  AND payment_requests_id < ?
+            ORDER BY id ASC
+        ");
+        $stPaid->execute([$contractsId, $sprEntityId]);
+        $paidAdvances = $stPaid->fetchAll(PDO::FETCH_ASSOC);
+        $allAdvances = array_merge($paidAdvances, $advances);
+        $advancesSum = 0.0;
+        foreach ($allAdvances as $a) {
+            $advancesSum += (float)$a['amount'];
+        }
+        $advancesSum = round($advancesSum, 2);
+        $settlementAmount = (float)$spr['amount'];
+        $actualAmount = round($advancesSum + $settlementAmount, 2);
+        $settledAt = $spr['valid_from'] ?? date('Y-m-d H:i:s');
+        $sId = softInsert('settlements', [
+            'contracts_id'          => $contractsId,
+            'type'                  => 'energy',
+            'label'                 => null,
+            'actual_amount'         => $actualAmount,
+            'advances_sum'          => $advancesSum,
+            'settlement_amount'     => $settlementAmount,
+            'settlement_request_id' => $sprEntityId,
+            'settled_at'            => $settledAt,
+            'locked_at'             => $settledAt,
+            'locked_by'             => 1,
+            'note'                  => 'Migrováno z původního systému (migration 065)',
+        ]);
+        $sRow = db()->query("SELECT settlements_id FROM settlements WHERE id = " . (int)$sId)->fetch();
+        $settlementEntityId = (int)($sRow['settlements_id'] ?? $sId);
+        foreach ($allAdvances as $a) {
+            softInsert('settlement_items', [
+                'settlements_id'      => $settlementEntityId,
+                'payment_requests_id' => (int)$a['payment_requests_id'],
+            ]);
+        }
+        $created++;
+    }
+    return ['created' => $created, 'skipped' => $skipped, 'total' => count($settlementPRs)];
+}
+
 /** Vyhledá aktivní řádek podle entity_id (users_id, properties_id, …). */
 function findActiveByEntityId(string $tbl, int $entityId): ?array {
     $eidCol = _entityIdCol($tbl);
