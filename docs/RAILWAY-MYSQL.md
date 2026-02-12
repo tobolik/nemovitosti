@@ -80,6 +80,19 @@ Dump z projektu (např. `sql-dump-2026-02-09.sql`) vytváří databázi `tobolik
 
 ---
 
+## Automatické migrace při každém pushu
+
+Workflow `.github/workflows/railway-migrate.yml` spouští migrace po pushu do větve, ze které Railway deployuje.
+
+**Nastavení v GitHubu (Settings → Secrets):**
+- `RAILWAY_URL` – URL aplikace (např. `https://xxx.up.railway.app`), bez koncového lomítka
+- `MIGRATE_KEY` – stejný klíč jako v Railway Variables
+
+Pokud Railway deployuje z jiné větve než `feature/rent-as-payment-requests`, uprav v souboru `on.push.branches`.  
+Workflow lze také spustit ručně: **Actions** → **Railway migrations** → **Run workflow**.
+
+---
+
 ## Shrnutí
 
 | Krok | Akce |

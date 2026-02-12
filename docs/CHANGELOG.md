@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.11 (aktuální)
+## v2.6.12 (aktuální)
+
+- **Railway:** Nový workflow `railway-migrate.yml` – automaticky spouští SQL migrace po pushu do větve (např. feature/rent-as-payment-requests); vyžaduje Secrets `RAILWAY_URL` a `MIGRATE_KEY` v GitHubu
+
+## v2.6.11
 
 - **Fix:** Heatmapa – zbytek platby (remainder) po alokaci se přidává do měsíce i když je záporný (např. refund); podmínka změněna z `$remainder > 0` na `$remainder != 0` v PHP i v JS (amountContributingToMonth a zobrazení breakdown)
 
