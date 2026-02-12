@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.16 (aktuální)
+## v2.6.17 (aktuální)
+
+- **Fix vyúčtování energií:** Při editaci uhrazeného vyúčtování se již nevytváří nový požadavek (zůstává existující); settlement/deposit_return požadavky používají period_year/month=NULL, aby nekolidovaly s unikátním indexem pro nájem
+
+## v2.6.16
 
 - **Požadavky na platbu:** Přidáno pole „Datum úhrady“ v editaci uhrazeného požadavku – umožňuje opravit datum (např. u nedoplatku uhrazeného z kauce, kde se jinak zobrazovalo datum uložení)
 

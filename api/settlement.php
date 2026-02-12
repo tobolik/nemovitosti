@@ -121,8 +121,9 @@ if ($action === 'settlement_save') {
     $dueDate = ($contractEnd !== null && $contractEnd !== '')
         ? date('Y-m-d', strtotime($contractEnd . ($type === 'deposit' ? ' +14 days' : '')))
         : date('Y-m-d', strtotime('+14 days'));
-    $periodYear = (int)date('Y', strtotime($dueDate));
-    $periodMonth = (int)date('n', strtotime($dueDate));
+    // period_year/month = NULL pro settlement/deposit_return (unikátní idx_rent_contract_period platí jen pro rent)
+    $periodYear = null;
+    $periodMonth = null;
 
     // ── Vytvořit payment_request pro rozdíl (pokud != 0) ──
     $settlementRequestId = null;
@@ -288,23 +289,24 @@ if ($action === 'settlement_update') {
         : round($actualAmount - $advancesSum, 2);
 
     // ── Smazat/aktualizovat starý payment_request ──
-    if ($oldRequestId) {
-        $oldPr = findActiveByEntityId('payment_requests', $oldRequestId);
-        if ($oldPr && empty($oldPr['paid_at'])) {
-            softDelete('payment_requests', (int)$oldPr['id']);
-        }
+    $oldPr = $oldRequestId ? findActiveByEntityId('payment_requests', $oldRequestId) : null;
+    $oldPrPaid = $oldPr && (!empty($oldPr['paid_at']) || !empty($oldPr['payments_id']));
+
+    if ($oldRequestId && $oldPr && !$oldPrPaid) {
+        softDelete('payment_requests', (int)$oldPr['id']);
     }
 
-    // ── Vytvořit nový payment_request pro rozdíl ──
+    // ── Vytvořit nový payment_request pro rozdíl (pouze pokud starý nebyl uhrazen) ──
     $contractEnd = $contract['contract_end'] ?? null;
     $dueDate = ($contractEnd !== null && $contractEnd !== '')
         ? date('Y-m-d', strtotime($contractEnd . ($type === 'deposit' ? ' +14 days' : '')))
         : date('Y-m-d', strtotime('+14 days'));
-    $periodYear = (int)date('Y', strtotime($dueDate));
-    $periodMonth = (int)date('n', strtotime($dueDate));
+    // period_year/month = NULL pro settlement/deposit_return (unikátní idx_rent_contract_period platí jen pro rent)
+    $periodYear = null;
+    $periodMonth = null;
 
-    $settlementRequestId = null;
-    if (abs($settlementAmount) > 0.005) {
+    $settlementRequestId = $oldPrPaid ? $oldRequestId : null;
+    if (abs($settlementAmount) > 0.005 && !$oldPrPaid) {
         if (!$requestLabel) {
             if ($type === 'energy') {
                 $requestLabel = $settlementAmount > 0
@@ -479,9 +481,7 @@ if ($action === 'energy_settlement') {
         $contract = findActiveByEntityId('contracts', $contractsId);
         $contractEnd = $contract['contract_end'] ?? null;
         $settlementDueDate = ($contractEnd !== null && $contractEnd !== '') ? date('Y-m-d', strtotime($contractEnd)) : date('Y-m-d', strtotime('+14 days'));
-        $settlementPeriodYear = ($contractEnd !== null && $contractEnd !== '') ? (int)date('Y', strtotime($contractEnd)) : null;
-        $settlementPeriodMonth = ($contractEnd !== null && $contractEnd !== '') ? (int)date('n', strtotime($contractEnd)) : null;
-
+        // period_year/month = NULL pro settlement (unikátní idx_rent_contract_period platí jen pro rent)
         $newId = softInsert('payment_requests', [
             'contracts_id' => $contractsId,
             'amount'       => $settlementAmount,
@@ -490,8 +490,8 @@ if ($action === 'energy_settlement') {
                 ? 'Vyúčtování energií: nedoplatek (skutečnost ' . number_format($actualAmount, 0, ',', ' ') . ' – zálohy ' . number_format($paidSum, 0, ',', ' ') . ')'
                 : 'Vyúčtování energií: přeplatek (zálohy ' . number_format($paidSum, 0, ',', ' ') . ' – skutečnost ' . number_format($actualAmount, 0, ',', ' ') . ')',
             'due_date'     => $settlementDueDate,
-            'period_year'  => $settlementPeriodYear,
-            'period_month' => $settlementPeriodMonth,
+            'period_year'  => null,
+            'period_month' => null,
         ]);
         $stPr = db()->prepare("SELECT payment_requests_id FROM payment_requests WHERE id = ?");
         $stPr->execute([$newId]);
