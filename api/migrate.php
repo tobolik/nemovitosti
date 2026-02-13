@@ -113,12 +113,13 @@ try {
                 ob_start();
                 /** @noinspection PhpIncludeInspection */
                 require $path;
-                ob_end_clean();
                 $pdo->prepare("INSERT INTO _migrations (name) VALUES (?)")->execute([$name]);
                 $applied++;
                 $appliedList[] = $name;
             } catch (Throwable $e) {
                 $errors[] = "$name: " . $e->getMessage();
+            } finally {
+                if (ob_get_level()) ob_end_clean();
             }
         }
     }

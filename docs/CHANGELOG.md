@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.17 (aktuální)
+## v2.6.18 (aktuální)
+
+- **Fix migrate.php:** Při výjimce v PHP migraci po výstupu se output buffer vždy vyčistí (finally), aby se do JSON odpovědi nedostal smíšený obsah
+
+## v2.6.17
 
 - **Fix vyúčtování energií:** Při editaci uhrazeného vyúčtování se již nevytváří nový požadavek (zůstává existující); settlement/deposit_return požadavky používají period_year/month=NULL, aby nekolidovaly s unikátním indexem pro nájem
 
