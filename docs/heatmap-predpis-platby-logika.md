@@ -1,99 +1,578 @@
-# Heatmapa – skládání předpisů a započtení plateb
+# Heatmapa a přehledy – algoritmus výpočtu Očekáváno / Uhrazeno
 
-Popis toho, jak se v heatmapě (platební kalendář po měsících a nemovitostech) skládá **očekávaná částka** (předpis) a **uhrazená částka** (platby), a kde byl nalezen rozpor oproti datům v dumpu.
+> **Verze dokumentu:** v2.5.4 (únor 2026)
+> **Platí pro:** `api/dashboard.php`, `js/views/dashboard.js`, `api/settlement.php`
 
----
-
-## 1. Požadavky na platbu (předpisy) – `payment_requests`
-
-- **Zdroj:** Tabulka `payment_requests`, řádky s `valid_to IS NULL` a `due_date IS NOT NULL`.
-- **Přiřazení k měsíci:** Měsíc = **`date('Y-m', due_date)`** – tedy předpis se vždy přiřadí do měsíce podle **splatnosti** (`due_date`).
-- **Indexace:**
-  - `paymentRequestsByContractMonth[contracts_id][monthKey]` = součet částek předpisů dané smlouvy se splatností v daném měsíci.
-  - `paymentRequestsByPropertyMonth[properties_id][monthKey]` = součet předpisů všech smluv dané nemovitosti se splatností v daném měsíci (přes `contractToProperty`).
-- **Typy:** `deposit`, `deposit_return`, `energy`, `settlement`, `other`; u `deposit_return` se kladná částka v kódu otočí na zápornou.
-
-**Pro buňku heatmapy (nemovitost + měsíc):**  
-Očekávaná částka z předpisů = **`paymentRequestsByPropertyMonth[propEntityId][monthKey]`** – tedy **všechny** předpisy s `due_date` v tom měsíci u **libovolné** smlouvy dané nemovitosti.
+Tento dokument popisuje **kompletní logiku** výpočtu částek „Očekáváno" (Expected) a „Uhrazeno" (Paid) v heatmapě platebního kalendáře a v přehledu smluv. Je určen pro budoucí agenty/vývojáře, aby při úpravách nerozbili stávající chování.
 
 ---
 
-## 2. Platby – `payments`
+## Obsah
 
-- **Zdroj:** Tabulka `payments`, JOIN na `contracts` (`c.contracts_id = p.contracts_id`, `c.valid_to IS NULL`), `p.valid_to IS NULL`, a buď `p.approved_at IS NOT NULL`, nebo `p.payment_type IN ('deposit','deposit_return','other')`.
-- **Přiřazení k měsíci (klíč `monthKey`):**
-  - **Kauce a vrácení kauce** (`payment_type` = `deposit` / `deposit_return`) a platba má `payment_date`:  
-    **`monthKey = date('Y-m', payment_date)`** – měsíc podle data skutečné platby.
-  - **Ostatní** (nájem, energie, vyúčtování atd.):  
-    **`monthKey = period_year + '-' + period_month`** – měsíc podle období (period).
-- **Indexace:** `paymentsByContract[contracts_id][monthKey]` – platby jsou seskupeny jen **po smlouvách** (entity id smlouvy).
-
-**Pro buňku heatmapy (nemovitost + měsíc):**  
-V současné implementaci se „uhrazeno“ skládá **pouze z plateb smluv, které jsou v daném měsíci aktivní** (viz krok 3 – candidates).
-
----
-
-## 3. Výběr smluv pro měsíc (candidates)
-
-Pro danou nemovitost a měsíc (např. prosinec 2022) se určí **candidates** = smlouvy, které:
-- patří dané nemovitosti (`properties_id` = id nemovitosti),
-- mají alespoň jeden den v tom měsíci:  
-  **`contract_start <= lastDayOfMonth`** a **`contract_end` je NULL nebo `contract_end >= firstOfMonth`**.
-
-Příklad (Byt Interbrigadistů, prosinec 2022):
-- Smlouva **42** (Kinclová): 2021-03-01 až 2022-12-31 → **je candidate**.
-- Smlouva **2** (Bednaříková): začátek 2023-01-01 → **není candidate** (smlouva v prosinci 2022 ještě neběžela).
+1. [Přehled architektury](#1-přehled-architektury)
+2. [Tabulka payment_requests – typy a pravidla](#2-tabulka-payment_requests--typy-a-pravidla)
+3. [Výpočet „Očekáváno" (Expected)](#3-výpočet-očekáváno-expected)
+4. [Výpočet „Uhrazeno" (Paid) – heatmap alokace](#4-výpočet-uhrazeno-paid--heatmap-alokace)
+5. [Vyúčtování energií (energy_settlement)](#5-vyúčtování-energií-energy_settlement)
+6. [Zúčtování kauce (deposit_settlement)](#6-zúčtování-kauce-deposit_settlement)
+7. [Nesplněné požadavky (unfulfilled / oranžový badge)](#7-nesplněné-požadavky-unfulfilled--oranžový-badge)
+8. [Frontend: modal breakdown a mirror logika](#8-frontend-modal-breakdown-a-mirror-logika)
+9. [Deposit indikátor v heatmapě a depozitní účet](#9-deposit-indikátor-v-heatmapě-a-depozitní-účet)
+10. [Kritická pravidla – NIKDY NEROZBIJ](#10-kritická-pravidla--nikdy-nerozbij)
 
 ---
 
-## 4. Skládání buňky heatmapy
+## 1. Přehled architektury
 
-### Když **není** žádný candidate (měsíc bez aktivní smlouvy)
+```
+┌─────────────────────────┐     ┌──────────────────────────┐
+│  payment_requests (DB)  │     │     payments (DB)         │
+│  typy: rent, energy,    │     │  payment_type: rent,      │
+│  deposit, deposit_return│     │  deposit, deposit_return,  │
+│  settlement, other      │     │  energy, other             │
+└────────────┬────────────┘     └────────────┬─────────────┘
+             │                               │
+             │  LEFT JOIN pr ON payments_id   │
+             ▼                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   api/dashboard.php                          │
+│                                                             │
+│  paymentRequestsSumByContract   ── celkové Expected (suma)  │
+│  paymentRequestsByContractMonth ── měsíční Expected (suma)  │
+│  paymentRequestsListByContractMonth ── měsíční display list │
+│  heatmapPaymentsByContract      ── měsíční Paid (alokace)   │
+│  hasUnfulfilledByContractMonth  ── oranžové badges           │
+└─────────────────────────┬───────────────────────────────────┘
+                          │ JSON API
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 js/views/dashboard.js                         │
+│                                                             │
+│  Heatmapa buněk: barva, tooltip, Expected vs Paid           │
+│  Modal breakdown: amountContributingToMonth, renderExisting │
+│  Přehled smluv: total_paid / expected_total, progress bar   │
+└─────────────────────────────────────────────────────────────┘
+```
 
-- Použije se větev „jen platba / jen předpis“.
-- **Očekávané:** pouze `paymentRequestsByPropertyMonth` (nájem 0).
-- **Uhrazené:** platby **všech** smluv dané nemovitosti v tom měsíci (projede se `contractsForProperty` a sčítá se z `paymentsByContract`).  
-→ Kauce zaplacená před začátkem smlouvy se zde započítá správně.
+### Tok dat
 
-### Když **je** alespoň jeden candidate
-
-- **Očekávané:**
-  - Nájem: součet `getExpectedRentForMonth(c, year, m)` pouze pro **candidates**.
-  - Předpisy: **`paymentRequestsByPropertyMonth[propEntityId][monthKey]`** – tedy celá nemovitost, **včetně** předpisů smluv, které v tom měsíci nejsou aktivní (např. kauce splatná 31.12. u smlouvy začínající 1.1.).
-- **Uhrazené (BUG):**  
-  Sčítají se **jen** platby z **candidates** (`$paid = $paymentsByContract[$entityId][$monthKey]` pro každého candidate).  
-  Platby smluv, které v tom měsíci **nejsou** candidates (např. kauce zaplacená 31.12. u smlouvy 2), se **nezapočítají**.
-
----
-
-## 5. Konkrétní rozpor (dump sql-dump-2026-02-08a.sql)
-
-- **Nemovitost:** Byt Interbrigadistů (properties_id = 2).
-- **Měsíc:** 2022-12 (prosinec 2022).
-
-**Předpisy (očekávané):**
-- Předpis kauce smlouvy 2: `contracts_id=2`, `due_date=2022-12-31`, 16 000 Kč → jde do `paymentRequestsByPropertyMonth[2]['2022-12']`.
-- Smlouva 42 v 12/2022: nájem (getExpectedRentForMonth) = 8 900 Kč (nebo 9 400 podle změn nájmu).
-- **Celkem očekávané:** nájem (Kinclová) + 16 000 ≈ 25 400 Kč.
-
-**Platby:**
-- Platba 91: smlouva 2, kauce 16 000, `payment_date=2022-12-31` → v kódu jde do `paymentsByContract[2]['2022-12']`.
-- Platba 458 (nebo odpovídající): smlouva 42, nájem 9 400 za 2022-12 → `paymentsByContract[42]['2022-12']`.
-
-**Co kód dělá:**
-- Candidates pro 2022-12 = jen smlouva 42 (smlouva 2 v prosinci ještě neběží).
-- **Očekávané:** 9 400 + 16 000 = 25 400 ✓ (předpis kauce se bere z property měsíce).
-- **Uhrazené:** bere se jen z candidates → jen platby smlouvy 42 → 9 400. Platba 91 (16 000) se **nezapočítá**, protože smlouva 2 není candidate.
-- **Výsledek:** buňka ukazuje očekávané 25 400, uhrazené 9 400 → „nedoplaceno“ 16 000, i když kauce v dumpu je zaplacená a přiřazená k 12/2022.
-
-**Příčina:** Předpisy se berou na úrovni **nemovitosti + měsíce** (všechny smlouvy), zatímco uhrazené platby se berou jen od **smluv aktivních v tom měsíci**. Kauce (a případně jiné platby) s `payment_date` v daném měsíci, které patří smlouvě ještě neaktivní v tom měsíci, se do „uhrazeno“ nedostanou.
+1. Backend (`dashboard.php`) načte `payment_requests` a `payments` z DB.
+2. Aplikuje **filtrační pravidla** (viz sekce 2) a spočítá Expected i Paid částky za smlouvu a za měsíc.
+3. Výsledek posílá jako JSON do frontendu.
+4. Frontend (`dashboard.js`) renderuje heatmapu a při kliknutí na buňku otevírá modal, kde **znovu spočítá** příspěvek každé platby k danému měsíci pomocí funkce `amountContributingToMonth` (mirror PHP logiky).
 
 ---
 
-## 6. Oprava (implementováno)
+## 2. Tabulka `payment_requests` – typy a pravidla
 
-- **Heatmapa – varianta B:** Pro buňky heatmapy se „uhrazeno“ za měsíc bere z **heatmapPaymentsByPropertyMonth**: platby jsou přiřazeny k měsíci podle **splatnosti (due_date)** propojeného požadavku (`payment_requests.due_date`), ne podle period/payment_date. Má-li platba propojený požadavek, měsíc = `date('Y-m', due_date)`; jinak fallback: platné období → period, jinak payment_date. Kauce se splatností 31. 12. tak spadá do prosince. Ostatní logika (přehled smluv, statistiky) používá dál `paymentsByContract` / `paymentsByPropertyMonth` (period/payment_date).
+### Sloupce relevantní pro výpočty
 
-- Součet „uhrazeno“ zahrnuje kladné i záporné částky (žádné filtrování podle znaménka).
+| Sloupec | Popis |
+|---------|-------|
+| `contracts_id` | Entity ID smlouvy |
+| `amount` | Částka (kladná = dluh nájemce, záporná = přeplatek/vrácení) |
+| `type` | Typ požadavku (viz tabulka níže) |
+| `due_date` | Datum splatnosti – klíč pro přiřazení k měsíci (`YYYY-MM`) |
+| `paid_at` | Datum úhrady (NULL = neuhrazeno) |
+| `payments_id` | Propojení se záznamem platby (entity_id z `payments`) |
+| `settled_by_request_id` | ID settlement požadavku, který tuto zálohu „uzavřel" |
+| `period_year`, `period_month` | Období (u rent, settlement) |
+| `valid_to` | Soft-delete (NULL = aktivní záznam) |
 
-Dokument vytvořen při hledání chyby mezi zobrazením heatmapy a daty v `sql-dump-2026-02-08a.sql`.
+### Typy a jejich role ve výpočtech
+
+| Typ | Počítá se do Expected? | Počítá se do Paid? | Popis |
+|-----|------------------------|--------------------|----|
+| `rent` | ANO (přes `getExpectedRentForMonth`, ne přes `paymentRequestsSumByContract`) | ANO | Měsíční nájem – zpracovává se zvlášť |
+| `energy` | ANO (pokud nemá `settled_by_request_id`) | ANO | Záloha na energie |
+| `settlement` | ANO | ANO | Vyúčtování energií (nedoplatek/přeplatek) |
+| `deposit` | **NE** | informačně (remainder zahozen) | Kauce – není závazek nájemce |
+| `deposit_return` | **NE** | informačně (remainder zahozen) | Vrácení kauce – není závazek nájemce |
+| `other` | ANO | ANO | Ostatní požadavky |
+
+### Role `settled_by_request_id`
+
+- Pokud má energy advance nenulové `settled_by_request_id`, znamená to, že tato záloha byla **pokryta vyúčtováním** energií.
+- Takový záznam **zůstává v DB** (pro historii a zobrazení v modalu), ale je **vyloučen z Expected** a z **nesplněných požadavků**.
+- Nastavuje se automaticky při akci `energy_settlement` (viz sekce 5).
+
+---
+
+## 3. Výpočet „Očekáváno" (Expected)
+
+Expected se skládá ze dvou částí: **nájem** + **předpisy** (payment_requests).
+
+### 3.1 Celkový Expected za smlouvu (`expectedTotalIncl`)
+
+Používá se v přehledu smluv (progress bar „Uhrazeno / Očekáváno").
+
+```
+expectedTotalIncl = rentTotal + paymentRequestsSumByContract[contractId]
+```
+
+- **`rentTotal`**: součet `getExpectedRentForMonth(c, year, month)` za všechny měsíce trvání smlouvy.
+- **`paymentRequestsSumByContract`**: viz níže.
+
+### 3.2 `paymentRequestsSumByContract` (celkový součet předpisů)
+
+**Soubor:** `api/dashboard.php`, řádky ~146–172
+
+**SQL:**
+```sql
+SELECT contracts_id, type, amount, paid_at, settled_by_request_id
+FROM payment_requests
+WHERE valid_to IS NULL AND type != 'rent'
+```
+
+**PHP filtrace (v cyklu):**
+```php
+if (!empty($pr['settled_by_request_id'])) continue;  // settled zálohy
+if (in_array($type, ['deposit', 'deposit_return'])) continue;  // kauce
+```
+
+**Výsledek:** `$paymentRequestsSumByContract[$cid]` = suma všech non-rent, non-deposit, non-settled požadavků dané smlouvy.
+
+### 3.3 Měsíční Expected (`paymentRequestsByContractMonth`)
+
+**Soubor:** `api/dashboard.php`, řádky ~415–464
+
+**SQL:**
+```sql
+SELECT id, payment_requests_id, contracts_id, due_date, amount, type, note, paid_at, settled_by_request_id
+FROM payment_requests
+WHERE valid_to IS NULL AND due_date IS NOT NULL AND type != 'rent'
+```
+
+**PHP logika:**
+
+1. **Vždy** se přidá do `paymentRequestsListByContractMonth` (display list pro modal).
+2. **Jen pokud** NENÍ settled a NENÍ deposit/deposit_return, přidá se do `paymentRequestsByContractMonth` (Expected suma).
+
+```php
+$skipFromExpected = !empty($pr['settled_by_request_id']) || in_array($type, ['deposit', 'deposit_return']);
+// display list: VŽDY
+$paymentRequestsListByContractMonth[$cid][$monthKey][] = [...];
+// Expected suma: JEN pokud $skipFromExpected === false
+if ($skipFromExpected) continue;
+$paymentRequestsByContractMonth[$cid][$monthKey] += $amt;
+```
+
+### 3.4 `getExpectedTotalForMonth` (nájem + předpisy za měsíc)
+
+**Soubor:** `api/dashboard.php`, řádky ~80–86
+
+```php
+function getExpectedTotalForMonth($c, $year, $m, $rentChangesByContract, $paymentRequestsByContractMonth) {
+    $rent = getExpectedRentForMonth($c, $year, $m, $rentChangesByContract);
+    $requests = $paymentRequestsByContractMonth[$entityId][$monthKey] ?? 0;
+    return round($rent + $requests, 2);
+}
+```
+
+### 3.5 Rozlišení dvou datových struktur
+
+| Struktura | Obsah | Účel |
+|-----------|-------|------|
+| `paymentRequestsByContractMonth` | Číselná suma za měsíc (float) | Výpočet Expected |
+| `paymentRequestsListByContractMonth` | Pole objektů (id, amount, type, note, settled_by_request_id) | Zobrazení v modalu (včetně settled a deposit položek) |
+
+**Důvod:** Modal potřebuje zobrazit **všechny** položky (i settled zálohy jako informační), ale do Expected se počítají pouze aktivní závazky.
+
+---
+
+## 4. Výpočet „Uhrazeno" (Paid) – heatmap alokace
+
+### 4.1 Princip
+
+Jedna platba (`payments`) může pokrývat **více měsíců** a **více požadavků** (linked requests). Alokace probíhá podle `due_date` propojených požadavků, nikoliv podle `period_year`/`period_month` platby.
+
+### 4.2 `heatmapPaymentsByContract` (alokační smyčka)
+
+**Soubor:** `api/dashboard.php`, řádky ~212–321
+
+#### Krok 1: Načtení dat
+
+```sql
+SELECT p.payments_id, p.contracts_id, p.period_year, p.period_month,
+       p.amount, p.payment_date, p.payment_type, p.bank_transaction_id,
+       pr.due_date, pr.amount AS pr_amount, pr.type AS pr_type,
+       pr.settled_by_request_id AS pr_settled_by
+FROM payments p
+JOIN contracts c ON c.contracts_id = p.contracts_id AND c.valid_to IS NULL
+LEFT JOIN payment_requests pr ON pr.payments_id = p.payments_id AND pr.valid_to IS NULL
+WHERE p.valid_to IS NULL
+  AND (p.approved_at IS NOT NULL OR p.payment_type IN ('deposit','deposit_return','other'))
+```
+
+#### Krok 2: Seskupení po platbách
+
+Výsledek se seskupí do `$heatmapByPayment[contractId_paymentId]`, každá skupina obsahuje:
+- Metadata platby (`amount`, `period_year`, `period_month`, `payment_date`, `payment_type`)
+- Pole `linked[]` – propojené požadavky (`due_date`, `amount`, `type`, `settled_by_request_id`)
+
+#### Krok 3: Alokace linked requests
+
+Pro každou platbu se iteruje přes `linked[]`:
+
+```php
+$isDepositPayment = in_array($group['payment_type'], ['deposit', 'deposit_return']);
+
+foreach ($group['linked'] as $pr) {
+    // SKIP: deposit/deposit_return linked requests
+    if (in_array($prType, ['deposit', 'deposit_return'])) continue;
+    // SKIP: settled zálohy
+    if (!empty($pr['settled_by_request_id'])) continue;
+
+    $monthKey = date('Y-m', strtotime($pr['due_date']));
+    $amt = (float)$pr['amount'];
+
+    // CAP: pro non-deposit platby, částka nesmí přesáhnout zbývající budget
+    $shouldCap = !$isDepositPayment;
+    if ($shouldCap && $payAmt >= 0 && $amt > 0) {
+        $amt = min($amt, max(0, round($payAmt - $allocated, 2)));
+    }
+    $allocated += $amt;
+
+    $heatmapPaymentsByContract[$eid][$monthKey]['amount'] += $amt;
+}
+```
+
+**Proč se deposit linked requests přeskakují?**
+Platba kauce (18 000 Kč) pokrývá různé požadavky (nájem, energie, settlement). Linked requests u deposit platby zahrnují i samotný `deposit` request, který se **nesmí** počítat do Paid, protože kauce není závazek – je to složená jistota.
+
+#### Krok 4: Remainder (zbytek)
+
+```php
+$remainder = round($payAmt - $allocated, 2);
+
+// Deposit/deposit_return: remainder se ZAHAZUJE
+if (!$isDepositPayment && $remainder > 0) {
+    $monthKey = $periodKey ?: $fallbackMonthKey;
+    $heatmapPaymentsByContract[$eid][$monthKey]['amount'] += $remainder;
+}
+```
+
+**Proč se zahazuje remainder u deposit?**
+Kauce 18 000 Kč pokrývá např. nájmy za 4 500 + 4 500 + settlement 649 = 9 649 Kč. Remainder 8 351 Kč je **vrácená kauce** (bude pokrytá `deposit_return` platbou). Kdybychom remainder přičetli do měsíce platby, uměle by nafoukl „Uhrazeno" v září.
+
+### 4.3 Schéma alokace (příklad)
+
+```
+Platba: 18 000 Kč (deposit), payment_date=2025-09-01
+Linked requests:
+  - deposit 18 000 (type=deposit)     → SKIP (deposit type)
+  - rent 4 500 (due_date=2025-10-01)  → alokace 4 500 do 2025-10
+  - rent 4 500 (due_date=2025-11-01)  → alokace 4 500 do 2025-11
+  - settlement 649 (due_date=2026-01) → alokace 649 do 2026-01
+  - energy 300 (settled_by=555)        → SKIP (settled)
+Allocated: 9 649
+Remainder: 8 351 → ZAHOZEN (deposit payment)
+```
+
+---
+
+## 5. Vyúčtování energií (`energy_settlement`)
+
+**Soubor:** `api/settlement.php`, akce `energy_settlement`
+
+### Postup
+
+1. Načte všechny `energy` advance požadavky pro smlouvu.
+2. Sečte **uhrazené** zálohy (`paid_at IS NOT NULL`) → `$paidSum`.
+3. Spočítá rozdíl: `settlementAmount = actualAmount - paidSum`.
+   - `> 0` → nedoplatek (nájemce dluží)
+   - `< 0` → přeplatek (nájemci vrátit)
+   - `= 0` → vyrovnáno
+4. Vytvoří nový požadavek typu `settlement` s částkou `settlementAmount` a splatností = `contract_end`.
+5. **Označí neuhrazené a nepropojené energy advances:**
+
+```sql
+UPDATE payment_requests
+SET settled_by_request_id = ?
+WHERE contracts_id = ? AND type = 'energy'
+  AND paid_at IS NULL AND payments_id IS NULL AND valid_to IS NULL
+```
+
+### Efekt `settled_by_request_id`
+
+- Neuhrazené energy advances **zůstávají v DB** (viditelné v modalu jako informační položky).
+- Jsou **vyloučeny** z:
+  - Expected sumací (`paymentRequestsSumByContract`, `paymentRequestsByContractMonth`)
+  - Heatmap alokace (linked requests se přeskakují)
+  - Nesplněných požadavků (oranžový badge)
+- **Uhrazené** energy advances (`paid_at IS NOT NULL`) se `settled_by_request_id` nenastavuje – ty se počítají do Expected normálně (byly zaplaceny, takže představovaly skutečný závazek).
+
+---
+
+## 6. Zúčtování kauce (`deposit_settlement`)
+
+**Soubor:** `api/settlement.php`, akce `deposit_settlement`
+
+### Postup
+
+1. Najde platbu kauce (`payments` s `payment_type = 'deposit'`).
+2. Uživatel vybere požadavky, které má kauce pokrýt (`request_ids`).
+3. Propojí vybrané požadavky s platbou kauce:
+   ```php
+   softUpdate('payment_requests', $pr['id'], [
+       'payments_id' => $depositPaymentEntityId,
+       'paid_at'     => $paidAt,
+   ]);
+   ```
+4. Spočítá zbývající kauci: `toReturn = depositAmount - coveredSum`.
+5. Pokud `toReturn > 0`, vytvoří/aktualizuje požadavek `deposit_return` s částkou `-toReturn`.
+6. Pokud je celá kauce spotřebována, smaže neuhrazený `deposit_return`.
+
+### Vazba na heatmapu
+
+- Po zúčtování jsou pokryté požadavky propojeny s deposit platbou (`payments_id`).
+- V heatmap alokaci se deposit platba zpracuje: linked requests typu `deposit`/`deposit_return` se přeskočí, ale linked requests typu `rent`, `settlement`, `energy` (non-settled) se alokují do příslušných měsíců.
+- Remainder deposit platby se zahazuje (nekončí v žádném měsíci).
+
+### Stav „kauce nezúčtována"
+
+Pokud kauce ještě **nebyla zúčtována** (deposit platba nemá žádné linked requests kromě samotného deposit requestu):
+- V heatmapě se **nepočítá** do Paid žádného měsíce (deposit request se přeskočí, remainder se zahodí).
+- V modalu za měsíc platby se zobrazí jako informační položka: „Kauce přijata: 18 000 Kč".
+
+---
+
+## 7. Nesplněné požadavky (unfulfilled / oranžový badge)
+
+**Soubor:** `api/dashboard.php`, řádky ~352–413
+
+### SQL
+
+```sql
+SELECT contracts_id, due_date, amount, type, note, settled_by_request_id
+FROM payment_requests
+WHERE valid_to IS NULL AND due_date IS NOT NULL AND paid_at IS NULL AND type != 'rent'
+ORDER BY due_date ASC
+```
+
+### PHP filtrace
+
+```php
+if (!empty($pr['settled_by_request_id'])) continue;  // settled zálohy
+// deposit i deposit_return PROJDOU – zobrazí se jako oranžový badge dokud nejsou zaplaceny (paid_at IS NULL v SQL)
+```
+
+### Výsledek
+
+- `hasUnfulfilledByContractMonth[$cid][$monthKey] = true` — pro oranžový okraj buňky.
+- `unfulfilledListByContractMonth[$cid][$monthKey][]` — seznam s `label` a `amount` pro tooltip.
+- Agregováno i na úroveň nemovitosti (`hasUnfulfilledByPropertyMonth`, `unfulfilledRequestsByPropertyMonth`).
+- **Deposit (kauce):** neuhrazená kauce se zobrazí jako oranžový badge s textem „Kauce 18 000 Kč". Jakmile je zaplacena (`paid_at` nastaveno), zmizí ze seznamu (SQL filtr `paid_at IS NULL`). Deposit NENÍ v Expected – je jen vizuální indikátor.
+- **Deposit_return (vrácení kauce):** neuhrazené vrácení kauce se zobrazí jako oranžový badge s textem „Vrácení kauce -4 000 Kč". Jakmile je uhrazeno, zmizí. Deposit_return NENÍ v Expected – je jen vizuální indikátor.
+
+### Řazení
+
+Požadavky jsou řazeny dle `due_date ASC` (nejstarší první).
+
+---
+
+## 8. Frontend: modal breakdown a mirror logika
+
+### 8.1 `effectiveMonthKey(p)` – měsíc platby
+
+**Soubor:** `js/views/dashboard.js`, řádky ~870–876
+
+- `deposit` a `deposit_return`: měsíc = `payment_date` (kauce se řadí do měsíce skutečného přijetí/výplaty).
+- Ostatní: měsíc = `period_year-period_month`.
+
+### 8.2 `amountContributingToMonth(p)` – příspěvek platby k měsíci
+
+**Soubor:** `js/views/dashboard.js`, řádky ~1005–1043
+
+Tato funkce **zrcadlí PHP logiku** z `heatmapPaymentsByContract`. Klíčová pravidla:
+
+1. **Bez linked requests:** pokud `effectiveMonthKey(p) === monthKey`, vrátí celou `payAmt`; jinak 0.
+2. **S linked requests (budget-based allocation):**
+   - Inicializuje `budget = payAmt`.
+   - Iteruje přes linked requests:
+     - **SKIP** `deposit` a `deposit_return` typy.
+     - **SKIP** pokud `settled_by_request_id` je nastaveno.
+     - **CAP** (jen pro non-deposit platby): `rAmt = min(rAmt, budget)`.
+     - Odečte `rAmt` z `budget`.
+     - Pokud `reqMonthKey === monthKey`, přičte k `sum`.
+   - **Remainder:** pokud `!isDepositPayment && budget > 0 && paymentMonthKey === monthKey`, přičte k `sum`.
+   - Pro deposit platby: remainder = 0 (zahozen).
+
+### 8.3 `renderExisting()` – breakdown v modalu
+
+**Soubor:** `js/views/dashboard.js`, řádky ~1178–1279
+
+- Zobrazuje seznam plateb pro daný měsíc.
+- Pro každou platbu zobrazuje `contributingAmt` (z `amountContributingToMonth`) a `fullAmt` v závorce, pokud se liší.
+- Breakdown po linked requests: **stejná skip logika** jako v `amountContributingToMonth`.
+- Deposit platby se zobrazují jako informační položky (příspěvek = 0, ale v modalu viditelné).
+- CSS třída `pay-modal-existing-item--outside-month` pro platby, které nepřispívají k danému měsíci.
+
+### 8.4 Display list v modalu (`month_breakdown`)
+
+Backend posílá `paymentRequestsListByContractMonth` jako `month_breakdown` v JSON odpovědi. Obsahuje **všechny** položky (včetně settled a deposit), aby modal mohl zobrazit:
+- Aktivní požadavky (bílé/normální) – počítají se do Expected.
+- Settled zálohy (informační, šedé) – nepočítají se do Expected.
+- Deposit/deposit_return (informační) – nepočítají se do Expected.
+
+### 8.5 Barvy buněk heatmapy
+
+| Stav | CSS třída | Barva |
+|------|-----------|-------|
+| Uhrazeno přesně | `exact` | Zelená |
+| Přeplatek | `overpaid` | Oranžová |
+| Neuhrazeno (minulost) | `unpaid` / `overdue` | Červená |
+| Neuhrazeno (budoucnost) | `future-unpaid` | Neutrální |
+| Uhrazeno předem (budoucnost) | `paid-advance` | Zelená |
+| Nesplněné požadavky | `heatmap-cell-has-requests` | Oranžový okraj |
+
+---
+
+## 9. Deposit indikátor v heatmapě a depozitní účet
+
+### 9.1 Heatmap deposit indicator (Ⓚ ikona)
+
+Kauce a vrácení kauce **nejsou zahrnuty** v číslech heatmapy (ani v Expected, ani v Paid). Přesto je důležité, aby uživatel viděl, že v daném měsíci proběhla kauční transakce.
+
+**Backend:**
+
+1. Po hlavní alokační smyčce se iteruje `$heatmapByPayment` a sbírají se platby s `payment_type IN ('deposit', 'deposit_return')`.
+2. Pro každou se vytvoří záznam `{ type, amount, date }` v poli `$depositEventsByContract[$contractId][$monthKey]`.
+3. Pole se agreguje na úroveň nemovitosti (`$depositEventsByPropertyMonth`).
+4. V obou blocích konstrukce heatmap buněk se přidává `'deposit_events' => $depositEventsByPropertyMonth[...]`.
+
+**Frontend:**
+
+1. Pokud `cell.deposit_events` je neprázdné, zobrazí se ikona `<span class="heatmap-deposit-icon">K</span>` vedle ✓/✗.
+2. Modrý kruh = kauce přijata, oranžový (`deposit-return`) = kauce vrácena.
+3. Ikona má `title` tooltip s detailem: „Kauce přijata: 18 000 Kč (15.09.2025)".
+4. Hlavní tooltip buňky také zobrazuje deposit eventy místo generického textu.
+
+### 9.2 Depozitní účet (dashboard stat card)
+
+Dashboard rozšířené statistiky obsahují objekt `deposit_account`:
+```
+{
+    items: [ { contracts_id, tenant_name, property_name, deposit_amount, deposit_paid_date, deposit_return_date, contract_end, status, balance } ],
+    total_held: Number,      // suma držených kaucí
+    total_to_return: Number,  // suma kaucí k vrácení
+    count_active: Number,     // aktivní smlouvy s kaucí
+    count_to_return: Number   // ukončené smlouvy s nevrácenou kaucí
+}
+```
+
+**Status logika:**
+- `returned`: `deposit_return_date` je nastaven → balance = 0
+- `to_return`: smlouva ukončena (`contract_end <= today`) a `deposit_return_date` je NULL → balance = deposit_amount
+- `active`: smlouva probíhá → balance = deposit_amount
+
+**Frontend:**
+- Jedna stat karta „Držené kauce: X Kč" s rozbalovacím detailem (mini-tabulka).
+- V Přehledu smluv: deposit badge „K 18 000" (modrý = aktivní, oranžový = k vrácení).
+
+---
+
+## 10. Kritická pravidla – NIKDY NEROZBIJ
+
+Následující invarianty musí **vždy platit**. Při jakékoliv úpravě kódu v `dashboard.php`, `dashboard.js` nebo `settlement.php` ověř, že žádný z nich není porušen.
+
+### INV-1: Deposit a deposit_return se NIKDY nepočítají do Expected
+
+```
+Požadavky typu 'deposit' a 'deposit_return' jsou VŽDY vyloučeny z:
+- paymentRequestsSumByContract
+- paymentRequestsByContractMonth
+```
+
+**Ale:** Neuhrazený `deposit` i `deposit_return` (`paid_at IS NULL`) se ZOBRAZUJÍ v nesplněných požadavcích (oranžový badge) – viz sekce 7. Po zaplacení/uhrazení zmizí.
+
+**Důvod vyloučení z Expected:** Kauce není běžný závazek nájemce (nájem, energie). Je to složená jistota, která se vrací nebo zúčtovává. Kdyby se počítala do Expected, zkreslila by bilanci smlouvy (viz diskuse v sekci 6).
+
+### INV-2: Settled zálohy (settled_by_request_id IS NOT NULL) se NIKDY nepočítají do Expected
+
+```
+Požadavky s neprázdným settled_by_request_id jsou VŽDY vyloučeny z:
+- paymentRequestsSumByContract
+- paymentRequestsByContractMonth
+- heatmap alokace (linked requests)
+- hasUnfulfilledByContractMonth / unfulfilledListByContractMonth
+```
+
+**Důvod:** Settled zálohy byly nahrazeny settlement požadavkem. Počítání obojího by zdvojnásobilo Expected.
+
+### INV-3: Settled zálohy ZŮSTÁVAJÍ v display listu
+
+```
+paymentRequestsListByContractMonth obsahuje VŠECHNY požadavky
+(včetně settled a deposit), protože modal je potřebuje zobrazit
+jako informační položky.
+```
+
+### INV-4: Remainder deposit platby se VŽDY zahazuje
+
+```
+V PHP: if (!$isDepositPayment && $remainder > 0) { ... }
+V JS:  if (!isDepositPayment && budget > 0 && ...) sum += budget;
+```
+
+**Důvod:** Remainder deposit platby = nevyužitá kauce → bude vrácena přes `deposit_return`. Přičtení do měsíce by uměle nafouklo Paid.
+
+### INV-5: Capping se NEPROVÁDÍ u deposit plateb
+
+```
+$shouldCap = !$isDepositPayment;
+```
+
+**Důvod:** Deposit platba (18 000 Kč) pokrývá požadavky v součtu nižším než kauce. Capping by ořízl alokaci na částku platby a zabránil správnému rozložení.
+
+### INV-6: Frontend ZRCADLÍ backend logiku
+
+```
+amountContributingToMonth() v JS musí mít IDENTICKOU skip/cap/remainder
+logiku jako heatmap alokace v PHP. Stejně tak renderExisting().
+```
+
+Při jakékoliv změně v PHP alokaci MUSÍ být provedena odpovídající změna v JS.
+
+### INV-7: Nesplněné požadavky jsou řazeny dle due_date ASC
+
+```sql
+ORDER BY due_date ASC
+```
+
+### INV-8: energy_settlement označí neuhrazené zálohy jako settled
+
+```sql
+UPDATE payment_requests SET settled_by_request_id = ?
+WHERE contracts_id = ? AND type = 'energy'
+  AND paid_at IS NULL AND payments_id IS NULL AND valid_to IS NULL
+```
+
+Pouze **neuhrazené** a **nepropojené** zálohy. Uhrazené zálohy (`paid_at IS NOT NULL`) zůstávají normálně v Expected (byly skutečně zaplaceny).
+
+### INV-9: Přiřazení k měsíci
+
+```
+Expected (payment_requests): měsíc = date('Y-m', due_date)
+Paid (heatmap alokace):
+  - Linked request existuje: měsíc = date('Y-m', linked_request.due_date)
+  - Bez linked request: měsíc = period_year-period_month (nebo payment_date jako fallback)
+  - Deposit/deposit_return (effectiveMonthKey v JS): měsíc = payment_date
+```
+
+---
+
+## Příloha: Mapování proměnných PHP ↔ JS
+
+| PHP (dashboard.php) | JS (dashboard.js) | Popis |
+|---------------------|--------------------|-------|
+| `paymentRequestsSumByContract` | `d.expected_total` (přes API) | Celkový Expected za smlouvu |
+| `paymentRequestsByContractMonth` | `month_breakdown` (nepřímo) | Měsíční Expected |
+| `paymentRequestsListByContractMonth` | `month_breakdown` | Display list pro modal |
+| `heatmapPaymentsByContract` | `amountContributingToMonth()` | Měsíční Paid |
+| `hasUnfulfilledByContractMonth` | `has_unfulfilled_requests` | Oranžový badge |
+| `getExpectedTotalForMonth()` | heatmap cell tooltip | Expected za buňku (nájem + předpisy) |
+
+---
+
+*Dokument vytvořen při redesignu v2.5.0 (settled_by_request_id, deposit exclusion). Nahrazuje předchozí verzi dokumentu.*

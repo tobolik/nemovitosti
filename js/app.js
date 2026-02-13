@@ -1,5 +1,13 @@
 // js/app.js – boot, router, session
 
+// Rozlišení dev (Railway, localhost) – jiné pozadí než produkce
+(function () {
+    const h = (typeof location !== 'undefined' && location.hostname) ? location.hostname.toLowerCase() : '';
+    if (h.includes('railway') || h === 'localhost' || h === '127.0.0.1') {
+        document.documentElement.classList.add('env-dev');
+    }
+})();
+
 const App = (() => {
     let currentUser = null;
     let currentView = '';

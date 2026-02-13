@@ -1,0 +1,66 @@
+---
+description: Pravidla pro výpočet Expected/Paid v heatmapě a přehledech – invarianty, které NESMÍ být porušeny
+globs: api/dashboard.php, js/views/dashboard.js, api/settlement.php
+alwaysApply: false
+---
+
+# Heatmapa a přehledy – Očekáváno / Uhrazeno
+
+Při úpravách výpočtů v heatmapě, přehledu smluv nebo vyúčtování **vždy** dodržuj následující pravidla. Plná dokumentace algoritmu: `docs/heatmap-predpis-platby-logika.md` – **přečti ji před jakoukoli netriviální změnou**.
+
+## Invarianty – NIKDY NEPORUŠIT
+
+### 1. deposit a deposit_return NIKDY do Expected
+
+Požadavky typu `deposit` a `deposit_return` jsou VŽDY vyloučeny z:
+- `paymentRequestsSumByContract` (celkový Expected)
+- `paymentRequestsByContractMonth` (měsíční Expected)
+
+**Ale:** Neuhrazený `deposit` i `deposit_return` (paid_at IS NULL) se ZOBRAZUJÍ v nesplněných požadavcích (oranžový badge). Po zaplacení/uhrazení zmizí.
+
+Kauce není závazek nájemce pro Expected. Kdybys ji počítal do Expected, zkreslí se bilance.
+
+### 2. settled_by_request_id NIKDY do Expected
+
+Požadavky s neprázdným `settled_by_request_id` jsou vyloučeny ze stejných míst jako deposit. Settled zálohy byly nahrazeny settlement požadavkem – počítání obojího by zdvojnásobilo Expected.
+
+### 3. Settled zálohy ZŮSTÁVAJÍ v display listu
+
+`paymentRequestsListByContractMonth` obsahuje VŠECHNY požadavky (včetně settled a deposit) – modal je zobrazuje jako informační položky. **Nefiltruj** je při plnění display listu.
+
+### 4. Remainder deposit platby = ZAHODIT
+
+V PHP i JS: remainder (zbytek po alokaci linked requests) se u deposit/deposit_return plateb ZAHAZUJE. Nevyužitá kauce = bude vrácena přes deposit_return.
+
+### 5. Capping NEPROVÁDĚT u deposit plateb
+
+`$shouldCap = !$isDepositPayment` – deposit platba pokrývá požadavky v součtu nižším než kauce, capping by ořízl alokaci.
+
+### 6. Frontend ZRCADLÍ backend
+
+`amountContributingToMonth()` a `renderExisting()` v `dashboard.js` MUSÍ mít identickou skip/cap/remainder logiku jako PHP alokační smyčka v `dashboard.php`. Při jakékoliv změně v PHP uprav i JS (a naopak).
+
+### 7. energy_settlement a settled_by_request_id
+
+Akce `energy_settlement` v `settlement.php` nastavuje `settled_by_request_id` **pouze** neuhrazeným a nepropojeným energy advances (`paid_at IS NULL AND payments_id IS NULL`). Uhrazené zálohy zůstávají v Expected normálně.
+
+### 8. Přiřazení k měsíci
+
+- **Expected:** měsíc = `date('Y-m', due_date)` z `payment_requests`.
+- **Paid (heatmap):** měsíc = `due_date` linked requestu; fallback = `period_year-period_month` nebo `payment_date`.
+- **Deposit/deposit_return (JS effectiveMonthKey):** měsíc = `payment_date`.
+
+### 9. Deposit indikátor v heatmapě
+
+Deposit eventy (přijetí/vrácení kauce) se sbírají z heatmapByPayment podle `payment_date` a zobrazují se jako ikona „K" v buňce heatmapy. **Tyto eventy NESMÍ ovlivnit čísla Expected/Paid** – jsou čistě informační. Backend pole: `deposit_events` v JSON buňky. Frontend: `cell.deposit_events`.
+
+### 10. Depozitní účet
+
+Extended stats obsahují `deposit_account` objekt s per-contract breakdown. Status se počítá z `contracts.deposit_amount`, `deposit_return_date` a `contract_end`. **Neměň logiku statusu** bez aktualizace frontend rendering kódu.
+
+## Při úpravách
+
+1. Přečti `docs/heatmap-predpis-platby-logika.md` (kompletní popis algoritmu).
+2. Ověř, že žádný invariant výše není porušen.
+3. Pokud měníš PHP logiku, uprav odpovídající JS logiku (a naopak).
+4. Po změně aktualizuj dokumentaci v `docs/heatmap-predpis-platby-logika.md`.

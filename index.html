@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Nemovitosti – Správa nemovitostí</title>
-<link rel="stylesheet" href="css/style.css?v=2.2.2">
+<link rel="stylesheet" href="css/style.css?v=2.6.18">
 </head>
 <body>
 
@@ -30,6 +30,7 @@
     </div>
     <div id="login-error"></div>
     <button class="btn-login" id="btn-login">Přihlásit se</button>
+    <p class="login-version">Verze <span class="footer-version">v2.6.18</span></p>
   </div>
 </div>
 
@@ -63,7 +64,7 @@
       <div class="sidebar-footer">
         <div class="sidebar-footer-top">
           <span class="sidebar-user" id="nav-username"></span>
-          <span class="sidebar-version">v2.2.2</span>
+          <span class="sidebar-version">v2.6.18</span>
         </div>
         <button class="btn-logout" id="btn-logout">Odhlásit se</button>
       </div>
@@ -264,6 +265,22 @@
             <label>Požadavky na platbu</label>
             <p class="text-muted" style="font-size:.8rem;margin-bottom:8px">Energie, vyúčtování, kauce – můžete upravit.</p>
             <div id="con-payment-requests-list"></div>
+            <div id="con-settlement-btns" style="margin-top:10px;display:none">
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-energy-settlement">Vyúčtování energií</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-deposit-settlement" style="margin-left:8px">Vyúčtování kauce</button>
+            </div>
+            <div id="con-settlements-wrap" style="display:none;margin-top:16px">
+              <div id="con-energy-settlements-section" style="display:none">
+                <h4 style="margin:0 0 8px">Vyúčtování energií</h4>
+                <div id="con-energy-settlements-table"></div>
+                <div id="con-energy-settlement-form" style="display:none;margin-top:12px"></div>
+              </div>
+              <div id="con-deposit-settlements-section" style="display:none;margin-top:16px">
+                <h4 style="margin:0 0 8px">Vyúčtování kauce</h4>
+                <div id="con-deposit-settlements-table"></div>
+                <div id="con-deposit-settlement-form" style="display:none;margin-top:12px"></div>
+              </div>
+            </div>
           </div>
           <div class="fg"><label>Poznámka</label><textarea id="con-note" rows="2"></textarea></div>
           <div class="form-row" id="con-default-payment-wrap">
@@ -653,8 +670,12 @@
     <div class="alert" id="pay-req-alert"></div>
     <div class="fg"><label>Smlouva (nájemník + nemovitost) *</label><select id="pay-req-contract"><option value="">— Vyberte —</option></select></div>
     <div class="fg"><label>Částka (Kč) *</label><input type="number" id="pay-req-amount" step="0.01" placeholder="kladná = příjem, záporná = výdej"></div>
-    <div class="fg"><label>Typ</label><select id="pay-req-type"><option value="energy">Energie</option><option value="settlement">Vyúčtování</option><option value="deposit">Kauce</option><option value="deposit_return">Vrácení kauce</option><option value="other">Jiné</option></select></div>
+    <div class="fg"><label>Typ</label><select id="pay-req-type"><option value="rent">Nájem</option><option value="energy">Energie</option><option value="settlement">Vyúčtování</option><option value="deposit">Kauce</option><option value="deposit_return">Vrácení kauce</option><option value="other">Jiné</option></select></div>
     <div class="fg"><label>Splatnost (volitelně)</label><input type="date" id="pay-req-due-date"></div>
+    <div class="fg" id="pay-req-paid-at-wrap" style="display:none">
+      <label>Datum úhrady</label>
+      <input type="date" id="pay-req-paid-at" title="Skutečné datum, kdy byl požadavek uhrazen">
+    </div>
     <div class="fg"><label>Poznámka</label><input type="text" id="pay-req-note" placeholder="např. Vyúčtování 2025"></div>
     <div class="fg" id="pay-req-link-wrap" style="display:none">
       <label>Propojená platba</label>
@@ -677,6 +698,36 @@
       <button type="button" class="btn btn-success" id="btn-pay-req-save" data-save-btn>Přidat</button>
       <button type="button" class="btn btn-ghost" id="btn-pay-req-delete" style="display:none">Smazat požadavek</button>
       <button type="button" class="btn btn-ghost" onclick="UI.modalClose('modal-payment-request')">Zrušit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Nové / editace vyúčtování ═══ -->
+<div class="modal" id="modal-settlement-form">
+  <div class="modal-ov" onclick="UI.modalClose('modal-settlement-form')"></div>
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-header">
+      <h3 class="modal-title" id="settlement-form-title">Nové vyúčtování</h3>
+      <button type="button" class="modal-close" onclick="UI.modalClose('modal-settlement-form')" aria-label="Zavřít">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert" id="settlement-form-alert"></div>
+      <div class="fg"><label>Název / popis</label><input type="text" id="settlement-form-label" placeholder="např. Elektřina 2024"></div>
+      <div id="settlement-form-items" style="margin:12px 0;font-size:.85rem"></div>
+      <div class="form-row">
+        <div class="fg"><label>Skutečná částka (Kč) *</label><input type="number" id="settlement-form-actual" step="0.01" min="0" placeholder="např. 1700"></div>
+        <div class="fg"><label>Součet záloh</label><input type="text" id="settlement-form-advances" readonly class="input-readonly"></div>
+        <div class="fg"><label>Rozdíl (nedoplatek/přeplatek)</label><input type="text" id="settlement-form-diff" readonly class="input-readonly"><div id="settlement-form-diff-info" class="text-muted" style="font-size:.8rem;margin-top:4px"></div></div>
+      </div>
+      <div class="fg"><label>Název požadavku na platbu</label><input type="text" id="settlement-form-req-label" placeholder="Předvyplněno automaticky"></div>
+      <div class="fg"><label>Poznámka</label><textarea id="settlement-form-note" rows="2"></textarea></div>
+      <div class="form-row">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="settlement-form-lock"> Zamknout po uložení</label>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-success" id="btn-settlement-form-save">Uložit vyúčtování</button>
+      <button type="button" class="btn btn-ghost" onclick="UI.modalClose('modal-settlement-form')">Zrušit</button>
     </div>
   </div>
 </div>
@@ -747,17 +798,17 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS – loaded in dependency order (no bundler needed)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/api.js?v=2.2.2"></script>       <!-- 1) API wrapper (no deps) -->
-<script src="js/ui.js?v=2.2.2"></script>        <!-- 2) UI helpers (uses Api) -->
-<script src="js/address-autocomplete.js?v=2.2.2"></script>
-<script src="js/app.js?v=2.2.2"></script>       <!-- 3) Router + boot (uses Api, UI) -->
-<script src="js/views/dashboard.js?v=2.2.2"></script>   <!-- 4) Views (use App, Api, UI) -->
-<script src="js/views/properties.js?v=2.2.2"></script>
-<script src="js/views/tenants.js?v=2.2.2"></script>
-<script src="js/views/contracts.js?v=2.2.2"></script>
-<script src="js/views/payments.js?v=2.2.2"></script>
-<script src="js/views/bank_accounts.js?v=2.2.2"></script>
-<script src="js/views/payment_imports.js?v=2.2.2"></script>
-<script src="js/views/users.js?v=2.2.2"></script>
+<script src="js/api.js?v=2.6.18"></script>       <!-- 1) API wrapper (no deps) -->
+<script src="js/ui.js?v=2.6.18"></script>        <!-- 2) UI helpers (uses Api) -->
+<script src="js/address-autocomplete.js?v=2.6.18"></script>
+<script src="js/app.js?v=2.6.18"></script>       <!-- 3) Router + boot (uses Api, UI) -->
+<script src="js/views/dashboard.js?v=2.6.18"></script>   <!-- 4) Views (use App, Api, UI) -->
+<script src="js/views/properties.js?v=2.6.18"></script>
+<script src="js/views/tenants.js?v=2.6.18"></script>
+<script src="js/views/contracts.js?v=2.6.18"></script>
+<script src="js/views/payments.js?v=2.6.18"></script>
+<script src="js/views/bank_accounts.js?v=2.6.18"></script>
+<script src="js/views/payment_imports.js?v=2.6.18"></script>
+<script src="js/views/users.js?v=2.6.18"></script>
 </body>
 </html>

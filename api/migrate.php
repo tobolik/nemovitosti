@@ -1,13 +1,17 @@
 <?php
-// api/migrate.php – inkrementální SQL migrace při deployi
+// api/migrate.php – inkrementální migrace při deployi
 // Volání: GET api/migrate.php?key=YOUR_MIGRATE_KEY
-// Spouští jen dosud neaplikované migrace z migrations/*.sql
+// Spouští jen dosud neaplikované migrace z migrations/*.sql a migrations/*.php.
+// Každá migrace se provede jen jednou – záznam v tabulce _migrations.
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 
 try {
-    require __DIR__ . '/../config.php';
+    $config = __DIR__ . '/../config.php';
+    $configDefault = __DIR__ . '/../config.default.php';
+    if (file_exists($config)) require $config;
+    require $configDefault;
 
     $key = $_GET['key'] ?? '';
     if (!defined('MIGRATE_KEY') || MIGRATE_KEY === '' || !hash_equals((string)MIGRATE_KEY, $key)) {
@@ -16,12 +20,10 @@ try {
         exit;
     }
 
-    $pdo = new PDO(
-        "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4",
-        DB_USER, DB_PASS,
-        [ PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION ]
-    );
+    require __DIR__ . '/_bootstrap.php';
+    $_SESSION['uid'] = $_SESSION['uid'] ?? 1;
 
+    $pdo = db();
     $migrationsDir = __DIR__ . '/../migrations';
     $migrationsDirReal = realpath($migrationsDir);
     if (!is_dir($migrationsDir) || $migrationsDirReal === false) {
@@ -40,10 +42,9 @@ try {
         applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
 
-    $files = glob($migrationsDir . '/*.sql');
-    if ($files === false) {
-        throw new RuntimeException("Nelze načíst složku migrations: $migrationsDir");
-    }
+    $sqlFiles = glob($migrationsDir . '/*.sql') ?: [];
+    $phpFiles = glob($migrationsDir . '/*.php') ?: [];
+    $files = array_merge($sqlFiles, $phpFiles);
     sort($files);
 
     $applied = 0;
@@ -51,6 +52,10 @@ try {
     $appliedList = [];
     $skippedList = [];
     $errors = [];
+
+    if (!defined('MIGRATE_RUNNING')) {
+        define('MIGRATE_RUNNING', true);
+    }
 
     foreach ($files as $path) {
         $name = basename($path);
@@ -62,45 +67,60 @@ try {
             continue;
         }
 
-        $sql = file_get_contents($path);
-        $sql = preg_replace('/^\s*USE\s+\w+\s*;/mi', '', $sql);
-        $rawStatements = array_map('trim', preg_split('/;\s*(\n|$)/m', $sql));
-        $statements = [];
-        foreach ($rawStatements as $s) {
-            if ($s === '' || preg_match('/^USE\s+/i', $s)) continue;
-            $s = preg_replace('/^(\s*--[^\n]*\n)+/', '', $s);
-            $s = trim($s);
-            if ($s !== '') $statements[] = $s;
-        }
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
-        $fileOk = true;
-        foreach ($statements as $stmtSql) {
-            try {
-                $pdo->exec($stmtSql);
-            } catch (PDOException $e) {
-                $msg = $e->getMessage();
-                $isAlreadyApplied = strpos($msg, 'Duplicate column') !== false
-                    || strpos($msg, 'Duplicate key') !== false
-                    || strpos($msg, 'Duplicate key name') !== false
-                    || strpos($msg, 'already exists') !== false
-                    || strpos($msg, 'Unknown column') !== false
-                    // MySQL/MariaDB: sloupec už neexistuje (např. DROP COLUMN už proběhl ručně / dřív)
-                    || strpos($msg, "Can't DROP COLUMN") !== false
-                    || strpos($msg, "Can't DROP") !== false
-                    || in_array($e->getCode(), [1060, 1061, 1054, '42S21', '42S22'], true);
-                if (!$isAlreadyApplied) {
-                    $fileOk = false;
-                    $preview = strlen($stmtSql) > 80 ? substr($stmtSql, 0, 80) . '...' : $stmtSql;
-                    $errors[] = "$name: $msg | SQL: $preview";
-                    break;
+        if ($ext === 'sql') {
+            $sql = file_get_contents($path);
+            $sql = preg_replace('/^\s*USE\s+\w+\s*;/mi', '', $sql);
+            $rawStatements = array_map('trim', preg_split('/;\s*(\n|$)/m', $sql));
+            $statements = [];
+            foreach ($rawStatements as $s) {
+                if ($s === '' || preg_match('/^USE\s+/i', $s)) continue;
+                $s = preg_replace('/^(\s*--[^\n]*\n)+/', '', $s);
+                $s = trim($s);
+                if ($s !== '') $statements[] = $s;
+            }
+
+            $fileOk = true;
+            foreach ($statements as $stmtSql) {
+                try {
+                    $pdo->exec($stmtSql);
+                } catch (PDOException $e) {
+                    $msg = $e->getMessage();
+                    $isAlreadyApplied = strpos($msg, 'Duplicate column') !== false
+                        || strpos($msg, 'Duplicate key') !== false
+                        || strpos($msg, 'Duplicate key name') !== false
+                        || strpos($msg, 'already exists') !== false
+                        || strpos($msg, 'Unknown column') !== false
+                        || strpos($msg, "Can't DROP COLUMN") !== false
+                        || strpos($msg, "Can't DROP") !== false
+                        || in_array($e->getCode(), [1060, 1061, 1054, '42S21', '42S22'], true);
+                    if (!$isAlreadyApplied) {
+                        $fileOk = false;
+                        $preview = strlen($stmtSql) > 80 ? substr($stmtSql, 0, 80) . '...' : $stmtSql;
+                        $errors[] = "$name: $msg | SQL: $preview";
+                        break;
+                    }
                 }
             }
-        }
-
-        if ($fileOk) {
-            $pdo->prepare("INSERT INTO _migrations (name) VALUES (?)")->execute([$name]);
-            $applied++;
-            $appliedList[] = $name;
+            if ($fileOk) {
+                $pdo->prepare("INSERT INTO _migrations (name) VALUES (?)")->execute([$name]);
+                $applied++;
+                $appliedList[] = $name;
+            }
+        } elseif ($ext === 'php') {
+            try {
+                ob_start();
+                /** @noinspection PhpIncludeInspection */
+                require $path;
+                $pdo->prepare("INSERT INTO _migrations (name) VALUES (?)")->execute([$name]);
+                $applied++;
+                $appliedList[] = $name;
+            } catch (Throwable $e) {
+                $errors[] = "$name: " . $e->getMessage();
+            } finally {
+                if (ob_get_level()) ob_end_clean();
+            }
         }
     }
 

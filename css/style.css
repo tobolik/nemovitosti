@@ -52,7 +52,46 @@
 
   /* Fonts */
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+
+  /* Semantic (odvozené z palety) */
+  --primary: var(--purple-300);
+  --accent: var(--purple-600);
+  --primary-light: #c4b5fd;
+  --bg2: rgba(0,0,0,.15);
+  --focus-ring: rgba(147,51,234,.2);
 }
+
+/* Dev/staging – celé tealové téma (Railway, localhost) */
+html.env-dev {
+  --purple-900: #134e4a;
+  --purple-800: #115e59;
+  --purple-700: #0f766e;
+  --purple-600: #0d9488;
+  --purple-500: #14b8a6;
+  --purple-400: #2dd4bf;
+  --purple-300: #5eead4;
+  --purple-200: #99f6e4;
+  --indigo-900: #134e4a;
+  --txt2: #99f6e4;
+  --txt3: #5eead4;
+  --slate-900: #0f766e;
+  --slate-800: #115e59;
+  --slate-700: #0d9488;
+  --primary: #5eead4;
+  --accent: #0d9488;
+  --primary-light: #99f6e4;
+  --bg2: rgba(0,0,0,.22);
+  --focus-ring: rgba(13,148,136,.3);
+  /* Uhrazený měsíc v heatmapě – emerald (chladná zelená), ladí s tealovým pozadím */
+  --green-600: #059669;
+  --green-700: #047857;
+}
+html.env-dev .fg select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235eead4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+html.env-dev .badge-info { background: rgba(13,148,136,.25); }
 
 /* ── Reset ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -64,6 +103,11 @@ body {
   background: linear-gradient(180deg, var(--purple-900) 0%, var(--purple-800) 50%, var(--indigo-900) 100%);
   background-attachment: fixed;
   overflow-x: hidden;
+}
+
+/* Dev/staging (Railway, localhost) – tealové pozadí, ať je hned poznat */
+html.env-dev body {
+  background: linear-gradient(180deg, #0f766e 0%, #115e59 40%, #134e4a 100%);
 }
 a { color: var(--purple-300); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -100,7 +144,7 @@ button, select, input, textarea { font-family: var(--font-ui); }
   border-radius: var(--r); color: var(--txt); font-size: .92rem;
   transition: border-color .2s, box-shadow .2s;
 }
-.login-box input:focus { outline: none; border-color: var(--purple-600); box-shadow: 0 0 0 3px rgba(147,51,234,.2); }
+.login-box input:focus { outline: none; border-color: var(--purple-600); box-shadow: 0 0 0 3px var(--focus-ring); }
 
 #login-error { color: #fca5a5; font-size: .8rem; margin-top: 10px; min-height: 1.1em; }
 
@@ -114,6 +158,7 @@ button, select, input, textarea { font-family: var(--font-ui); }
 .btn-login:hover { background: var(--purple-700); }
 .btn-login:active { transform: scale(.98); }
 .btn-login:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.login-version { margin-top: 1.25rem; font-size: .85rem; color: rgba(255,255,255,.85); text-align: center; }
 
 /* ============================================================
    APP SHELL – Sidebar + Main
@@ -450,7 +495,7 @@ footer .footer-php-version { margin-left: 0.5rem; opacity: .7; font-size: 0.9em;
 .fg input:focus, .fg select:focus, .fg textarea:focus {
   outline: none;
   border-color: var(--purple-600);
-  box-shadow: 0 0 0 3px rgba(147,51,234,.2);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .fg textarea { resize: vertical; min-height: 56px; line-height: 1.45; }
 .fg .checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500; text-transform: none; letter-spacing: normal; }
@@ -761,6 +806,72 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .dash-extended-stats .stat { min-width: 0; }
 .dash-extended-stats .stat-warn .stat-val { color: var(--red-600); }
 .dash-extended-stats .stat-info .stat-val { color: var(--orange-500); }
+/* Deposit account stat card */
+.deposit-account-stat { cursor: pointer; position: relative; }
+.deposit-account-stat .stat-action { font-size: .7rem; color: var(--txt3); margin-top: 4px; }
+.deposit-account-stat:hover .stat-action { color: var(--accent); }
+
+/* Deposit account detail panel */
+.deposit-account-detail {
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: var(--bg2);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r);
+}
+.deposit-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+}
+.deposit-detail-table th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--txt2);
+    padding: 6px 10px;
+    border-bottom: 2px solid var(--glass-border);
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+.deposit-detail-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--txt);
+}
+.deposit-detail-table .text-right { text-align: right; }
+.deposit-detail-table .dep-row-warn { background: rgba(234, 88, 12, .08); }
+.dep-status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+.dep-status-badge.dep-active { background: rgba(59, 130, 246, .18); color: #60a5fa; }
+.dep-status-badge.dep-to-return { background: rgba(234, 88, 12, .18); color: #fb923c; }
+.dep-status-badge.dep-returned { background: rgba(156, 163, 175, .18); color: var(--txt3); }
+.dep-return-date { font-size: .75rem; color: var(--txt3); margin-left: 4px; }
+
+/* Deposit badge in contracts overview */
+.deposit-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: .72rem;
+    font-weight: 600;
+    background: rgba(59, 130, 246, .16);
+    color: #60a5fa;
+    margin-left: 6px;
+    vertical-align: middle;
+    line-height: 1.5;
+}
+.deposit-badge-warn {
+    background: rgba(234, 88, 12, .18);
+    color: #fb923c;
+}
+
 .dash-extended-ending { margin-bottom: 20px; font-size: .9rem; }
 .dash-ending-list { margin-top: 8px; line-height: 1.6; }
 .dash-ending-list .dash-link { display: inline-block; margin-bottom: 4px; }
@@ -864,6 +975,37 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .heatmap-cell.exact .cell-check, .heatmap-cell.overpaid .cell-check, .heatmap-cell.paid-advance .cell-check { color: #fff; }
 .heatmap-cell.unpaid .cell-cross,
 .heatmap-cell.overdue .cell-cross { color: #fff; }
+
+/* Heatmap cell icons row (check/cross + deposit K badges inline) */
+.heatmap-cell-icons {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    line-height: 1;
+}
+
+/* Heatmap deposit indicator (K icon) */
+.heatmap-deposit-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #1b7a3d;
+    color: #fff;
+    font-size: 8px;
+    font-weight: 700;
+    cursor: help;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.heatmap-deposit-icon.deposit-return {
+    background: #d97706;
+}
+
 .heatmap-total-cell { text-align: center; font-size: .82rem; font-weight: 600; color: var(--txt2); padding: 4px 4px; white-space: normal; word-wrap: break-word; max-width: 100%; }
 .heatmap-sum-row { background: var(--bg2); border-top: 2px solid var(--glass-border); }
 .heatmap-sum-row td { padding: 8px 4px; }
@@ -901,6 +1043,9 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 .pay-modal-main-label { min-width: 0; }
 .pay-modal-main-date { text-align: right; white-space: nowrap; font-weight: 600; color: var(--txt); }
 .pay-modal-main-amount { text-align: right; white-space: nowrap; font-weight: 600; color: var(--txt); }
+.pay-modal-link { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent); cursor: pointer; }
+.pay-modal-link:hover { color: var(--accent-hover, var(--accent)); border-bottom-style: solid; }
+.pay-modal-full-amount { font-size: .8rem; color: var(--txt3); font-weight: 500; }
 .pay-modal-breakdown-block { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; margin-top: 2px; margin-left: 2px; padding-left: 10px; border-left: 3px solid rgba(59, 130, 246, .5); border-radius: 0 0 0 6px; gap: 2px 12px; }
 .pay-modal-breakdown-row { display: contents; }
 .pay-modal-breakdown-row .pay-modal-breakdown-label { min-width: 0; font-size: .75rem; color: var(--txt3); font-weight: 500; }
@@ -1274,7 +1419,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
 }
 .modal-box .fg input:focus, .modal-box .fg select:focus, .modal-box .fg textarea:focus {
   border-color: var(--purple-600);
-  box-shadow: 0 0 0 3px rgba(147,51,234,.2);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 /* Modal Platba – na notebooku širší, více místa pro číslo účtu a protiúčet */
@@ -1603,3 +1748,27 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-lay
   font-size: .9rem;
 }
 .contract-preview-popover a:hover { text-decoration: underline; }
+
+/* ── Settlement badges ────────────────────────────────────────────── */
+.badge-locked {
+  background: var(--surface3, #374151);
+  color: var(--txt2, #9ca3af);
+  font-size: .7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.badge-unlocked {
+  background: var(--blue-700, #1d4ed8);
+  color: #fff;
+  font-size: .7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.input-readonly {
+  background: var(--surface2, #1e293b);
+  border-color: transparent;
+  color: var(--txt2, #9ca3af);
+  cursor: default;
+}
+.text-danger { color: #ef4444; }
+.text-success { color: #22c55e; }

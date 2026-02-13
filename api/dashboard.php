@@ -140,17 +140,22 @@ $contractsForView = $showEnded ? $contracts : array_values(array_filter($contrac
     return empty($c['contract_end']) || $c['contract_end'] >= $today;
 }));
 
-// Očekáváno = nájem + všechny předpisy (požadavky), stejně jako v heatmapě. Jednotná logika: předpis = očekávání, platba = uhrazeno.
+// Očekáváno = nájem + předpisy (požadavky), BEZ deposit/deposit_return a BEZ settled záloh.
+// settled_by_request_id: zálohy pokryté vyúčtováním energií – zůstávají v DB pro historii, ale neovlivňují Expected.
+// deposit/deposit_return: kauce a vrácení kauce – nejsou závazky nájemce, vyloučeny z Expected (v Paid se vzájemně kompenzují).
 $paymentRequestsSumByContract = [];
 $allRequestsStmt = db()->query("
-    SELECT contracts_id, type, amount FROM payment_requests
-    WHERE valid_to IS NULL
+    SELECT contracts_id, type, amount, paid_at, settled_by_request_id FROM payment_requests
+    WHERE valid_to IS NULL AND type != 'rent'
 ");
 foreach ($allRequestsStmt->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
+    $type = $pr['type'] ?? '';
+    // Vyloučit settled zálohy (pokryté vyúčtováním)
+    if (!empty($pr['settled_by_request_id'])) continue;
+    // Vyloučit deposit a deposit_return z Expected
+    if (in_array($type, ['deposit', 'deposit_return'])) continue;
     $amt = (float)$pr['amount'];
-    // Zpětná kompatibilita: staré deposit_return měly kladnou částku, v novém modelu je výdej záporný
-    if (($pr['type'] ?? '') === 'deposit_return' && $amt > 0) $amt = -$amt;
     $paymentRequestsSumByContract[$cid] = ($paymentRequestsSumByContract[$cid] ?? 0) + $amt;
 }
 foreach ($contracts as $c) {
@@ -206,7 +211,8 @@ foreach ($contracts as $c) {
 $heatmapPaymentsByContract = [];
 $heatmapPaymentsListByContract = [];
 $heatmapStmt = db()->query("
-    SELECT p.payments_id, p.contracts_id, p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type, p.bank_transaction_id, pr.due_date, pr.amount AS pr_amount
+    SELECT p.payments_id, p.contracts_id, p.period_year, p.period_month, p.amount, p.payment_date, p.payment_type, p.bank_transaction_id,
+           pr.due_date, pr.amount AS pr_amount, pr.type AS pr_type, pr.settled_by_request_id AS pr_settled_by
     FROM payments p
     JOIN contracts c ON c.contracts_id = p.contracts_id AND c.valid_to IS NULL
     LEFT JOIN payment_requests pr ON pr.payments_id = p.payments_id AND pr.valid_to IS NULL
@@ -231,7 +237,12 @@ foreach ($heatmapStmt->fetchAll() as $row) {
         ];
     }
     if (!empty($row['due_date']) && isset($row['pr_amount'])) {
-        $heatmapByPayment[$key]['linked'][] = ['due_date' => $row['due_date'], 'amount' => (float)$row['pr_amount']];
+        $heatmapByPayment[$key]['linked'][] = [
+            'due_date' => $row['due_date'],
+            'amount' => (float)$row['pr_amount'],
+            'type' => $row['pr_type'] ?? '',
+            'settled_by_request_id' => $row['pr_settled_by'] ?? null,
+        ];
     }
 }
 foreach ($heatmapByPayment as $group) {
@@ -249,9 +260,23 @@ foreach ($heatmapByPayment as $group) {
         $heatmapPaymentsListByContract[$eid] = [];
     }
     $allocated = 0.0;
+    $isDepositPayment = in_array($group['payment_type'] ?? '', ['deposit', 'deposit_return']);
     foreach ($group['linked'] as $pr) {
+        $prType = $pr['type'] ?? '';
+        // Skip deposit/deposit_return a settled linked requests z alokace
+        // (kauce se alokuje na pokryté položky: nájem, settlement; ne na deposit request samotný)
+        if (in_array($prType, ['deposit', 'deposit_return'])) continue;
+        if (!empty($pr['settled_by_request_id'])) continue;
+
         $monthKey = date('Y-m', strtotime($pr['due_date']));
         $amt = (float)$pr['amount'];
+        // Cap: don't allocate more than the actual payment amount (skip for deposit/deposit_return – settlement can exceed)
+        $shouldCap = !$isDepositPayment;
+        if ($shouldCap && $payAmt >= 0 && $amt > 0) {
+            $amt = min($amt, max(0, round($payAmt - $allocated, 2)));
+        } elseif ($shouldCap && $payAmt < 0 && $amt < 0) {
+            $amt = max($amt, min(0, round($payAmt - $allocated, 2)));
+        }
         $allocated += $amt;
         if (!isset($heatmapPaymentsByContract[$eid][$monthKey])) {
             $heatmapPaymentsByContract[$eid][$monthKey] = ['amount' => 0, 'amount_rent' => 0, 'payment_date' => null, 'payment_count' => 0];
@@ -269,8 +294,9 @@ foreach ($heatmapByPayment as $group) {
             'bank_transaction_id' => $group['bank_transaction_id'],
         ];
     }
+    // Remainder: pro deposit/deposit_return platby zahodit (kauce remainder se kompenzuje s deposit_return)
     $remainder = round($payAmt - $allocated, 2);
-    if ($remainder != 0) {
+    if (!$isDepositPayment && $remainder != 0) {
         $monthKey = $periodKey ?: $fallbackMonthKey;
         if ($monthKey) {
             if (!isset($heatmapPaymentsByContract[$eid][$monthKey])) {
@@ -291,8 +317,43 @@ foreach ($heatmapByPayment as $group) {
         }
     }
 }
+
+// Deposit events: sběr kaucí a vrácení kaucí podle payment_date měsíce (pro Ⓚ ikonu v heatmapě)
+// Mapa contracts_id => tenant_name + deposit_amount pro tooltip
+$contractInfoMap = [];
+foreach ($contracts as $c) {
+    $cid = (int)($c['contracts_id'] ?? $c['id']);
+    $contractInfoMap[$cid] = [
+        'tenant' => $c['tenant_name'] ?? '',
+        'deposit_amount' => (float)($c['deposit_amount'] ?? 0),
+    ];
+}
+$depositEventsByContract = [];
+foreach ($heatmapByPayment as $group) {
+    $pType = $group['payment_type'] ?? '';
+    if (!in_array($pType, ['deposit', 'deposit_return'])) continue;
+    if (empty($group['payment_date'])) continue;
+    $eid = (int)$group['contracts_id'];
+    $monthKey = date('Y-m', strtotime($group['payment_date']));
+    $amt = (float)$group['amount'];
+    if ($pType === 'deposit_return' && $amt > 0) $amt = -$amt;
+    // Efektivní typ: záporná částka = vrácení kauce, kladná = přijetí kauce (bez ohledu na payment_type)
+    $effectiveType = $amt < 0 ? 'deposit_return' : 'deposit';
+    $info = $contractInfoMap[$eid] ?? ['tenant' => '', 'deposit_amount' => 0];
+    if (!isset($depositEventsByContract[$eid])) $depositEventsByContract[$eid] = [];
+    if (!isset($depositEventsByContract[$eid][$monthKey])) $depositEventsByContract[$eid][$monthKey] = [];
+    $depositEventsByContract[$eid][$monthKey][] = [
+        'type' => $effectiveType,
+        'amount' => $amt,
+        'date' => $group['payment_date'],
+        'tenant' => $info['tenant'],
+        'deposit_amount' => $info['deposit_amount'],
+    ];
+}
+
 $heatmapPaymentsByPropertyMonth = [];
 $heatmapPaymentsListByPropertyMonth = [];
+$depositEventsByPropertyMonth = [];
 foreach ($contracts as $c) {
     $eid = (int)($c['contracts_id'] ?? $c['id']);
     $pid = (int)$c['properties_id'];
@@ -315,6 +376,14 @@ foreach ($contracts as $c) {
             $heatmapPaymentsListByContract[$eid][$monthKey] ?? []
         );
     }
+    // Deposit events: agregace z kontraktu na nemovitost
+    foreach ($depositEventsByContract[$eid] ?? [] as $monthKey => $events) {
+        if (!isset($depositEventsByPropertyMonth[$pid])) $depositEventsByPropertyMonth[$pid] = [];
+        if (!isset($depositEventsByPropertyMonth[$pid][$monthKey])) $depositEventsByPropertyMonth[$pid][$monthKey] = [];
+        $depositEventsByPropertyMonth[$pid][$monthKey] = array_merge(
+            $depositEventsByPropertyMonth[$pid][$monthKey], $events
+        );
+    }
 }
 
 $paymentRequestsListByContractMonth = [];
@@ -322,21 +391,25 @@ $paymentRequestsListByContractMonth = [];
 $hasUnfulfilledByContractMonth = [];
 $unfulfilledListByContractMonth = []; // [contractId][monthKey] => [ ['label'=>..., 'amount'=>...], ... ]
 $stmtUnfulfilled = db()->query("
-    SELECT contracts_id, due_date, amount, type, note FROM payment_requests
+    SELECT contracts_id, due_date, amount, type, note, settled_by_request_id FROM payment_requests
     WHERE valid_to IS NULL AND due_date IS NOT NULL AND paid_at IS NULL
+    ORDER BY due_date ASC
 ");
 foreach ($stmtUnfulfilled->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
+    $type = $pr['type'] ?? '';
+    // Vyloučit settled zálohy z neuhrazených (deposit i deposit_return se zobrazí jako oranžový badge dokud nejsou zaplaceny)
+    if (!empty($pr['settled_by_request_id'])) continue;
     $monthKey = date('Y-m', strtotime($pr['due_date']));
     if (!isset($hasUnfulfilledByContractMonth[$cid])) {
         $hasUnfulfilledByContractMonth[$cid] = [];
     }
     $hasUnfulfilledByContractMonth[$cid][$monthKey] = true;
     $amt = (float)$pr['amount'];
-    if (($pr['type'] ?? '') === 'deposit_return' && $amt > 0) $amt = -$amt;
+    if ($type === 'deposit_return' && $amt > 0) $amt = -$amt;
     $label = trim($pr['note'] ?? '') !== '' ? $pr['note'] : (
-        ($pr['type'] ?? '') === 'deposit' ? 'Kauce' :
-        (($pr['type'] ?? '') === 'deposit_return' ? 'Vrácení kauce' : (($pr['type'] ?? '') === 'energy' ? 'Energie' : 'Požadavek'))
+        $type === 'deposit' ? 'Kauce' :
+        ($type === 'deposit_return' ? 'Vrácení kauce' : ($type === 'rent' ? 'Nájem' : ($type === 'energy' ? 'Energie' : 'Požadavek')))
     );
     if (!isset($unfulfilledListByContractMonth[$cid])) $unfulfilledListByContractMonth[$cid] = [];
     if (!isset($unfulfilledListByContractMonth[$cid][$monthKey])) $unfulfilledListByContractMonth[$cid][$monthKey] = [];
@@ -380,16 +453,19 @@ foreach ($contracts as $c) {
 }
 
 $stmtPrMonth = db()->query("
-    SELECT id, payment_requests_id, contracts_id, due_date, amount, type, note
+    SELECT id, payment_requests_id, contracts_id, due_date, amount, type, note, paid_at, settled_by_request_id
     FROM payment_requests
-    WHERE valid_to IS NULL AND due_date IS NOT NULL
+    WHERE valid_to IS NULL AND due_date IS NOT NULL AND type != 'rent'
 ");
 foreach ($stmtPrMonth->fetchAll() as $pr) {
     $cid = (int)$pr['contracts_id'];
+    $type = $pr['type'] ?? '';
     $monthKey = date('Y-m', strtotime($pr['due_date']));
     $amt = (float)$pr['amount'];
-    if (($pr['type'] ?? '') === 'deposit_return' && $amt > 0) $amt = -$amt;
+    if ($type === 'deposit_return' && $amt > 0) $amt = -$amt;
     $prId = (int)($pr['payment_requests_id'] ?? $pr['id']);
+
+    // Vždy přidat do display listu (pro modal breakdown) – i settled a deposit položky
     if (!isset($paymentRequestsListByContractMonth[$cid])) {
         $paymentRequestsListByContractMonth[$cid] = [];
     }
@@ -401,7 +477,13 @@ foreach ($stmtPrMonth->fetchAll() as $pr) {
         'amount' => $amt,
         'type' => $pr['type'] ?? 'energy',
         'note' => $pr['note'] ?? '',
+        'settled_by_request_id' => $pr['settled_by_request_id'] ?? null,
     ];
+
+    // Do Expected sum přidat JEN pokud není settled a není deposit/deposit_return
+    $skipFromExpected = !empty($pr['settled_by_request_id']) || in_array($type, ['deposit', 'deposit_return']);
+    if ($skipFromExpected) continue;
+
     if (!isset($paymentRequestsByContractMonth[$cid])) {
         $paymentRequestsByContractMonth[$cid] = [];
     }
@@ -536,6 +618,8 @@ foreach ($contractsForView as $c) {
         'status_type'    => $statusType,
         'unpaid_months'  => $unpaid,
         'deposit_amount' => $depositAmt,
+        'deposit_paid_date' => $c['deposit_paid_date'] ?? null,
+        'deposit_return_date' => $c['deposit_return_date'] ?? null,
         'deposit_to_return' => $depositToReturn,
     ];
 }
@@ -657,6 +741,8 @@ foreach ($properties as $p) {
                     'contract'             => $primaryContract ? [
                     'id' => $primaryEntityId,
                     'contracts_id' => $primaryEntityId,
+                    'properties_id' => $primaryContract['properties_id'] ?? null,
+                    'tenants_id' => $primaryContract['tenants_id'] ?? null,
                     'monthly_rent' => (float)($primaryContract['monthly_rent'] ?? 0),
                     'tenant_name' => $primaryContract['tenant_name'] ?? '',
                     'contract_start' => $primaryContract['contract_start'] ?? null,
@@ -676,6 +762,7 @@ foreach ($properties as $p) {
                     'remaining'            => max(0, $expectedTotalOnly - $paidTotalOnly),
                     'payment_details'      => $paymentDetailsOnly,
                     'month_breakdown'      => $monthBreakdownOnly,
+                    'deposit_events'       => $depositEventsByPropertyMonth[$propEntityId][$monthKey] ?? [],
                 ];
             } else {
                 $heatmap[$propId . '_' . $monthKey] = ['type' => 'empty', 'monthKey' => $monthKey];
@@ -771,6 +858,8 @@ foreach ($properties as $p) {
                 'contract'             => [
                     'id' => $primaryEntityId,
                     'contracts_id' => $primaryEntityId,
+                    'properties_id' => $primaryContract['properties_id'] ?? null,
+                    'tenants_id' => $primaryContract['tenants_id'] ?? null,
                     'monthly_rent' => (float)($primaryContract['monthly_rent'] ?? 0),
                     'tenant_name' => $primaryContract['tenant_name'] ?? '',
                     'contract_start' => $primaryContract['contract_start'] ?? null,
@@ -793,6 +882,7 @@ foreach ($properties as $p) {
                 'remaining'            => max(0, $expectedTotal - $paidTotal),
                 'payment_details'      => $paymentDetails,
                 'month_breakdown'      => $monthBreakdown,
+                'deposit_events'       => $depositEventsByPropertyMonth[$propEntityId][$monthKey] ?? [],
             ];
         }
     }
@@ -940,9 +1030,13 @@ if ($extended) {
 
     $totalArrears = 0;
     $tenantsWithArrearsCount = 0;
-    $depositsTotal = 0;
-    $depositsToReturn = 0;
     $contractsEndingSoon = [];
+    // Depozitní účet: detailní přehled kaucí per smlouva
+    $depositAccountItems = [];
+    $depositTotalHeld = 0;
+    $depositTotalToReturn = 0;
+    $depositCountActive = 0;
+    $depositCountToReturn = 0;
     foreach ($out as $row) {
         if ($row['balance'] > 0) {
             $totalArrears += $row['balance'];
@@ -957,11 +1051,37 @@ if ($extended) {
                 'contract_end' => $contractEnd,
             ];
         }
-        if (!$contractEnd || $contractEnd >= $today) {
-            $depositsTotal += (float)($row['deposit_amount'] ?? 0);
-        }
-        if (!empty($row['deposit_to_return'])) {
-            $depositsToReturn += (float)($row['deposit_amount'] ?? 0);
+        // Deposit account item
+        $depAmt = (float)($row['deposit_amount'] ?? 0);
+        if ($depAmt > 0) {
+            $depRetDate = $row['deposit_return_date'] ?? null;
+            $depPaidDate = $row['deposit_paid_date'] ?? null;
+            $cEnded = !empty($contractEnd) && $contractEnd <= $today;
+            if ($depRetDate) {
+                $depStatus = 'returned';
+                $depBalance = 0;
+            } elseif ($cEnded) {
+                $depStatus = 'to_return';
+                $depBalance = $depAmt;
+                $depositTotalToReturn += $depAmt;
+                $depositCountToReturn++;
+            } else {
+                $depStatus = 'active';
+                $depBalance = $depAmt;
+                $depositTotalHeld += $depAmt;
+                $depositCountActive++;
+            }
+            $depositAccountItems[] = [
+                'contracts_id' => $row['contracts_id'],
+                'tenant_name' => $row['tenant_name'],
+                'property_name' => $row['property_name'],
+                'deposit_amount' => $depAmt,
+                'deposit_paid_date' => $depPaidDate,
+                'deposit_return_date' => $depRetDate,
+                'contract_end' => $contractEnd,
+                'status' => $depStatus,
+                'balance' => $depBalance,
+            ];
         }
     }
 
@@ -970,8 +1090,16 @@ if ($extended) {
         'total_arrears' => round($totalArrears, 2),
         'tenants_with_arrears_count' => $tenantsWithArrearsCount,
         'contracts_ending_soon' => $contractsEndingSoon,
-        'deposits_total' => round($depositsTotal, 2),
-        'deposits_to_return' => round($depositsToReturn, 2),
+        // Zpětná kompatibilita: zachováme staré klíče + nový deposit_account
+        'deposits_total' => round($depositTotalHeld, 2),
+        'deposits_to_return' => round($depositTotalToReturn, 2),
+        'deposit_account' => [
+            'items' => $depositAccountItems,
+            'total_held' => round($depositTotalHeld, 2),
+            'total_to_return' => round($depositTotalToReturn, 2),
+            'count_active' => $depositCountActive,
+            'count_to_return' => $depositCountToReturn,
+        ],
     ];
 
     // Graf: posledních 12 měsíců – očekávaný vs. skutečný nájem

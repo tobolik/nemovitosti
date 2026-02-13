@@ -220,16 +220,17 @@ const UI = (() => {
                 if (err) { alertShow(cfg.alertId, err, 'err'); return; }
             }
             try {
+                let result;
                 if (editMode) {
-                    await Api.crudEdit(cfg.table, Number(id), values);
+                    result = await Api.crudEdit(cfg.table, Number(id), values);
                 } else {
-                    await Api.crudAdd(cfg.table, values);
+                    result = await Api.crudAdd(cfg.table, values);
                 }
                 const addMsg = cfg.successAddMsg ?? 'Záznam byl přidán.';
                 const editMsg = cfg.successEditMsg ?? 'Záznam byl aktualizován.';
                 alertShow(cfg.alertId, editMode ? editMsg : addMsg, 'ok');
                 exitEdit();
-                cfg.onSaved && cfg.onSaved();
+                cfg.onSaved && cfg.onSaved(result, editMode);
             } catch (e) {
                 alertShow(cfg.alertId, e.message, 'err');
             }

@@ -7,12 +7,35 @@ set_exception_handler(function(Throwable $e) {
     if (ob_get_level()) ob_end_clean();
     http_response_code(500);
     header('Content-Type: application/json');
-    $msg = (defined('DEBUG') && DEBUG) ? $e->getMessage() : 'Chyba serveru.';
-    echo json_encode(['ok'=>false,'error'=>$msg], JSON_UNESCAPED_UNICODE);
+    // CORS: stejná hierarchie jako v auth.php (konstanta z config.php / config.default.php, jinak getenv)
+    $origin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
+    if ($origin !== '') {
+        $raw = defined('CORS_ALLOWED_ORIGINS') ? (string)CORS_ALLOWED_ORIGINS : (getenv('CORS_ALLOWED_ORIGINS') ?: '');
+        $list = array_map('trim', array_filter(explode(',', $raw)));
+        $allowed = in_array($origin, $list, true) || (!$list && preg_match('#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#i', $origin));
+        if ($allowed) {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Access-Control-Allow-Credentials: true');
+        }
+    }
+    $showDetails = (defined('DEBUG') && DEBUG);
+    $msg = $showDetails ? $e->getMessage() : 'Chyba serveru.';
+    $out = ['ok' => false, 'error' => $msg];
+    if ($showDetails) {
+        $out['error_detail'] = [
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => array_slice(explode("\n", $e->getTraceAsString()), 0, 10),
+        ];
+    }
+    echo json_encode($out, JSON_UNESCAPED_UNICODE);
     exit;
 });
 
-require __DIR__ . '/../config.php';
+$config = __DIR__ . '/../config.php';
+$configDefault = __DIR__ . '/../config.default.php';
+if (file_exists($config)) require $config;
+require $configDefault;
 
 // ── PDO singleton ───────────────────────────────────────────────────────────
 function db(): PDO {
@@ -30,7 +53,7 @@ function db(): PDO {
 }
 
 // ── Session ─────────────────────────────────────────────────────────────────
-// Pole u session_set_cookie_params až od PHP 7.3; na starších verzích použij starou signaturu
+// Na Railway (ephemeral filesystem) použij SESSION_USE_DB=1 – session v MySQL přežijí deploy.
 (function(){
     if (session_status() !== PHP_SESSION_NONE) return;
     ini_set('session.gc_maxlifetime', (string)SESSION_LIFE);
@@ -47,6 +70,63 @@ function db(): PDO {
         session_set_cookie_params(SESSION_LIFE, '/', '', $secure, true);
     }
     session_name(SESSION_NAME);
+    $useDbSessions = false;
+    if (defined('SESSION_USE_DB') && SESSION_USE_DB) {
+        try {
+            $r = db()->query("SHOW TABLES LIKE '_sessions'");
+            $useDbSessions = $r && $r->rowCount() > 0;
+        } catch (Throwable $e) {
+            error_log('[session] _sessions table check failed: ' . $e->getMessage());
+        }
+    }
+    if ($useDbSessions) {
+        $handler = new class implements \SessionHandlerInterface {
+            public function open(string $path, string $name): bool { return true; }
+            public function close(): bool { return true; }
+            public function read(string $id): string|false {
+                if ($id === '') return '';
+                try {
+                    $s = db()->prepare('SELECT data FROM _sessions WHERE id = ? AND last_activity > ?');
+                    $s->execute([$id, time() - SESSION_LIFE]);
+                    $row = $s->fetch();
+                    return $row ? (string) $row['data'] : '';
+                } catch (Throwable $e) {
+                    error_log('[session] read failed: ' . $e->getMessage());
+                    return '';
+                }
+            }
+            public function write(string $id, string $data): bool {
+                if ($id === '') return true;
+                try {
+                    db()->prepare('REPLACE INTO _sessions (id, data, last_activity) VALUES (?, ?, ?)')
+                        ->execute([$id, $data, time()]);
+                    return true;
+                } catch (Throwable $e) {
+                    error_log('[session] write failed: ' . $e->getMessage());
+                    return false;
+                }
+            }
+            public function destroy(string $id): bool {
+                if ($id === '') return true;
+                try {
+                    db()->prepare('DELETE FROM _sessions WHERE id = ?')->execute([$id]);
+                    return true;
+                } catch (Throwable $e) {
+                    return false;
+                }
+            }
+            public function gc(int $max_lifetime): int|false {
+                try {
+                    $stmt = db()->prepare('DELETE FROM _sessions WHERE last_activity < ?');
+                    $stmt->execute([time() - $max_lifetime]);
+                    return $stmt->rowCount();
+                } catch (Throwable $e) {
+                    return false;
+                }
+            }
+        };
+        session_set_save_handler($handler, true);
+    }
     session_start();
 })();
 
@@ -189,6 +269,83 @@ function getRentForMonth(float $baseRent, int $contractsId, int $y, int $m, arra
         }
     }
     return $applicable !== null ? $applicable : $baseRent;
+}
+
+/**
+ * Synchronizuje rent požadavky (payment_requests type=rent) pro smlouvu:
+ * pro každý měsíc v rozsahu contract_start .. contract_end (nebo do konce běžného měsíce)
+ * najde/aktualizuje/vytvoří požadavek; mimo rozsah smaže jen neuhrazené.
+ */
+function syncRentPaymentRequests(int $contractsId): void {
+    $c = findActiveByEntityId('contracts', $contractsId);
+    if (!$c || empty($c['contract_start'])) return;
+    $start = substr(trim($c['contract_start']), 0, 10);
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $start, $m)) return;
+    $yStart = (int)$m[1]; $monthStart = (int)$m[2];
+    $end = trim($c['contract_end'] ?? '');
+    if ($end !== '' && $end !== null) {
+        if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $end, $m2)) return;
+        $yEnd = (int)$m2[1]; $monthEnd = (int)$m2[2];
+        $dayEnd = (int)($m2[3] ?? 1);
+        // Smlouva končící 1. v měsíci = nájem za ten měsíc se neúčtuje (nájemce tam ten měsíc není)
+        if ($dayEnd === 1) {
+            $monthEnd--;
+            if ($monthEnd < 1) { $monthEnd = 12; $yEnd--; }
+        }
+    } else {
+        $yEnd = (int)date('Y'); $monthEnd = (int)date('n');
+    }
+    $baseRent = (float)($c['monthly_rent'] ?? 0);
+    $firstMonthRent = isset($c['first_month_rent']) && $c['first_month_rent'] !== null && $c['first_month_rent'] !== '' ? (float)$c['first_month_rent'] : null;
+    $lastMonthRent = isset($c['last_month_rent']) && $c['last_month_rent'] !== null && $c['last_month_rent'] !== '' ? (float)$c['last_month_rent'] : null;
+    $rentChangesRaw = db()->prepare("SELECT * FROM contract_rent_changes WHERE contracts_id = ? AND valid_to IS NULL ORDER BY effective_from ASC");
+    $rentChangesRaw->execute([$contractsId]);
+    $rentChangesByContract = [$contractsId => $rentChangesRaw->fetchAll(PDO::FETCH_ASSOC)];
+    $findRent = db()->prepare("SELECT id, amount, due_date FROM payment_requests WHERE contracts_id = ? AND period_year = ? AND period_month = ? AND type = 'rent' AND valid_to IS NULL");
+    $syncedMonths = [];
+    $limit = $yEnd * 12 + $monthEnd; // jedno číslo pro porovnání (y,m) <= (yEnd, monthEnd)
+    if (($yStart * 12 + $monthStart) > $limit) return; // start až za koncem – žádné období
+    for ($y = $yStart, $m = $monthStart; ($y * 12 + $m) <= $limit; ) {
+        $firstOfMonth = sprintf('%04d-%02d-01', $y, $m);
+        $lastDayOfMonth = date('Y-m-t', strtotime($firstOfMonth));
+        if ($start > $firstOfMonth && (int)date('Y', strtotime($start)) === $y && (int)date('n', strtotime($start)) === $m && $firstMonthRent !== null) {
+            $amount = $firstMonthRent;
+        } elseif ($end !== '' && $end !== null && (int)date('Y', strtotime($end)) === $y && (int)date('n', strtotime($end)) === $m && $end < $lastDayOfMonth && $lastMonthRent !== null) {
+            $amount = $lastMonthRent;
+        } else {
+            $amount = getRentForMonth($baseRent, $contractsId, $y, $m, $rentChangesByContract);
+        }
+        $dueDate = date('Y-m-t', strtotime("$y-$m-01"));
+        $findRent->execute([$contractsId, $y, $m]);
+        $existing = $findRent->fetch(PDO::FETCH_ASSOC);
+        if ($existing) {
+            $exAmt = (float)$existing['amount'];
+            $exDue = $existing['due_date'] ? substr($existing['due_date'], 0, 10) : null;
+            if (abs($exAmt - $amount) > 0.005 || $exDue !== $dueDate) {
+                softUpdate('payment_requests', (int)$existing['id'], ['amount' => round($amount, 2), 'due_date' => $dueDate]);
+            }
+        } else {
+            softInsert('payment_requests', [
+                'contracts_id'  => $contractsId,
+                'amount'        => round($amount, 2),
+                'type'          => 'rent',
+                'due_date'      => $dueDate,
+                'period_year'   => $y,
+                'period_month'  => $m,
+            ]);
+        }
+        $syncedMonths[$y . '_' . $m] = true;
+        if (++$m > 12) { $m = 1; $y++; }
+    }
+    $del = db()->prepare("SELECT id, period_year, period_month FROM payment_requests WHERE contracts_id = ? AND type = 'rent' AND valid_to IS NULL AND payments_id IS NULL");
+    $del->execute([$contractsId]);
+    foreach ($del->fetchAll(PDO::FETCH_ASSOC) as $pr) {
+        if ($pr['period_year'] === null || $pr['period_month'] === null) continue;
+        $key = (int)$pr['period_year'] . '_' . (int)$pr['period_month'];
+        if (!isset($syncedMonths[$key])) {
+            softDelete('payment_requests', (int)$pr['id']);
+        }
+    }
 }
 
 /** Vyhledá aktivní řádek podle entity_id (users_id, properties_id, …). */

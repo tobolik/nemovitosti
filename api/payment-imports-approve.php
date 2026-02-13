@@ -67,6 +67,7 @@ foreach ($ids as $rawId) {
         ? strtoupper(substr(trim($imp['currency']), 0, 3)) : 'CZK';
     $uid = $_SESSION['uid'] ?? null;
     $firstPaymentEntityId = null;
+    $paymentEntityIdByMonth = []; // [$y_$m] => entity_id
     foreach ($months as [$y, $m]) {
         $payData = [
             'contracts_id'        => $cid,
@@ -84,9 +85,11 @@ foreach ($ids as $rawId) {
             'approved_at'         => date('Y-m-d H:i:s'),
         ];
         $newId = softInsert('payments', $payData);
+        $payRow = findActive('payments', $newId);
+        $payEid = (int)($payRow['payments_id'] ?? $payRow['id']);
+        $paymentEntityIdByMonth[$y . '_' . $m] = $payEid;
         if ($firstPaymentEntityId === null) {
-            $firstPay = findActive('payments', $newId);
-            $firstPaymentEntityId = (int)($firstPay['payments_id'] ?? $firstPay['id']);
+            $firstPaymentEntityId = $payEid;
         }
         $created++;
     }
@@ -97,6 +100,18 @@ foreach ($ids as $rawId) {
         $prRow = findActiveByEntityId('payment_requests', $prId);
         if ($prRow && (int)($prRow['contracts_id'] ?? 0) === $cid) {
             softUpdate('payment_requests', (int)$prRow['id'], ['payments_id' => $firstPaymentEntityId, 'paid_at' => $paymentDate ?: date('Y-m-d')]);
+        }
+    }
+    // Auto-propojení: rent platba → rent požadavek (pokud nebyl explicitní prId)
+    if ($prId <= 0 && $paymentType === 'rent' && $firstPaymentEntityId !== null) {
+        foreach ($months as [$yLink, $mLink]) {
+            $stAutoLink = db()->prepare("SELECT id FROM payment_requests WHERE contracts_id = ? AND period_year = ? AND period_month = ? AND type = 'rent' AND valid_to IS NULL AND payments_id IS NULL LIMIT 1");
+            $stAutoLink->execute([$cid, $yLink, $mLink]);
+            $prAutoLink = $stAutoLink->fetch(PDO::FETCH_ASSOC);
+            if ($prAutoLink) {
+                $payEid = $paymentEntityIdByMonth[$yLink . '_' . $mLink] ?? $firstPaymentEntityId;
+                softUpdate('payment_requests', (int)$prAutoLink['id'], ['payments_id' => $payEid, 'paid_at' => $paymentDate ?: date('Y-m-d')]);
+            }
         }
     }
     $approved++;

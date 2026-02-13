@@ -18,7 +18,7 @@ $FIELDS = [
     'payments'   => ['contracts_id','period_year','period_month','amount','currency','payment_date','note','counterpart_account','bank_transaction_id','payment_batch_id','payment_method','bank_accounts_id','payment_type','approved_at'],
     'bank_accounts' => ['name','account_number','currency','is_primary','sort_order','fio_token'],
     'contract_rent_changes' => ['contracts_id','amount','effective_from'],
-    'payment_requests' => ['contracts_id','amount','type','note','due_date'],
+    'payment_requests' => ['contracts_id','amount','type','note','due_date','period_year','period_month','paid_at'],
     'payment_imports' => ['bank_accounts_id','payment_date','amount','currency','counterpart_account','note','fio_transaction_id','contracts_id','period_year','period_month','period_year_to','period_month_to','payment_type','payment_request_id'],
 ];
 
@@ -44,7 +44,7 @@ $FIELD_LABELS = [
     'payments'   => ['contracts_id'=>'Smlouva','period_year'=>'Rok','period_month'=>'Měsíc','amount'=>'Částka','currency'=>'Měna','payment_date'=>'Datum platby','note'=>'Poznámka','counterpart_account'=>'Číslo protiúčtu','payment_method'=>'Způsob platby','bank_accounts_id'=>'Bankovní účet','payment_type'=>'Typ platby','approved_at'=>'Schváleno'],
     'bank_accounts' => ['name'=>'Název','account_number'=>'Číslo účtu','currency'=>'Měna','fio_token'=>'FIO API token'],
     'contract_rent_changes' => ['contracts_id'=>'Smlouva','amount'=>'Částka','effective_from'=>'Platné od'],
-    'payment_requests' => ['contracts_id'=>'Smlouva','amount'=>'Částka','type'=>'Typ','note'=>'Poznámka','due_date'=>'Splatnost'],
+    'payment_requests' => ['contracts_id'=>'Smlouva','amount'=>'Částka','type'=>'Typ','note'=>'Poznámka','due_date'=>'Splatnost','period_year'=>'Rok období','period_month'=>'Měsíc období','paid_at'=>'Datum úhrady'],
     'payment_imports' => ['contracts_id'=>'Smlouva','period_year'=>'Rok od','period_month'=>'Měsíc od','period_year_to'=>'Rok do','period_month_to'=>'Měsíc do','currency'=>'Měna','payment_type'=>'Typ platby','payment_request_id'=>'Požadavek na platbu'],
 ];
 
@@ -691,14 +691,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($e) jsonErr($e);
     }
     if ($table === 'payment_requests' && isset($data['type'])) {
-        if (!in_array($data['type'], ['energy', 'settlement', 'other', 'deposit', 'deposit_return'], true)) {
+        if (!in_array($data['type'], ['energy', 'settlement', 'other', 'deposit', 'deposit_return', 'rent'], true)) {
             $data['type'] = 'energy';
+        }
+        // Požadavek na vrácení kauce musí mít zápornou částku
+        if ($data['type'] === 'deposit_return' && isset($data['amount']) && (float)$data['amount'] > 0) {
+            $data['amount'] = -(float)$data['amount'];
         }
     }
     if ($table === 'payment_requests') {
         if (isset($data['due_date']) && $data['due_date'] === '') $data['due_date'] = null;
         if (isset($data['due_date']) && $data['due_date'] !== null) {
             $e = validateDateField($data['due_date'], 'Splatnost');
+            if ($e) jsonErr($e);
+        }
+        if (isset($data['paid_at']) && $data['paid_at'] === '') $data['paid_at'] = null;
+        if (isset($data['paid_at']) && $data['paid_at'] !== null) {
+            $e = validateDateField($data['paid_at'], 'Datum úhrady');
             if ($e) jsonErr($e);
         }
     }
@@ -771,6 +780,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'amount'         => (float)$data['amount'],
                 'effective_from'=> $data['effective_from'],
             ]);
+            $contractsId = (int)$data['contracts_id'];
+            if ($contractsId > 0) syncRentPaymentRequests($contractsId);
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'tenant_bank_accounts') {
             $acc = isset($data['account_number']) ? trim((string)$data['account_number']) : '';
@@ -789,6 +800,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!array_key_exists('approved_at', $data)) $data['approved_at'] = date('Y-m-d H:i:s');
             $amt = (float)($data['amount'] ?? 0);
             if ($amt === 0.0) jsonErr('Zadejte částku platby.');
+            // Vrácení kauce musí být záporná částka
+            if (($data['payment_type'] ?? '') === 'deposit_return' && $amt > 0) {
+                $data['amount'] = -$amt;
+            }
             $paymentRequestIds = isset($b['payment_request_ids']) && is_array($b['payment_request_ids'])
                 ? array_values(array_unique(array_filter(array_map('intval', $b['payment_request_ids']))))
                 : [];
@@ -817,11 +832,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             }
+            // Auto-propojení rent platby s rent požadavkem (pokud nebyla explicitně propojena)
+            if (empty($paymentRequestIds) && ($data['payment_type'] ?? '') === 'rent') {
+                $pyAuto = (int)($data['period_year'] ?? 0);
+                $pmAuto = (int)($data['period_month'] ?? 0);
+                $cidAuto = (int)($data['contracts_id'] ?? 0);
+                if ($pyAuto > 0 && $pmAuto >= 1 && $pmAuto <= 12 && $cidAuto > 0) {
+                    $stAuto = db()->prepare("SELECT id FROM payment_requests WHERE contracts_id = ? AND period_year = ? AND period_month = ? AND type = 'rent' AND valid_to IS NULL AND payments_id IS NULL LIMIT 1");
+                    $stAuto->execute([$cidAuto, $pyAuto, $pmAuto]);
+                    $prAuto = $stAuto->fetch(PDO::FETCH_ASSOC);
+                    if ($prAuto) {
+                        softUpdate('payment_requests', (int)$prAuto['id'], ['payments_id' => $paymentEntityId, 'paid_at' => $paidAt]);
+                    }
+                }
+            }
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'payment_requests') {
-            $data['type'] = in_array($data['type'] ?? 'energy', ['energy', 'settlement', 'other', 'deposit', 'deposit_return']) ? $data['type'] : 'energy';
+            $data['type'] = in_array($data['type'] ?? 'energy', ['energy', 'settlement', 'other', 'deposit', 'deposit_return', 'rent']) ? $data['type'] : 'energy';
             $data['amount'] = (float)($data['amount'] ?? 0);
             if ($data['amount'] === 0.0) jsonErr('Zadejte částku (kladnou = příjem, zápornou = výdej).');
+            // Požadavek na vrácení kauce musí být záporný
+            if (($data['type'] ?? '') === 'deposit_return' && $data['amount'] > 0) {
+                $data['amount'] = -$data['amount'];
+            }
             $newId = softInsert($table, $data);
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'contracts') {
@@ -837,6 +870,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'note'         => 'Kauce',
                 ]);
             }
+            syncRentPaymentRequests($contractsId);
             jsonOk(findActive($table, $newId), 201);
         } elseif ($table === 'bank_accounts') {
             if (isset($data['fio_token']) && trim((string)$data['fio_token']) === '') unset($data['fio_token']);
@@ -942,6 +976,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'amount'        => (float)$data['amount'],
                 'effective_from'=> $data['effective_from'],
             ]);
+            $contractsId = (int)($row['contracts_id'] ?? 0);
+            if ($contractsId > 0) syncRentPaymentRequests($contractsId);
             jsonOk(findActive($table, $newId));
         } elseif ($table === 'tenant_bank_accounts') {
             $acc = isset($data['account_number']) ? trim((string)$data['account_number']) : '';
@@ -958,18 +994,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $depositReturnDate = isset($data['deposit_return_date']) && $data['deposit_return_date'] !== '' ? trim($data['deposit_return_date']) : null;
             $hadDepositReturnDate = isset($row['deposit_return_date']) && $row['deposit_return_date'] !== '' && $row['deposit_return_date'] !== null;
 
+            // Požadavek na vrácení kauce vytvořit jen když na smlouvě nejsou neuhrazené dluhy (nájem, energie…).
+            // Jinak uživatel provede zúčtování kauce a tam se vytvoří správná částka.
             if ($contractEnd !== null && $contractEnd !== '' && $depositAmount > 0) {
-                $st = db()->prepare("SELECT id FROM payment_requests WHERE contracts_id = ? AND type = 'deposit_return' AND valid_to IS NULL");
-                $st->execute([$entityId]);
-                if ($st->fetch() === false) {
-                    $dueDate = date('Y-m-d', strtotime($contractEnd . ' +14 days'));
-                    softInsert('payment_requests', [
-                        'contracts_id' => $entityId,
-                        'amount'      => -$depositAmount,
-                        'type'        => 'deposit_return',
-                        'note'        => 'Vrácení kauce',
-                        'due_date'    => $dueDate,
-                    ]);
+                $stUnpaid = db()->prepare("SELECT 1 FROM payment_requests WHERE contracts_id = ? AND type NOT IN ('deposit', 'deposit_return') AND valid_to IS NULL AND paid_at IS NULL AND settled_by_request_id IS NULL LIMIT 1");
+                $stUnpaid->execute([$entityId]);
+                $hasUnpaid = $stUnpaid->fetch() !== false;
+                if (!$hasUnpaid) {
+                    $st = db()->prepare("SELECT id FROM payment_requests WHERE contracts_id = ? AND type = 'deposit_return' AND valid_to IS NULL");
+                    $st->execute([$entityId]);
+                    if ($st->fetch() === false) {
+                        $dueDate = date('Y-m-d', strtotime($contractEnd . ' +14 days'));
+                        softInsert('payment_requests', [
+                            'contracts_id' => $entityId,
+                            'amount'       => -$depositAmount,
+                            'type'         => 'deposit_return',
+                            'note'         => 'Vrácení kauce',
+                            'due_date'     => $dueDate,
+                            'period_year'  => (int)date('Y', strtotime($dueDate)),
+                            'period_month' => (int)date('n', strtotime($dueDate)),
+                        ]);
+                    }
                 }
             }
 
@@ -979,7 +1024,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $periodYear = $ym['year'] ?? (int)date('Y');
                 $periodMonth = $ym['month'] ?? (int)date('n');
                 if ($periodMonth < 1 || $periodMonth > 12) $periodMonth = (int)date('n');
-                $st = db()->prepare("SELECT id FROM payments WHERE contracts_id = ? AND payment_type = 'deposit' AND amount < 0 AND payment_date = ? AND valid_to IS NULL");
+                $st = db()->prepare("SELECT id FROM payments WHERE contracts_id = ? AND payment_type = 'deposit_return' AND amount < 0 AND payment_date = ? AND valid_to IS NULL");
                 $st->execute([$entityId, $depositReturnDate]);
                 if ($st->fetch() === false) {
                     $payId = softInsert('payments', [
@@ -988,7 +1033,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'period_month'   => $periodMonth,
                         'amount'         => -$depositAmount,
                         'payment_date'   => $depositReturnDate,
-                        'payment_type'   => 'deposit',
+                        'payment_type'   => 'deposit_return',
                         'note'           => 'Vrácení kauce',
                         'payment_method' => null,
                         'bank_accounts_id' => null,
@@ -1004,11 +1049,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
+            syncRentPaymentRequests($entityId);
             jsonOk(findActive($table, $newId));
         } elseif ($table === 'payments') {
             $data['payment_type'] = in_array($data['payment_type'] ?? 'rent', ['rent','deposit','deposit_return','energy','other']) ? $data['payment_type'] : 'rent';
             $amt = isset($data['amount']) ? (float)$data['amount'] : null;
             if ($amt !== null && $amt === 0.0) jsonErr('Zadejte částku platby.');
+            // Vrácení kauce musí být záporná částka
+            if ($amt !== null && ($data['payment_type'] ?? '') === 'deposit_return' && $amt > 0) {
+                $data['amount'] = -$amt;
+            }
             $newId = softUpdate($table, $rowId, $data);
             jsonOk(findActive($table, $newId));
         } else {

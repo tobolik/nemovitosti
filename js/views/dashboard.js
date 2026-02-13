@@ -123,15 +123,51 @@ async function loadDashboard(year) {
                     '<span class="dash-chart-label">' + (m.label.length > 12 ? m.label.replace(/^(\w+)\s/, '$1 ') : m.label) + '</span>' +
                     '</div>';
             });
+            // Deposit account detail HTML
+            const da = es.deposit_account || { items: [], total_held: 0, total_to_return: 0, count_active: 0, count_to_return: 0 };
+            let depositDetailHtml = '';
+            if (da.items && da.items.length > 0) {
+                const statusLabels = { active: 'Aktivní', to_return: 'K vrácení', returned: 'Vrácena' };
+                const statusClasses = { active: 'dep-active', to_return: 'dep-to-return', returned: 'dep-returned' };
+                depositDetailHtml = '<table class="deposit-detail-table"><thead><tr>' +
+                    '<th>Nemovitost</th><th>Nájemník</th><th>Kauce</th><th>Přijato</th><th>Stav</th>' +
+                    '</tr></thead><tbody>';
+                da.items.forEach(function(item) {
+                    const statusLabel = statusLabels[item.status] || item.status;
+                    const statusCls = statusClasses[item.status] || '';
+                    const paidDate = item.deposit_paid_date ? UI.fmtDate(item.deposit_paid_date) : '—';
+                    let statusText = '<span class="dep-status-badge ' + statusCls + '">' + statusLabel + '</span>';
+                    if (item.status === 'returned' && item.deposit_return_date) {
+                        statusText += ' <span class="dep-return-date">' + UI.fmtDate(item.deposit_return_date) + '</span>';
+                    }
+                    depositDetailHtml += '<tr class="' + (item.status === 'to_return' ? 'dep-row-warn' : '') + '">' +
+                        '<td>' + UI.esc(item.property_name || '') + '</td>' +
+                        '<td>' + UI.esc(item.tenant_name || '') + '</td>' +
+                        '<td class="text-right">' + UI.fmt(item.deposit_amount || 0) + ' Kč</td>' +
+                        '<td>' + paidDate + '</td>' +
+                        '<td>' + statusText + '</td>' +
+                        '</tr>';
+                });
+                depositDetailHtml += '</tbody></table>';
+            } else {
+                depositDetailHtml = '<div style="padding:8px;color:var(--txt3)">Žádné kauce</div>';
+            }
             extendedWrap.innerHTML =
                 '<div class="dash-extended-stats">' +
                     '<div class="stat"><div class="stat-icon green">$</div><div class="stat-val">' + UI.fmt(es.expected_current_month || 0) + ' Kč</div><div class="stat-label">Očekávaný nájem (tento měsíc)</div></div>' +
                     '<div class="stat' + (es.total_arrears > 0 ? ' stat-warn' : '') + '"><div class="stat-icon">!</div><div class="stat-val">' + UI.fmt(es.total_arrears || 0) + ' Kč</div><div class="stat-label">Celkové nedoplatky</div></div>' +
                     '<div class="stat"><div class="stat-val">' + (es.tenants_with_arrears_count || 0) + '</div><div class="stat-label">Nájemníků s nedoplatkem</div></div>' +
                     '<div class="stat"><div class="stat-val">' + (es.contracts_ending_soon ? es.contracts_ending_soon.length : 0) + '</div><div class="stat-label">Smlouvy končící do 3 měsíců</div></div>' +
-                    '<div class="stat"><div class="stat-val">' + UI.fmt(es.deposits_total || 0) + ' Kč</div><div class="stat-label">Kauce celkem</div></div>' +
-                    '<div class="stat' + (es.deposits_to_return > 0 ? ' stat-info' : '') + '"><div class="stat-val">' + UI.fmt(es.deposits_to_return || 0) + ' Kč</div><div class="stat-label">Kauce k vrácení</div></div>' +
+                    '<div class="stat deposit-account-stat' + (da.total_to_return > 0 ? ' stat-info' : '') + '" onclick="DashboardView.toggleDepositDetail()">' +
+                        '<div class="stat-icon">🔑</div>' +
+                        '<div class="stat-val">' + UI.fmt(da.total_held || 0) + ' Kč</div>' +
+                        '<div class="stat-label">Držené kauce' +
+                            (da.count_active || da.count_to_return ? ' (' + (da.count_active ? da.count_active + ' akt.' : '') + (da.count_active && da.count_to_return ? ', ' : '') + (da.count_to_return ? da.count_to_return + ' k vrác.' : '') + ')' : '') +
+                        '</div>' +
+                        '<div class="stat-action">▾ detail</div>' +
+                    '</div>' +
                 '</div>' +
+                '<div id="deposit-account-detail" class="deposit-account-detail" style="display:none">' + depositDetailHtml + '</div>' +
                 '<div class="dash-extended-ending">' +
                     '<strong>Končící smlouvy:</strong><div class="dash-ending-list">' + endingSoonHtml + '</div>' +
                 '</div>' +
@@ -229,8 +265,39 @@ async function loadDashboard(year) {
                     } else if (isOverdue) {
                         icon = '<span class="heatmap-cell-icon cell-cross">✗</span>';
                     }
+                    // Deposit indicator: Ⓚ ikona pokud v tomto měsíci proběhla kauce/vrácení kauce
+                    // Každý typ (přijetí/vrácení) dostane vlastní ikonu, aby bylo vidět oba současně
+                    let depositIcons = '';
+                    if (cell.deposit_events && cell.deposit_events.length > 0) {
+                        // Rozlišení podle znaménka částky: kladná = přijetí, záporná = vrácení
+                        const depositEvents = cell.deposit_events.filter(function(de) { return de.amount >= 0; });
+                        const returnEvents = cell.deposit_events.filter(function(de) { return de.amount < 0; });
+                        if (depositEvents.length > 0) {
+                            const depTip = depositEvents.map(function(de) {
+                                var line = 'Kauce přijata: ' + UI.fmt(de.amount) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                                if (de.tenant) line += ' – ' + de.tenant;
+                                return line;
+                            }).join('\n');
+                            depositIcons += '<span class="heatmap-deposit-icon" title="' + UI.esc(depTip) + '">K</span>';
+                        }
+                        if (returnEvents.length > 0) {
+                            const retTip = returnEvents.map(function(de) {
+                                var returnAmt = Math.abs(de.amount);
+                                var origDeposit = de.deposit_amount || 0;
+                                var isPartial = origDeposit > 0 && returnAmt < origDeposit;
+                                var label = isPartial ? 'Kauce vrácena částečně' : 'Kauce vrácena';
+                                var line = label + ': ' + UI.fmt(returnAmt) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                                if (isPartial) line += ' z ' + UI.fmt(origDeposit) + ' Kč';
+                                if (de.tenant) line += ' – ' + de.tenant;
+                                return line;
+                            }).join('\n');
+                            depositIcons += '<span class="heatmap-deposit-icon deposit-return" title="' + UI.esc(retTip) + '">K</span>';
+                        }
+                    }
+                    // Ikony (fajfka/křížek + K badges) jdou do řádku vedle sebe
+                    const iconsRow = (icon || depositIcons) ? '<span class="heatmap-cell-icons">' + icon + depositIcons + '</span>' : '';
                     content = '<div class="heatmap-cell-content">' +
-                        '<span class="heatmap-cell-amount">' + UI.fmt(prescribedTotal) + '</span>' + icon +
+                        '<span class="heatmap-cell-amount">' + UI.fmt(prescribedTotal) + '</span>' + iconsRow +
                         '</div>';
                     content = '<div class="heatmap-cell-fill" style="width:' + Math.round(pctPaid) + '%"></div>' + content;
                 }
@@ -241,6 +308,7 @@ async function loadDashboard(year) {
                 const contractEntityId = contract ? (contract.contracts_id ?? contract.id) : '';
                 const contractStart = contract && contract.contract_start ? String(contract.contract_start).slice(0, 10) : '';
                 const contractEnd = contract && contract.contract_end ? String(contract.contract_end).slice(0, 10) : '';
+                const tenantsId = contract && contract.tenants_id ? String(contract.tenants_id) : '';
                 const rentChangesJson = (contract && contract.rent_changes && contract.rent_changes.length > 0)
                     ? JSON.stringify(contract.rent_changes).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
                     : '';
@@ -249,7 +317,7 @@ async function loadDashboard(year) {
                 const defaultBankAccountId = contract && contract.default_bank_accounts_id != null && contract.default_bank_accounts_id !== '' ? String(contract.default_bank_accounts_id) : '';
                 const propIdForCell = prop.properties_id ?? prop.id;
                 const dataAttrs = !isEmptyOrNotRented
-                    ? ' data-property-id="' + propIdForCell + '" data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"' + (cell.remaining_rent != null ? ' data-remaining-rent="' + cell.remaining_rent + '"' : '') + (contractStart ? ' data-contract-start="' + contractStart.replace(/"/g, '&quot;') + '"' : '') + (contractEnd ? ' data-contract-end="' + contractEnd.replace(/"/g, '&quot;') + '"' : '') + (rentChangesJson ? ' data-rent-changes="' + rentChangesJson + '"' : '') + (monthlyRent > 0 ? ' data-monthly-rent="' + monthlyRent + '"' : '') + (defaultPaymentMethod ? ' data-default-payment-method="' + defaultPaymentMethod.replace(/"/g, '&quot;') + '"' : '') + (defaultBankAccountId ? ' data-default-bank-account-id="' + defaultBankAccountId.replace(/"/g, '&quot;') + '"' : '')
+                    ? ' data-property-id="' + propIdForCell + '" data-contract-id="' + contractEntityId + '" data-contracts-id="' + contractEntityId + '" data-month-key="' + cell.monthKey + '" data-amount="' + (cell.amount || 0) + '" data-tenant="' + (contract && contract.tenant_name ? contract.tenant_name : '').replace(/"/g, '&quot;') + '" data-paid="' + (isPaid ? '1' : '0') + '" data-payment-date="' + (cell.payment && cell.payment.date ? cell.payment.date : '') + '" data-payment-amount="' + paidAmt + '" data-remaining="' + remaining + '"' + (cell.remaining_rent != null ? ' data-remaining-rent="' + cell.remaining_rent + '"' : '') + (contractStart ? ' data-contract-start="' + contractStart.replace(/"/g, '&quot;') + '"' : '') + (contractEnd ? ' data-contract-end="' + contractEnd.replace(/"/g, '&quot;') + '"' : '') + (rentChangesJson ? ' data-rent-changes="' + rentChangesJson + '"' : '') + (monthlyRent > 0 ? ' data-monthly-rent="' + monthlyRent + '"' : '') + (defaultPaymentMethod ? ' data-default-payment-method="' + defaultPaymentMethod.replace(/"/g, '&quot;') + '"' : '') + (defaultBankAccountId ? ' data-default-bank-account-id="' + defaultBankAccountId.replace(/"/g, '&quot;') + '"' : '') + (tenantsId ? ' data-tenants-id="' + tenantsId + '"' : '')
                     : ' data-property-id="' + propIdForCell + '" data-month-key="' + monthKey + '"';
 
                 let titleAttr = '';
@@ -282,8 +350,23 @@ async function loadDashboard(year) {
                             tipParts.push('Oranžový okraj: neuhrazený požadavek (např. vrácení kauce).');
                         }
                     }
-                    tipParts.push('');
-                    tipParts.push('Kauce a vrácení kauce se započítávají do měsíce, kdy byly zaplaceny/vyplaceny.');
+                    // Deposit events v tooltipu: konkrétní informace o kaucích v tomto měsíci
+                    if (cell.deposit_events && cell.deposit_events.length > 0) {
+                        tipParts.push('───');
+                        cell.deposit_events.forEach(function(de) {
+                            var displayAmt = de.amount < 0 ? Math.abs(de.amount) : de.amount;
+                            var origDeposit = de.deposit_amount || 0;
+                            var isPartialReturn = de.amount < 0 && origDeposit > 0 && displayAmt < origDeposit;
+                            var label = de.amount < 0
+                                ? (isPartialReturn ? '🔑 Kauce vrácena částečně' : '🔑 Kauce vrácena')
+                                : '🔑 Kauce přijata';
+                            var line = label + ': ' + UI.fmt(displayAmt) + ' Kč (' + UI.fmtDate(de.date) + ')';
+                            if (isPartialReturn) line += ' z ' + UI.fmt(origDeposit) + ' Kč';
+                            if (de.tenant) line += ' – ' + de.tenant;
+                            tipParts.push(line);
+                        });
+                        tipParts.push('(Kauce není zahrnuta v předpisu ani v uhrazené částce.)');
+                    }
                     titleAttr = ' title="' + UI.esc(tipParts.join('\n')) + '"';
                 }
 
@@ -387,15 +470,9 @@ async function loadDashboard(year) {
             }
 
             let tags = '';
-            const requestTypeLabels = { energy: 'Energie', settlement: 'Vyúčt.', deposit: 'Kauce', deposit_return: 'Vrác. kauce', other: 'Jiné' };
-            (d.unpaid_months || []).forEach(u => {
-                const tenant = (d.tenant_name || '').replace(/"/g, '&quot;');
-                const prop = (d.property_name || '').replace(/"/g, '&quot;');
-                const rent = u.rent != null ? u.rent : d.monthly_rent;
-                tags += '<span class="tag">' + u.month + '/' + u.year +
-                    ' <span class="tag-plus" data-contracts-id="' + d.contracts_id + '" data-property-id="' + (d.properties_id ?? '') + '" data-year="' + u.year + '" data-month="' + u.month + '" data-rent="' + rent + '" data-tenant="' + tenant + '" data-property="' + prop + '" title="Přidat platbu">+</span></span>';
-            });
-            const sortedRequests = (d.payment_requests || []).slice().sort((a, b) => {
+            const requestTypeLabels = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčt.', deposit: 'Kauce', deposit_return: 'Vrác. kauce', other: 'Jiné' };
+            // unpaid_months tags removed – rent is now tracked via payment_requests of type 'rent'
+            const sortedRequests = (d.payment_requests || []).filter(pr => (!pr.paid_at || !String(pr.paid_at).trim()) && !pr.settled_by_request_id).slice().sort((a, b) => {
                 const da = (a.due_date || '').toString().slice(0, 10);
                 const db = (b.due_date || '').toString().slice(0, 10);
                 if (!da && !db) return 0;
@@ -432,6 +509,15 @@ async function loadDashboard(year) {
             const tenantLink = tenantId ? ' onclick="DashboardView.openEdit(\'tenants\',' + tenantId + ')" class="dash-link" title="Upravit nájemníka"' : '';
             const propLink = propId ? ' onclick="DashboardView.openEdit(\'properties\',' + propId + ')" class="dash-link" title="Upravit nemovitost"' : '';
             const contractLink = contractEntityId ? ' onclick="DashboardView.openEdit(\'contracts\',' + contractEntityId + ')" class="dash-link" title="Upravit smlouvu"' : '';
+            // Deposit badge pro přehled smluv
+            let depositBadge = '';
+            if (depAmt > 0) {
+                if (d.deposit_to_return) {
+                    depositBadge = '<span class="deposit-badge deposit-badge-warn" title="Kauce k vrácení: ' + UI.fmt(depAmt) + ' Kč">K ' + UI.fmt(depAmt) + '</span>';
+                } else if (!(contractEnded && depositReturned)) {
+                    depositBadge = '<span class="deposit-badge" title="Držená kauce: ' + UI.fmt(depAmt) + ' Kč">K ' + UI.fmt(depAmt) + '</span>';
+                }
+            }
             const paymentsTitle = progTitle || 'Klikni pro platby';
             const paymentsLink = ' onclick="PaymentsView.navigateWithFilter(' + d.contracts_id + ')" class="dash-link" title="' + UI.esc(paymentsTitle) + '"';
             const progWrapTitle = progTitle || (UI.fmt(totalPaid) + ' / ' + UI.fmt(expectedTotal) + ' Kč');
@@ -459,7 +545,7 @@ async function loadDashboard(year) {
                 '<td' + propLink + '>' + UI.esc(d.property_name) + '</td>' +
                 '<td' + contractLink + rentTdTitle + '>' + rentCellContent + '</td>' +
                 '<td' + paymentsLink + '><div class="prog-wrap" title="' + UI.esc(progWrapTitle) + '"><div class="prog-bar"><div class="prog-fill ' + progClass + '" style="width:' + Math.round(pct) + '%"></div></div>' +
-                '<span class="prog-lbl" title="' + UI.esc(progWrapTitle) + '">' + UI.fmt(totalPaid) + ' / ' + UI.fmt(expectedTotal) + ' Kč</span></div></td>' +
+                '<span class="prog-lbl" title="' + UI.esc(progWrapTitle) + '">' + UI.fmt(totalPaid) + ' / ' + UI.fmt(expectedTotal) + ' Kč</span>' + depositBadge + '</div></td>' +
                 '<td class="dash-unpaid-cell">' + tagsHtml + '</td>' +
                 '<td class="dash-p-col" title="' + UI.esc(addReqTitle) + '">' + addReqBtn + '</td>'
             );
@@ -542,7 +628,7 @@ function initPaymentRequestModal() {
             const editIdEl = document.getElementById('pay-req-edit-id');
             const editId = (editIdEl && editIdEl.value) ? editIdEl.value.trim() : '';
             const cid = parseInt(contractSel.value, 10);
-            const amount = parseFloat(amountEl.value);
+            let amount = parseFloat(amountEl.value);
             if (isNaN(amount) || amount === 0) {
                 if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Zadejte částku (kladnou = příjem, zápornou = výdej).'; }
                 return;
@@ -551,7 +637,12 @@ function initPaymentRequestModal() {
                 if (alertEl) { alertEl.className = 'alert alert-err show'; alertEl.textContent = 'Vyberte smlouvu.'; }
                 return;
             }
-            const type = ['energy', 'settlement', 'other', 'deposit', 'deposit_return'].includes(typeEl.value) ? typeEl.value : 'energy';
+            const type = ['rent', 'energy', 'settlement', 'other', 'deposit', 'deposit_return'].includes(typeEl.value) ? typeEl.value : 'energy';
+            // Požadavek na vrácení kauce musí být záporný
+            if (type === 'deposit_return' && amount > 0) {
+                amount = -amount;
+                amountEl.value = amount;
+            }
             const dueDate = dueDateEl && dueDateEl.value ? dueDateEl.value.trim() : null;
             const payload = {
                 contracts_id: cid,
@@ -560,6 +651,11 @@ function initPaymentRequestModal() {
                 note: (noteEl.value || '').trim() || null,
                 due_date: dueDate,
             };
+            const paidAtWrap = document.getElementById('pay-req-paid-at-wrap');
+            const paidAtEl = document.getElementById('pay-req-paid-at');
+            if (editId && paidAtWrap && paidAtWrap.style.display !== 'none') {
+                payload.paid_at = (paidAtEl && paidAtEl.value) ? paidAtEl.value.trim() : null;
+            }
             btnSave.disabled = true;
             try {
                 if (editId) {
@@ -693,6 +789,10 @@ async function openAddPaymentRequestModal(contractId) {
         editIdEl.value = '';
         const linkWrapAdd = document.getElementById('pay-req-link-wrap');
         if (linkWrapAdd) linkWrapAdd.style.display = 'none';
+        const paidAtWrapAdd = document.getElementById('pay-req-paid-at-wrap');
+        if (paidAtWrapAdd) paidAtWrapAdd.style.display = 'none';
+        const paidAtElAdd = document.getElementById('pay-req-paid-at');
+        if (paidAtElAdd) paidAtElAdd.value = '';
         const closeWithoutWrapAdd = document.getElementById('pay-req-close-without-wrap');
         if (closeWithoutWrapAdd) closeWithoutWrapAdd.style.display = 'none';
         const btnDeleteAdd2 = document.getElementById('btn-pay-req-delete');
@@ -741,10 +841,16 @@ async function openPaymentRequestEdit(paymentRequestId, onSaved) {
         if (btnDelete) btnDelete.style.display = '';
         contractSel.value = pr.contracts_id ?? '';
         amountEl.value = pr.amount ?? '';
-        typeEl.value = ['energy', 'settlement', 'other', 'deposit', 'deposit_return'].includes(pr.type) ? pr.type : 'energy';
+        typeEl.value = ['rent', 'energy', 'settlement', 'other', 'deposit', 'deposit_return'].includes(pr.type) ? pr.type : 'energy';
         noteEl.value = pr.note ?? '';
         if (dueDateEl) dueDateEl.value = (pr.due_date || '').toString().slice(0, 10);
         if (alertEl) { alertEl.className = 'alert'; alertEl.textContent = ''; }
+
+        // Datum úhrady – jen u uhrazeného požadavku
+        const paidAtWrap = document.getElementById('pay-req-paid-at-wrap');
+        const paidAtEl = document.getElementById('pay-req-paid-at');
+        if (paidAtWrap) paidAtWrap.style.display = pr.paid_at ? '' : 'none';
+        if (paidAtEl) paidAtEl.value = pr.paid_at ? (pr.paid_at || '').toString().slice(0, 10) : '';
 
         // Sekce „Propojená platba“ – jen v režimu úpravy, platby této smlouvy
         if (linkWrap) linkWrap.style.display = '';
@@ -825,6 +931,9 @@ async function openPaymentModal(el) {
     const monthName = MONTH_NAMES[parseInt(month, 10) - 1] || month;
     const propName = el.dataset.propertyName || (el.closest('tr') && el.closest('tr').querySelector('.heatmap-property') ? el.closest('tr').querySelector('.heatmap-property').textContent : '') || '';
     const propertyId = el.dataset.propertyId ? String(el.dataset.propertyId).trim() : '';
+    const tenantsId = el.dataset.tenantsId ? String(el.dataset.tenantsId).trim() : '';
+    const contractStart = el.dataset.contractStart || '';
+    const contractEnd = el.dataset.contractEnd || '';
 
     const info = document.getElementById('pay-modal-info');
     const amount = document.getElementById('pay-modal-amount');
@@ -1004,23 +1113,42 @@ async function openPaymentModal(el) {
         const linkedIds = linkedIdsStr ? linkedIdsStr.split(',').map(s => s.trim()).filter(Boolean) : [];
         const getReqId = r => String(r.payment_requests_id ?? r.id);
         const linkedReqs = linkedIds.length ? paymentRequests.filter(r => linkedIds.includes(getReqId(r))) : [];
-        const allocatedSum = linkedReqs.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-        const remainder = Math.round((parseFloat(p.amount) || 0) - allocatedSum, 2);
+        const payAmt = parseFloat(p.amount) || 0;
         const paymentMonthKey = (p.period_year != null && p.period_month != null) ? (String(p.period_year) + '-' + String(p.period_month).padStart(2, '0')) : '';
-        const hasBreakdown = linkedIds.length > 0 && (remainder !== 0 || linkedReqs.length > 0);
+        const hasBreakdown = linkedIds.length > 0 && linkedReqs.length > 0;
+        const ptCap = p.payment_type || 'rent';
+        const isDepositPayment = (ptCap === 'deposit' || ptCap === 'deposit_return');
         if (!hasBreakdown) {
-            return (effectiveMonthKey(p) === monthKey) ? (parseFloat(p.amount) || 0) : 0;
+            return (effectiveMonthKey(p) === monthKey) ? payAmt : 0;
         }
+        // Budget-based allocation: cap linked request amounts so total doesn't exceed payment
+        // Skip cap for deposit/deposit_return – settlement can legitimately exceed payment
+        const shouldCap = !isDepositPayment;
         let sum = 0;
-        if (remainder !== 0 && paymentMonthKey === monthKey) sum += remainder;
+        let budget = payAmt;
         linkedReqs.forEach(r => {
+            const rType = r.type || '';
+            // Skip deposit/deposit_return a settled linked requests z alokace (mirror PHP)
+            if (rType === 'deposit' || rType === 'deposit_return') return;
+            if (r.settled_by_request_id) return;
+
+            let rAmt = parseFloat(r.amount) || 0;
+            // Cap: don't allocate more than remaining budget (only for non-deposit)
+            if (shouldCap && payAmt >= 0 && rAmt > 0) {
+                rAmt = Math.min(rAmt, Math.max(0, Math.round(budget * 100) / 100));
+            } else if (shouldCap && payAmt < 0 && rAmt < 0) {
+                rAmt = Math.max(rAmt, Math.min(0, Math.round(budget * 100) / 100));
+            }
+            budget = Math.round((budget - rAmt) * 100) / 100;
             const reqMonthKey = r.due_date ? String(r.due_date).slice(0, 7) : '';
-            if (reqMonthKey === monthKey) sum += parseFloat(r.amount) || 0;
+            if (reqMonthKey === monthKey) sum += rAmt;
         });
+        // Remainder (positive or negative) goes to payment's period month – but DROP for deposit payments
+        if (!isDepositPayment && budget !== 0 && paymentMonthKey === monthKey) sum += budget;
         return sum;
     }
     const sumForMonth = forMonth.reduce((s, p) => s + amountContributingToMonth(p), 0);
-    const reqTypeLabelsShort = { energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
+    const reqTypeLabelsShort = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
     function buildMissingPaymentsHtml(remainingRentVal, unfulfilledReqs) {
         const parts = [];
         if (!isNaN(remainingRentVal) && remainingRentVal > 0) {
@@ -1037,41 +1165,47 @@ async function openPaymentModal(el) {
         if (parts.length === 0) return '';
         return '<div class="pay-modal-missing"><strong>Ještě chybí tyto platby:</strong> ' + parts.join(', ') + '.</div>';
     }
-    let infoHtml = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
-        '<div><strong>Nájemce:</strong> ' + UI.esc(tenantName) + '</div>' +
-        '<div><strong>Období:</strong> ' + monthName + ' ' + year + '</div>';
-    if (sumForMonth >= amountVal) {
-        const overpaid = sumForMonth > amountVal;
-        infoHtml += '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen' : 'plně uhrazen') + ' částkou ' + UI.fmt(sumForMonth) + ' Kč</strong> (můžete <a href="#" class="pay-modal-add-extra-link" data-action="add">přidat další platbu navíc</a> za přeplatek, doplatek…).</div>';
-    } else {
-        if (sumForMonth > 0) infoHtml += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(sumForMonth) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(Math.round((amountVal - sumForMonth) * 100) / 100) + ' Kč</div>';
+    // Helper: format date "YYYY-MM-DD" → "D. M. YYYY"
+    function fmtDateShort(d) {
+        if (!d || d.length < 10) return d || '';
+        return parseInt(d.slice(8, 10), 10) + '. ' + parseInt(d.slice(5, 7), 10) + '. ' + d.slice(0, 4);
+    }
+    // Helper: build modal header with clickable links
+    function buildModalHeader() {
+        const propLink = propertyId ? '<a href="#properties&edit=' + UI.esc(propertyId) + '" class="pay-modal-link">' + UI.esc(propName) + '</a>' : UI.esc(propName);
+        const tenantLink = tenantsId ? '<a href="javascript:void(0)" onclick="DashboardView.openEdit(\'tenants\',' + UI.esc(tenantsId) + ')" class="pay-modal-link">' + UI.esc(tenantName) + '</a>' : UI.esc(tenantName);
+        const contractLabel = (contractStart || contractEnd) ? (fmtDateShort(contractStart) + ' – ' + fmtDateShort(contractEnd)) : '';
+        const contractLink = contractsId && contractLabel ? '<a href="#contracts&edit=' + UI.esc(contractsId) + '" class="pay-modal-link">' + contractLabel + '</a>' : contractLabel;
+        let h = '<div><strong>Nemovitost:</strong> ' + propLink + '</div>' +
+            '<div><strong>Nájemce:</strong> ' + tenantLink + '</div>';
+        if (contractLink) h += '<div><strong>Smlouva:</strong> ' + contractLink + '</div>';
+        h += '<div><strong>Období:</strong> ' + monthName + ' ' + year + '</div>';
+        return h;
+    }
+    function buildStatusHtml(sum) {
+        if (sum >= amountVal) {
+            const overpaid = sum > amountVal;
+            const overpaidAmt = Math.round((sum - amountVal) * 100) / 100;
+            return '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen částkou ' + UI.fmt(overpaidAmt) : 'plně uhrazen částkou ' + UI.fmt(sum)) + ' Kč</strong> (můžete <a href="#" class="pay-modal-add-extra-link" data-action="add">přidat další platbu navíc</a> za přeplatek, doplatek…).</div>';
+        }
+        let s = '';
+        if (sum > 0) s += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(sum) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(Math.round((amountVal - sum) * 100) / 100) + ' Kč</div>';
         const unfulfilledForMonth = paymentRequests.filter(function(r) {
             const d = r.due_date;
+            if (r.settled_by_request_id) return false;
             return d && String(d).slice(0, 7) === monthKey && !r.paid_at && String(r.contracts_id ?? '') === String(contractsId);
         });
-        infoHtml += buildMissingPaymentsHtml(remainingRent, unfulfilledForMonth);
+        s += buildMissingPaymentsHtml(remainingRent, unfulfilledForMonth);
+        return s;
     }
+    let infoHtml = buildModalHeader() + buildStatusHtml(sumForMonth);
     info.innerHTML = infoHtml;
     const initialInfoHtml = infoHtml;
 
     function refreshModalInfo() {
         if (!info) return;
         const sum = forMonth.reduce((s, p) => s + amountContributingToMonth(p), 0);
-        let html = '<div><strong>Nemovitost:</strong> ' + UI.esc(propName) + '</div>' +
-            '<div><strong>Nájemce:</strong> ' + UI.esc(tenantName) + '</div>' +
-            '<div><strong>Období:</strong> ' + monthName + ' ' + year + '</div>';
-        if (sum >= amountVal) {
-            const overpaid = sum > amountVal;
-            html += '<div class="pay-modal-full' + (overpaid ? ' pay-modal-overpaid' : '') + '"><strong>Měsíc je ' + (overpaid ? 'přeplacen' : 'plně uhrazen') + ' částkou ' + UI.fmt(sum) + ' Kč</strong> (můžete <a href="#" class="pay-modal-add-extra-link" data-action="add">přidat další platbu navíc</a> za přeplatek, doplatek…).</div>';
-        } else {
-            if (sum > 0) html += '<div class="pay-modal-partial"><strong>Uhrazeno:</strong> ' + UI.fmt(sum) + ' Kč, <strong>zbývá:</strong> ' + UI.fmt(Math.round((amountVal - sum) * 100) / 100) + ' Kč</div>';
-            const unfulfilledForMonth = paymentRequests.filter(function(r) {
-                const d = r.due_date;
-                return d && String(d).slice(0, 7) === monthKey && !r.paid_at && String(r.contracts_id ?? '') === String(contractsId);
-            });
-            html += buildMissingPaymentsHtml(remainingRent, unfulfilledForMonth);
-        }
-        info.innerHTML = html;
+        info.innerHTML = buildModalHeader() + buildStatusHtml(sum);
     }
 
     const typeLabels = { rent: 'Nájem', deposit: 'Kauce', deposit_return: 'Vrácení kauce', energy: 'Energie', other: 'Jiné' };
@@ -1123,7 +1257,7 @@ async function openPaymentModal(el) {
             return 0;
         });
         let html = '';
-        const reqTypeLabels = { energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
+        const reqTypeLabels = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
         sorted.forEach(r => {
             const rid = prId(r);
             const typeLabel = reqTypeLabels[r.type] || 'Požadavek';
@@ -1147,7 +1281,7 @@ async function openPaymentModal(el) {
     const contractIdToIndex = {};
     contractIdsInMonth.forEach((cid, i) => { contractIdToIndex[cid] = i; });
 
-    const requestTypeLabelsShort = { energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
+    const requestTypeLabelsShort = { rent: 'Nájem', energy: 'Energie', settlement: 'Vyúčtování', deposit: 'Kauce', deposit_return: 'Vrácení kauce', other: 'Jiné' };
     function renderExisting() {
         if (!forMonth.length) {
             existingWrap.innerHTML = '';
@@ -1155,7 +1289,9 @@ async function openPaymentModal(el) {
         }
         let html = '<div class="pay-modal-existing-title">Existující platby:</div><ul class="pay-modal-existing-list">';
         forMonth.forEach(p => {
-            const amt = UI.fmt(p.amount ?? 0);
+            const fullAmt = UI.fmt(p.amount ?? 0);
+            const contributingAmt = amountContributingToMonth(p);
+            const amt = UI.fmt(contributingAmt);
             const dt = p.payment_date ? UI.fmtDate(p.payment_date) : '—';
             const method = p.payment_method || 'account';
             const accId = p.bank_accounts_id ?? '';
@@ -1165,18 +1301,39 @@ async function openPaymentModal(el) {
             const prId = r => String(r.payment_requests_id ?? r.id);
             const getReqId = r => String(r.payment_requests_id ?? r.id);
             const linkedReqs = linkedIds.length ? paymentRequests.filter(r => linkedIds.includes(getReqId(r))) : [];
-            const allocatedSum = linkedReqs.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-            const remainder = Math.round((parseFloat(p.amount) || 0) - allocatedSum, 2);
+            const payAmtRaw = parseFloat(p.amount) || 0;
             const periodLabel = (p.period_year && p.period_month && parseInt(p.period_month, 10) >= 1 && parseInt(p.period_month, 10) <= 12) ? ((typeof UI !== 'undefined' && UI.MONTHS ? UI.MONTHS[parseInt(p.period_month, 10)] : ['leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'][parseInt(p.period_month, 10) - 1]) + ' ' + p.period_year) : '';
             const periodLabelLower = periodLabel ? (periodLabel.charAt(0).toLowerCase() + periodLabel.slice(1)) : '';
             const paymentMonthKey = (p.period_year != null && p.period_month != null) ? (String(p.period_year) + '-' + String(p.period_month).padStart(2, '0')) : '';
+            // Budget-based capping for breakdown rows (same logic as amountContributingToMonth)
+            // Skip cap for deposit/deposit_return – settlement can legitimately exceed payment
+            const isDepositPt = (pt === 'deposit' || pt === 'deposit_return');
+            const shouldCapBreakdown = !isDepositPt;
+            let breakdownBudget = payAmtRaw;
+            const cappedLinked = [];
+            linkedReqs.forEach(r => {
+                const rType = r.type || '';
+                // Skip deposit/deposit_return a settled linked requests z alokace (mirror PHP)
+                if (rType === 'deposit' || rType === 'deposit_return') return;
+                if (r.settled_by_request_id) return;
+                let rAmt = parseFloat(r.amount) || 0;
+                if (shouldCapBreakdown && payAmtRaw >= 0 && rAmt > 0) {
+                    rAmt = Math.min(rAmt, Math.max(0, Math.round(breakdownBudget * 100) / 100));
+                } else if (shouldCapBreakdown && payAmtRaw < 0 && rAmt < 0) {
+                    rAmt = Math.max(rAmt, Math.min(0, Math.round(breakdownBudget * 100) / 100));
+                }
+                breakdownBudget = Math.round((breakdownBudget - rAmt) * 100) / 100;
+                cappedLinked.push({ req: r, cappedAmt: rAmt });
+            });
+            // Remainder: drop for deposit payments (kauce remainder se kompenzuje s deposit_return)
+            const remainder = isDepositPt ? 0 : Math.round(breakdownBudget * 100) / 100;
             const partsWithMonth = [];
             if (remainder !== 0 && periodLabel) partsWithMonth.push({ label: 'Nájem', dateLabel: periodLabelLower, amount: UI.fmt(remainder) + ' Kč', partMonthKey: paymentMonthKey });
-            linkedReqs.forEach(r => {
+            cappedLinked.forEach(({ req: r, cappedAmt }) => {
                 const reqLabel = requestTypeLabelsShort[r.type] || 'Požadavek';
                 const reqDate = r.due_date ? UI.fmtDate(r.due_date) : '';
                 const reqMonthKey = r.due_date ? String(r.due_date).slice(0, 7) : '';
-                partsWithMonth.push({ label: reqLabel, dateLabel: reqDate, amount: UI.fmt(parseFloat(r.amount) || 0) + ' Kč', partMonthKey: reqMonthKey });
+                partsWithMonth.push({ label: reqLabel, dateLabel: reqDate, amount: UI.fmt(cappedAmt) + ' Kč', partMonthKey: reqMonthKey });
             });
             const hasBreakdown = partsWithMonth.length > 1;
             const hasRentPart = remainder !== 0 && periodLabel;
@@ -1200,16 +1357,18 @@ async function openPaymentModal(el) {
                     return '<div class="' + rowClass + '"><span class="pay-modal-breakdown-label">' + UI.esc(part.label) + '</span><span class="pay-modal-breakdown-date">' + UI.esc(part.dateLabel || '') + '</span><span class="pay-modal-breakdown-amount">' + part.amount + '</span></div>';
                 }).join('')
                 : '';
+            const amtDiffers = Math.abs((parseFloat(p.amount) || 0) - contributingAmt) > 0.5;
+            const amtSuffix = amtDiffers ? ' <span class="pay-modal-full-amount" title="Celková částka platby: ' + fullAmt + ' Kč">(z ' + fullAmt + ')</span>' : '';
             const contentHtml = hasBreakdown && partsWithMonth.length
                 ? ('<div class="pay-modal-existing-content">' +
                     '<span class="pay-modal-main-label">' + typeBadge + batchTag + tenantLabel + '</span>' +
                     '<span class="pay-modal-main-date">' + dt + '</span>' +
-                    '<span class="pay-modal-main-amount">' + amt + ' Kč</span>' +
+                    '<span class="pay-modal-main-amount">' + amt + ' Kč' + amtSuffix + '</span>' +
                     '<div class="pay-modal-breakdown-block">' + breakdownRows + '</div></div>')
                 : ('<div class="pay-modal-existing-content">' +
                     '<span class="pay-modal-main-label">' + typeBadge + batchTag + tenantLabel + '</span>' +
                     '<span class="pay-modal-main-date">' + dt + '</span>' +
-                    '<span class="pay-modal-main-amount">' + amt + ' Kč</span></div>');
+                    '<span class="pay-modal-main-amount">' + amt + ' Kč' + amtSuffix + '</span></div>');
             const contributesAny = amountContributingToMonth(p) > 0;
             const allPartsInMonth = !hasBreakdown ? (effectiveMonthKey(p) === monthKey) : (partsWithMonth.length > 0 && partsWithMonth.every(part => part.partMonthKey === monthKey));
             const rowOutsideMonth = !contributesAny || (hasBreakdown && !allPartsInMonth);
@@ -1240,6 +1399,7 @@ async function openPaymentModal(el) {
         const paidTotal = sumForMonth;
         prefillUnfulfilledReqs = paymentRequests.filter(r => {
             const d = r.due_date;
+            if (r.settled_by_request_id) return false;
             return d && String(d).slice(0, 7) === monthKey && !r.paid_at && String(r.contracts_id ?? '') === String(contractsId);
         });
         if (!isNaN(remainingRent) && remainingRent > 0) {
@@ -1561,12 +1721,17 @@ async function openPaymentModal(el) {
                     alert('Zadejte platné datum platby (např. únor má max. 29 dní).');
                     return;
                 }
-                const amt = parseFloat(amount.value) || 0;
+                let amt = parseFloat(amount.value) || 0;
                 if (amt === 0) {
                     alert('Zadejte částku platby.');
                     return;
                 }
                 const paymentType = ['rent','deposit','deposit_return','energy','other'].includes(typeSelect.value) ? typeSelect.value : 'rent';
+                // Vrácení kauce musí být záporná částka – automaticky opravit
+                if (paymentType === 'deposit_return' && amt > 0) {
+                    amt = -amt;
+                    amount.value = amt;
+                }
                 const method = methodSelect.value === 'account' || methodSelect.value === 'cash' ? methodSelect.value : 'account';
                 const accountId = method === 'account' ? Number(accountSelect.value || 0) : null;
                 if (method === 'account' && (!accountId || accountId <= 0)) {
@@ -1748,6 +1913,10 @@ const DashboardView = {
     openEdit,
     openPaymentModal,
     openNewContract,
+    toggleDepositDetail() {
+        const el = document.getElementById('deposit-account-detail');
+        if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+    },
     async quickPay(contractsId, propertyId, year, month, rent, tenantName, propertyName) {
         const monthKey = year + '-' + String(month).padStart(2, '0');
         const fakeEl = document.createElement('div');

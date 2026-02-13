@@ -1,0 +1,16 @@
+---
+description: Po opravě bugu (fixbot / uživatel) vždy commitnout změny
+globs: api/**/*.php, js/**/*.js, *.html, .cursor/rules/*.mdc
+alwaysApply: false
+---
+
+# Commit po opravě bugu
+
+Když opravíš bug (na základě reportu od fixbota nebo uživatele):
+
+1. **Po provedení opravy** vždy:
+   - `git add` pro změněné soubory (ne submodul např. `docs/cursor-rules-firemni`, pokud není součástí opravy)
+   - `git commit -m "fix: stručný popis opravy"` (např. `fix: restore session SameSite=Strict`, `fix(settlement): use prepared statements`)
+2. V závěrečné hlášce uvést: **Commit:** hash a zpráva, **Aktuální verze**, **Push:** zda byl pushnut, popř. nabídnout `git push`.
+
+Tím se zajistí, že opravy z fixbota nezaniknou a jsou v historii srozumitelně zaznamenané.
