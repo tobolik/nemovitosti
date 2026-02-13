@@ -358,11 +358,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             if (!isset($rentChangesByContract[$cid2])) $rentChangesByContract[$cid2] = [];
             $rentChangesByContract[$cid2][] = $rc;
         }
+        // Nezapočítávat type=rent – expectedRent už nájem reprezentuje; jinak by se nájem započítal dvakrát
+        // (např. Gejza Ondič: expectedRent=2200 + unpaid rent 2200 = 4400 → platba 2200 nesedí, vybere se Ateliér DUA)
         $unpaidRequestsByContract = [];
         $unpaidReq = db()->query("
             SELECT contracts_id, SUM(amount) AS total
             FROM payment_requests
-            WHERE valid_to IS NULL AND paid_at IS NULL
+            WHERE valid_to IS NULL AND paid_at IS NULL AND type != 'rent'
             GROUP BY contracts_id
         ")->fetchAll(PDO::FETCH_ASSOC);
         foreach ($unpaidReq as $r) {
