@@ -4,7 +4,11 @@ Seznam změn podle verzí. Při každém zvýšení verze v aplikaci sem doplň 
 
 ---
 
-## v2.6.18 (aktuální)
+## v2.6.19 (aktuální)
+
+- **Fix MySQL připojení:** Přidán `allowPublicKeyRetrieval=true` do PDO DSN – oprava chyby „Public Key Retrieval is not allowed“ při připojení k MySQL 8 (např. Railway)
+
+## v2.6.18
 
 - **Fix migrate.php:** Při výjimce v PHP migraci po výstupu se output buffer vždy vyčistí (finally), aby se do JSON odpovědi nedostal smíšený obsah
 

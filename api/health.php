@@ -14,7 +14,7 @@ $out = ['ok' => false, 'db' => null];
 
 try {
     $dsn = sprintf(
-        'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
+        'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4;allowPublicKeyRetrieval=true',
         DB_HOST,
         (int)DB_PORT,
         DB_NAME
