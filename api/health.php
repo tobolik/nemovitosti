@@ -14,7 +14,7 @@ $out = ['ok' => false, 'db' => null];
 
 try {
     $dsn = sprintf(
-        'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4;allowPublicKeyRetrieval=true',
+        'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
         DB_HOST,
         (int)DB_PORT,
         DB_NAME
@@ -28,7 +28,7 @@ try {
     $out['db'] = 'ok';
 } catch (Throwable $e) {
     $out['error'] = $e->getMessage();
-    $out['hint'] = 'Zkontrolujte na Railway: Variables (MYSQLHOST, MYSQLPORT, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE) a případně DB_NAME pokud data jsou v tobolikcz01.';
+    $out['hint'] = 'Zkontrolujte na Railway: Variables (MYSQLHOST, MYSQLPORT, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE). Výchozí název DB na Railway je railway (ne tobolikcz01).';
 }
 
 echo json_encode($out, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
